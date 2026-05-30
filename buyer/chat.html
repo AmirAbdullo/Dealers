@@ -1,0 +1,798 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CarFox — Chat</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] }
+          }
+        }
+      };
+    </script>
+    <style>
+      #messagesScroll { -webkit-overflow-scrolling: touch; }
+      .chat-bubble {
+        display: inline-block;
+        max-width: 100%;
+        vertical-align: top;
+      }
+      .chat-bubble-text {
+        white-space: pre-line;
+        word-break: break-word;
+      }
+      .chat-bubble-ts {
+        float: right;
+        margin-left: 8px;
+        margin-top: 4px;
+        font-size: 11px;
+        line-height: 1.2;
+        white-space: nowrap;
+        position: relative;
+        top: 1px;
+      }
+      #attachPreviewList::-webkit-scrollbar { display: none; }
+      #attachPreviewList { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+  </head>
+  <body class="bg-gray-50 text-gray-900 font-sans h-[100dvh] flex flex-col overflow-hidden">
+    <header class="sticky top-0 z-40 bg-white border-b border-gray-200 h-16 shrink-0">
+      <div class="h-full flex items-center px-4 gap-2 max-w-lg mx-auto w-full">
+        <a href="/buyer/inbox.html" class="p-1 -ml-1 text-gray-700 hover:text-gray-900 shrink-0" aria-label="Back to inbox">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+          </svg>
+        </a>
+        <div class="flex-1 min-w-0">
+          <p id="headerDealer" class="font-semibold text-sm leading-tight truncate text-gray-900">…</p>
+          <p id="headerVehicle" class="text-xs text-gray-500 leading-tight truncate">…</p>
+        </div>
+        <div id="kebabWrap" class="relative shrink-0 hidden">
+          <button type="button" id="kebabBtn" class="p-2 text-gray-600 hover:text-gray-900 rounded-lg" aria-label="More options" aria-expanded="false" aria-haspopup="true">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+              <circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/>
+            </svg>
+          </button>
+          <div id="kebabMenu" class="hidden absolute right-0 top-full mt-1 w-40 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50">
+            <a id="viewListingLink" href="#" class="block px-4 py-2 text-sm text-gray-900 hover:bg-gray-50">View listing</a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <a id="vehicleContextCard" href="#" class="hidden sticky top-16 z-30 px-4 py-3 bg-blue-50 border-b border-blue-100 flex items-center gap-3 hover:bg-blue-100/80">
+      <img id="ctxThumb" src="" alt="" class="w-10 h-10 rounded object-cover bg-gray-200 shrink-0 hidden" />
+      <div id="ctxThumbPlaceholder" class="w-10 h-10 rounded bg-gray-200 shrink-0 flex items-center justify-center hidden">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8 17h8M6 11h12l-1-4H7l-1 4z"/></svg>
+      </div>
+      <div class="flex-1 min-w-0">
+        <p id="ctxTitle" class="text-sm font-semibold text-gray-900 truncate"></p>
+        <p id="ctxPrice" class="text-sm text-blue-700 font-bold"></p>
+      </div>
+      <span id="ctxSoldBadge" class="hidden text-[10px] font-semibold text-red-700 bg-red-50 border border-red-200 rounded px-1.5 py-0.5 shrink-0">Sold</span>
+    </a>
+
+    <div id="pageLoading" class="flex-1 flex items-center justify-center text-sm text-gray-600">Loading conversation…</div>
+
+    <div id="chatMain" class="hidden flex-1 flex flex-col min-h-0 relative">
+      <div id="messagesScroll" class="flex-1 overflow-y-auto px-4 py-4 pb-24">
+        <div id="messagesList" class="space-y-2"></div>
+      </div>
+
+      <button
+        type="button"
+        id="newMessagesBtn"
+        class="hidden absolute bottom-28 left-1/2 -translate-x-1/2 z-20 bg-white border border-gray-300 shadow-md text-sm font-semibold text-blue-700 px-4 py-2 rounded-full"
+      >
+        ↓ New messages
+      </button>
+
+      <div class="fixed bottom-0 left-0 right-0 border-t bg-white z-30" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom));">
+        <div id="attachPreview" class="hidden px-3 pt-2 pb-1 border-b border-gray-100">
+          <div id="attachPreviewList" class="flex gap-2 overflow-x-auto"></div>
+        </div>
+        <div class="p-3 flex gap-2 items-end">
+          <input type="file" id="fileInput" multiple accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" class="hidden">
+          <input type="file" id="cameraInput" accept="image/*,video/*" capture="environment" class="hidden">
+          <button type="button" id="attachBtn" class="shrink-0 w-10 h-10 flex items-center justify-center text-gray-500 hover:text-blue-600" aria-label="Attach file">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+            </svg>
+          </button>
+          <button type="button" id="cameraBtn" class="shrink-0 w-10 h-10 flex items-center justify-center text-gray-500 hover:text-blue-600" aria-label="Take photo">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+          </button>
+          <textarea
+            id="composerInput"
+            rows="1"
+            placeholder="Type a message..."
+            class="flex-1 border border-gray-300 rounded-2xl px-4 py-2 text-base resize-none max-h-32 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          ></textarea>
+          <button
+            type="button"
+            id="sendBtn"
+            disabled
+            class="shrink-0 bg-blue-700 hover:bg-blue-800 disabled:bg-gray-300 text-white rounded-full w-10 h-10 flex items-center justify-center"
+            aria-label="Send message"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="lightbox" class="hidden fixed inset-0 z-50 bg-black/90 flex items-center justify-center" role="dialog" aria-modal="true">
+      <button id="lightboxClose" class="absolute top-4 right-4 p-2 text-white text-3xl leading-none" aria-label="Close">&times;</button>
+      <img id="lightboxImg" src="" alt="" class="max-w-full max-h-full object-contain select-none">
+    </div>
+
+    <script src="/js/carfox-auth.js"></script>
+    <script src="/js/carfox-buyer-nav.js"></script>
+    <script>
+      (function () {
+        const esc = CarfoxBuyerNav.escapeHtml;
+        const fmtBubbleTime = CarfoxBuyerNav.formatBubbleTime;
+        const fmtPrice = CarfoxBuyerNav.formatPriceCents;
+        const vehTitle = CarfoxBuyerNav.vehicleTitle;
+
+        const params = new URLSearchParams(window.location.search);
+        const conversationId = parseInt(params.get('conversation'), 10);
+        const prefill = params.get('prefill') === '1';
+
+        let session = null;
+        let currentUserId = null;
+        let conversationMeta = null;
+        let messages = [];
+        let pollTimer = null;
+        let ws = null;
+        let wsReconnectTimer = null;
+        let wsReconnectDelay = 1500;
+        let isNearBottom = true;
+        let pendingScrollBottom = false;
+        let pendingUploads = {};
+
+        const pageLoading = document.getElementById('pageLoading');
+        const chatMain = document.getElementById('chatMain');
+        const messagesScroll = document.getElementById('messagesScroll');
+        const messagesList = document.getElementById('messagesList');
+        const composerInput = document.getElementById('composerInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const newMessagesBtn = document.getElementById('newMessagesBtn');
+        const fileInput = document.getElementById('fileInput');
+        const attachBtn = document.getElementById('attachBtn');
+        const cameraBtn = document.getElementById('cameraBtn');
+        const cameraInput = document.getElementById('cameraInput');
+        const attachPreview = document.getElementById('attachPreview');
+        const attachPreviewList = document.getElementById('attachPreviewList');
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImg = document.getElementById('lightboxImg');
+
+        if (!conversationId || isNaN(conversationId)) {
+          window.location.replace('/buyer/inbox.html');
+          return;
+        }
+
+        function authHeaders() {
+          return {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer ' + session.token
+          };
+        }
+
+        function isOwnMessage(msg) {
+          return msg.sender_id === currentUserId;
+        }
+
+        function formatBytes(b) {
+          if (!b) return '';
+          if (b < 1024) return b + ' B';
+          if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+          return (b / 1048576).toFixed(1) + ' MB';
+        }
+
+        function updateSendButton() {
+          const text = composerInput.value.trim();
+          const uploads = Object.values(pendingUploads);
+          const hasDone = uploads.some(function (u) { return u.status === 'done'; });
+          const hasInProgress = uploads.some(function (u) {
+            return u.status === 'uploading' || u.status === 'pending';
+          });
+          sendBtn.disabled = (!text && !hasDone) || hasInProgress;
+        }
+
+        function autoGrowTextarea() {
+          composerInput.style.height = 'auto';
+          const lineHeight = 24;
+          const maxRows = 5;
+          const maxH = lineHeight * maxRows + 16;
+          composerInput.style.height = Math.min(composerInput.scrollHeight, maxH) + 'px';
+        }
+
+        function scrollToBottom(smooth) {
+          messagesScroll.scrollTo({
+            top: messagesScroll.scrollHeight,
+            behavior: smooth ? 'smooth' : 'auto'
+          });
+        }
+
+        function checkNearBottom() {
+          const threshold = 200;
+          const dist =
+            messagesScroll.scrollHeight -
+            messagesScroll.scrollTop -
+            messagesScroll.clientHeight;
+          isNearBottom = dist <= threshold;
+        }
+
+        messagesScroll.addEventListener('scroll', checkNearBottom);
+
+        newMessagesBtn.addEventListener('click', function () {
+          newMessagesBtn.classList.add('hidden');
+          scrollToBottom(true);
+          isNearBottom = true;
+        });
+
+        function renderAttachments(attachments, own, sending) {
+          if (!attachments || !attachments.length) return '';
+          const items = attachments.map(function (a) {
+            if (a.file_type === 'image') {
+              return (
+                '<img src="' + esc(a.url) + '" alt="' + esc(a.filename || 'image') +
+                '" class="max-w-[220px] w-full rounded-lg block' +
+                (sending ? '' : ' cursor-pointer') +
+                '" data-lightbox="' + esc(a.url) + '">'
+              );
+            }
+            if (a.file_type === 'video') {
+              return (
+                '<video src="' + esc(a.url) +
+                '" controls playsinline muted class="max-w-[220px] w-full rounded-lg block"></video>'
+              );
+            }
+            const cardBg = own ? 'bg-blue-600 hover:bg-blue-500' : 'bg-gray-300 hover:bg-gray-400';
+            const nameColor = own ? 'text-white' : 'text-gray-900';
+            const metaColor = own ? 'text-blue-200' : 'text-gray-500';
+            const iconColor = own ? 'text-white' : 'text-gray-700';
+            return (
+              '<a href="' + esc(a.url) + '" target="_blank" rel="noopener noreferrer" ' +
+              'class="flex items-center gap-2 ' + cardBg + ' rounded-lg px-3 py-2 no-underline max-w-[220px]">' +
+              '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0 ' + iconColor + '" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">' +
+              '<path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>' +
+              '<div class="min-w-0 flex-1">' +
+              '<p class="text-xs font-medium truncate ' + nameColor + '">' + esc(a.filename || 'file') + '</p>' +
+              (a.size_bytes ? '<p class="text-[10px] ' + metaColor + '">' + esc(formatBytes(a.size_bytes)) + '</p>' : '') +
+              '</div>' +
+              '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0 ' + iconColor + '" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">' +
+              '<path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>' +
+              '</a>'
+            );
+          });
+          return '<div class="flex flex-col gap-2 mb-1">' + items.join('') + '</div>';
+        }
+
+        function renderMessageBubble(msg, opts) {
+          opts = opts || {};
+          const own = isOwnMessage(msg);
+          const failed = opts.failed;
+          const sending = opts.sending;
+          const bubbleClass = own
+            ? 'bg-blue-700 text-white rounded-2xl rounded-br-md'
+            : 'bg-gray-200 text-gray-900 rounded-2xl rounded-bl-md';
+          const tsClass = own
+            ? 'chat-bubble-ts text-blue-200 opacity-70'
+            : 'chat-bubble-ts text-gray-500';
+          const rowAlign = own ? 'justify-end' : 'justify-start';
+
+          if (failed) {
+            return (
+              '<div class="flex ' + rowAlign + ' max-w-full" data-msg-id="' + esc(String(msg.id)) + '">' +
+              '<div class="max-w-[75%]">' +
+              '<button type="button" class="text-sm text-red-600 underline text-left retry-send" data-retry-id="' +
+              esc(String(msg.id)) + '">Failed to send. Tap to retry.</button>' +
+              '</div></div>'
+            );
+          }
+
+          const timeLabel = sending ? 'Sending…' : fmtBubbleTime(msg.created_at);
+          const attachments = Array.isArray(msg.attachments) ? msg.attachments : [];
+          const hasAttachments = attachments.length > 0;
+          const padClass = hasAttachments ? 'p-1.5' : 'px-3 py-2 pb-1';
+          const stateClass = sending ? ' opacity-60' : '';
+          const extraPad = hasAttachments ? ' px-1.5' : '';
+
+          let inner = renderAttachments(attachments, own, sending);
+          if (msg.body) {
+            inner += '<span class="chat-bubble-text text-sm' + extraPad + '">' + esc(msg.body) + '</span>';
+          }
+          inner += '<span class="' + tsClass + extraPad + '">' + esc(timeLabel) + '</span>';
+
+          return (
+            '<div class="flex ' + rowAlign + ' max-w-full" data-msg-id="' + esc(String(msg.id)) + '">' +
+            '<div class="max-w-[75%]">' +
+            '<div class="chat-bubble ' + bubbleClass + ' ' + padClass + stateClass + '">' +
+            inner +
+            '</div></div></div>'
+          );
+        }
+
+        function renderAllMessages() {
+          messagesList.innerHTML = messages
+            .map(function (m) {
+              return renderMessageBubble(m, { sending: m._sending, failed: m._failed });
+            })
+            .join('');
+
+          messagesList.querySelectorAll('.retry-send').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              const id = btn.getAttribute('data-retry-id');
+              const msg = messages.find(function (m) { return String(m.id) === String(id); });
+              if (msg) resendMessage(msg._failedBody || '', msg._failedAttachments || [], id);
+            });
+          });
+
+          messagesList.querySelectorAll('[data-lightbox]').forEach(function (img) {
+            img.addEventListener('click', function () {
+              lightboxImg.src = img.getAttribute('data-lightbox');
+              lightbox.classList.remove('hidden');
+            });
+          });
+
+          if (pendingScrollBottom || isNearBottom) {
+            requestAnimationFrame(function () {
+              scrollToBottom(false);
+              pendingScrollBottom = false;
+            });
+          }
+        }
+
+        function mergeMessages(incoming, replace) {
+          if (replace) {
+            messages = incoming.slice();
+            return;
+          }
+          const existingIds = new Set(messages.map(function (m) { return m.id; }));
+          let added = false;
+          incoming.forEach(function (m) {
+            if (!existingIds.has(m.id)) {
+              messages.push(m);
+              added = true;
+            } else {
+              const idx = messages.findIndex(function (x) {
+                return x.id === m.id && !x._sending && !x._failed;
+              });
+              if (idx >= 0) messages[idx] = m;
+            }
+          });
+          messages.sort(function (a, b) { return a.id - b.id; });
+          return added;
+        }
+
+        function fetchMessages(replace) {
+          return fetch(
+            '/api/conversations/' + conversationId + '/messages?limit=50',
+            { headers: { Authorization: 'Bearer ' + session.token } }
+          )
+            .then(function (res) {
+              if (res.status === 403) { window.location.replace('/buyer/inbox.html'); return null; }
+              if (!res.ok) throw new Error('messages failed');
+              return res.json();
+            })
+            .then(function (data) {
+              if (!data) return null;
+              const incoming = data.messages || [];
+              if (replace) {
+                const optimistic = messages.filter(function (m) { return m._sending || m._failed; });
+                mergeMessages(incoming, true);
+                optimistic.forEach(function (m) { messages.push(m); });
+                messages.sort(function (a, b) { return (a.id || 0) - (b.id || 0); });
+              } else {
+                const lastBefore = messages.length && !messages[messages.length - 1]._sending
+                  ? messages[messages.length - 1].id : 0;
+                const added = mergeMessages(incoming, false);
+                const lastAfter = messages.length && !messages[messages.length - 1]._sending
+                  ? messages[messages.length - 1].id : 0;
+                if (added && lastAfter > lastBefore) {
+                  if (isNearBottom) { pendingScrollBottom = true; }
+                  else { newMessagesBtn.classList.remove('hidden'); }
+                }
+              }
+              renderAllMessages();
+              return data;
+            });
+        }
+
+        function loadConversationMeta() {
+          return fetch('/api/conversations?limit=50&offset=0', {
+            headers: { Authorization: 'Bearer ' + session.token }
+          })
+            .then(function (res) {
+              if (!res.ok) throw new Error('conv list failed');
+              return res.json();
+            })
+            .then(function (data) {
+              const found = (data.conversations || []).find(function (c) { return c.id === conversationId; });
+              if (!found) throw new Error('not found');
+              conversationMeta = found;
+              applyHeader();
+            });
+        }
+
+        function applyHeader() {
+          const dealer = conversationMeta.other_party || {};
+          document.getElementById('headerDealer').textContent = dealer.name || 'Dealer';
+          const v = conversationMeta.vehicle;
+          if (conversationMeta.vehicle_id && v) {
+            document.getElementById('headerVehicle').textContent = vehTitle(v);
+          } else {
+            document.getElementById('headerVehicle').textContent = 'General inquiry';
+          }
+          const card = document.getElementById('vehicleContextCard');
+          const kebabWrap = document.getElementById('kebabWrap');
+          if (conversationMeta.vehicle_id && v) {
+            card.classList.remove('hidden');
+            card.href = '/cars/' + conversationMeta.vehicle_id;
+            document.getElementById('ctxTitle').textContent = vehTitle(v);
+            document.getElementById('ctxPrice').textContent = fmtPrice(v.price);
+            const thumb = document.getElementById('ctxThumb');
+            const ph = document.getElementById('ctxThumbPlaceholder');
+            if (v.primary_photo_url) {
+              thumb.src = v.primary_photo_url;
+              thumb.classList.remove('hidden');
+              ph.classList.add('hidden');
+            } else {
+              thumb.classList.add('hidden');
+              ph.classList.remove('hidden');
+            }
+            document.getElementById('ctxSoldBadge').classList.toggle('hidden', v.status !== 'sold');
+            kebabWrap.classList.remove('hidden');
+            document.getElementById('viewListingLink').href = '/cars/' + conversationMeta.vehicle_id;
+          } else {
+            card.classList.add('hidden');
+            kebabWrap.classList.add('hidden');
+          }
+        }
+
+        function startPolling() {
+          if (pollTimer) clearInterval(pollTimer);
+          pollTimer = setInterval(function () { fetchMessages(false).catch(function () {}); }, 30000);
+        }
+
+        function connectWebSocket() {
+          if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+          const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+          const url = proto + '//' + location.host + '?token=' + encodeURIComponent(session.token) + '&conversation=' + conversationId;
+          ws = new WebSocket(url);
+
+          ws.addEventListener('message', function (event) {
+            try {
+              const data = JSON.parse(event.data);
+              if (data.type === 'message' && data.message && data.message.id) {
+                const exists = messages.some(function (m) { return m.id === data.message.id; });
+                if (!exists && data.message.sender_id !== currentUserId) {
+                  messages = messages.filter(function (m) { return !(m._sending && m.sender_id === currentUserId); });
+                  messages.push(data.message);
+                  messages.sort(function (a, b) { return a.id - b.id; });
+                  if (isNearBottom) pendingScrollBottom = true;
+                  else newMessagesBtn.classList.remove('hidden');
+                  renderAllMessages();
+                }
+              }
+            } catch (e) {}
+          });
+
+          ws.addEventListener('open', function () {
+            wsReconnectDelay = 1500;
+            fetchMessages(false).catch(function () {});
+          });
+
+          ws.addEventListener('close', function () {
+            ws = null;
+            if (wsReconnectTimer) clearTimeout(wsReconnectTimer);
+            wsReconnectTimer = setTimeout(function () { connectWebSocket(); }, wsReconnectDelay);
+            wsReconnectDelay = Math.min(wsReconnectDelay * 2, 15000);
+          });
+
+          ws.addEventListener('error', function () { ws = null; });
+        }
+
+        function resendMessage(body, attachments, tempId) {
+          messages = messages.filter(function (m) { return String(m.id) !== String(tempId); });
+          sendMessage(body, attachments || []);
+        }
+
+        function sendMessage(body, attachments) {
+          attachments = attachments || [];
+          const tempId = 'temp-' + Date.now();
+          const optimistic = {
+            id: tempId,
+            conversation_id: conversationId,
+            sender_id: currentUserId,
+            body: body || null,
+            has_attachments: attachments.length > 0 ? 1 : 0,
+            attachments: attachments,
+            read_at: null,
+            created_at: new Date().toISOString(),
+            _sending: true
+          };
+          messages.push(optimistic);
+          pendingScrollBottom = true;
+          isNearBottom = true;
+          renderAllMessages();
+          composerInput.value = '';
+          updateSendButton();
+          autoGrowTextarea();
+
+          return fetch('/api/conversations/' + conversationId + '/messages', {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify({ body: body || null, attachments: attachments })
+          })
+            .then(function (res) {
+              return res.json().then(function (json) { return { ok: res.ok, status: res.status, json: json }; });
+            })
+            .then(function (result) {
+              messages = messages.filter(function (m) { return String(m.id) !== String(tempId); });
+              if (result.ok && result.json && result.json.id) {
+                messages.push(result.json);
+                messages.sort(function (a, b) { return a.id - b.id; });
+              } else {
+                messages.push({
+                  id: tempId, conversation_id: conversationId, sender_id: currentUserId,
+                  body: body, attachments: attachments,
+                  _failed: true, _failedBody: body, _failedAttachments: attachments
+                });
+              }
+              pendingScrollBottom = true;
+              renderAllMessages();
+            })
+            .catch(function () {
+              messages = messages.filter(function (m) { return String(m.id) !== String(tempId); });
+              messages.push({
+                id: tempId, conversation_id: conversationId, sender_id: currentUserId,
+                body: body, attachments: attachments,
+                _failed: true, _failedBody: body, _failedAttachments: attachments
+              });
+              renderAllMessages();
+            });
+        }
+
+        // ---- Attachment upload helpers ----
+
+        function addPreviewItem(uid, file) {
+          const item = document.createElement('div');
+          item.className = 'relative shrink-0 w-12 h-12';
+          item.setAttribute('data-uid', uid);
+
+          if (file.type.startsWith('image/')) {
+            const img = document.createElement('img');
+            img.className = 'w-12 h-12 object-cover rounded-lg bg-gray-200';
+            img.src = URL.createObjectURL(file);
+            item.appendChild(img);
+          } else {
+            const icon = document.createElement('div');
+            icon.className = 'w-12 h-12 bg-gray-100 rounded-lg flex flex-col items-center justify-center gap-0.5 overflow-hidden';
+            const extLabel = esc((file.name.split('.').pop() || 'FILE').toUpperCase().slice(0, 4));
+            if (file.type.startsWith('video/')) {
+              icon.innerHTML =
+                '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.723v6.554a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>' +
+                '<span class="text-[9px] text-gray-600 font-semibold leading-tight">' + extLabel + '</span>';
+            } else {
+              icon.innerHTML =
+                '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>' +
+                '<span class="text-[9px] text-gray-600 font-semibold leading-tight">' + extLabel + '</span>';
+            }
+            item.appendChild(icon);
+          }
+
+          const spinner = document.createElement('div');
+          spinner.className = 'upload-spinner absolute inset-0 flex items-center justify-center bg-black/30 rounded-lg';
+          spinner.innerHTML =
+            '<svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">' +
+            '<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>' +
+            '<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
+          item.appendChild(spinner);
+
+          const removeBtn = document.createElement('button');
+          removeBtn.type = 'button';
+          removeBtn.className = 'absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-700 text-white rounded-full flex items-center justify-center text-xs font-bold leading-none';
+          removeBtn.setAttribute('aria-label', 'Remove');
+          removeBtn.textContent = '×';
+          removeBtn.addEventListener('click', function () { removeUpload(uid); });
+          item.appendChild(removeBtn);
+
+          attachPreviewList.appendChild(item);
+          attachPreview.classList.remove('hidden');
+          updateSendButton();
+        }
+
+        function setUploadDone(uid) {
+          const item = attachPreviewList.querySelector('[data-uid="' + uid + '"]');
+          if (item) {
+            const spinner = item.querySelector('.upload-spinner');
+            if (spinner) spinner.remove();
+          }
+          updateSendButton();
+        }
+
+        function setUploadError(uid) {
+          const item = attachPreviewList.querySelector('[data-uid="' + uid + '"]');
+          if (item) {
+            const spinner = item.querySelector('.upload-spinner');
+            if (spinner) {
+              spinner.className = 'absolute inset-0 flex items-center justify-center bg-red-500/60 rounded-lg';
+              spinner.innerHTML =
+                '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">' +
+                '<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>';
+            }
+          }
+          updateSendButton();
+        }
+
+        function removeUpload(uid) {
+          const item = attachPreviewList.querySelector('[data-uid="' + uid + '"]');
+          if (item) {
+            const img = item.querySelector('img');
+            if (img && img.src && img.src.startsWith('blob:')) URL.revokeObjectURL(img.src);
+            item.remove();
+          }
+          delete pendingUploads[uid];
+          if (!attachPreviewList.children.length) attachPreview.classList.add('hidden');
+          updateSendButton();
+        }
+
+        function clearAttachPreviews() {
+          attachPreviewList.querySelectorAll('img').forEach(function (img) {
+            if (img.src && img.src.startsWith('blob:')) URL.revokeObjectURL(img.src);
+          });
+          attachPreviewList.innerHTML = '';
+          attachPreview.classList.add('hidden');
+          pendingUploads = {};
+          updateSendButton();
+        }
+
+        function uploadFile(uid, file) {
+          pendingUploads[uid] = { status: 'uploading', file: file };
+          updateSendButton();
+          const fd = new FormData();
+          fd.append('photo', file);
+          fetch('/api/conversations/' + conversationId + '/attachments/upload', {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + session.token },
+            body: fd
+          })
+            .then(function (res) {
+              return res.json().then(function (json) { return { ok: res.ok, json: json }; });
+            })
+            .then(function (result) {
+              if (result.ok && result.json && result.json.url) {
+                pendingUploads[uid].status = 'done';
+                pendingUploads[uid].result = result.json;
+                setUploadDone(uid);
+              } else {
+                pendingUploads[uid].status = 'error';
+                setUploadError(uid);
+              }
+            })
+            .catch(function () {
+              if (pendingUploads[uid]) { pendingUploads[uid].status = 'error'; setUploadError(uid); }
+            });
+        }
+
+        // ---- Event listeners ----
+
+        document.getElementById('kebabBtn').addEventListener('click', function (e) {
+          e.stopPropagation();
+          const menu = document.getElementById('kebabMenu');
+          const open = !menu.classList.contains('hidden');
+          menu.classList.toggle('hidden', open);
+          document.getElementById('kebabBtn').setAttribute('aria-expanded', String(!open));
+        });
+
+        document.addEventListener('click', function () {
+          document.getElementById('kebabMenu').classList.add('hidden');
+          document.getElementById('kebabBtn').setAttribute('aria-expanded', 'false');
+        });
+
+        composerInput.addEventListener('input', function () {
+          updateSendButton();
+          autoGrowTextarea();
+        });
+
+        composerInput.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            if (!sendBtn.disabled) sendBtn.click();
+          }
+        });
+
+        attachBtn.addEventListener('click', function () { fileInput.click(); });
+
+        cameraBtn.addEventListener('click', function () { cameraInput.click(); });
+
+        cameraInput.addEventListener('change', function () {
+          Array.from(cameraInput.files || []).forEach(function (file) {
+            const uid = 'up-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+            addPreviewItem(uid, file);
+            uploadFile(uid, file);
+          });
+          cameraInput.value = '';
+        });
+
+        fileInput.addEventListener('change', function () {
+          Array.from(fileInput.files || []).forEach(function (file) {
+            const uid = 'up-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+            addPreviewItem(uid, file);
+            uploadFile(uid, file);
+          });
+          fileInput.value = '';
+        });
+
+        sendBtn.addEventListener('click', function () {
+          const text = composerInput.value.trim();
+          const doneUploads = Object.values(pendingUploads)
+            .filter(function (u) { return u.status === 'done'; })
+            .map(function (u) { return u.result; });
+          if (!text && !doneUploads.length) return;
+          sendMessage(text, doneUploads);
+          clearAttachPreviews();
+        });
+
+        document.getElementById('lightboxClose').addEventListener('click', function () {
+          lightbox.classList.add('hidden');
+          lightboxImg.src = '';
+        });
+
+        lightbox.addEventListener('click', function (e) {
+          if (e.target === lightbox) { lightbox.classList.add('hidden'); lightboxImg.src = ''; }
+        });
+
+        const returnPath =
+          '/buyer/chat.html?conversation=' + conversationId + (prefill ? '&prefill=1' : '');
+
+        CarfoxBuyerNav.requireBuyerPageAuth(returnPath).then(function (s) {
+          if (!s) return;
+          session = s;
+          currentUserId = s.user.id;
+
+          return loadConversationMeta()
+            .then(function () { return fetchMessages(true); })
+            .then(function () {
+              pageLoading.classList.add('hidden');
+              chatMain.classList.remove('hidden');
+              pendingScrollBottom = true;
+              renderAllMessages();
+              startPolling();
+              connectWebSocket();
+
+              if (prefill && conversationMeta && conversationMeta.vehicle && messages.length === 0) {
+                const v = conversationMeta.vehicle;
+                composerInput.value = "Hi, I'm interested in this " + vehTitle(v) + '. Is it still available?';
+                updateSendButton();
+                autoGrowTextarea();
+              }
+            });
+        }).catch(function () {
+          pageLoading.textContent = 'Could not load conversation.';
+        });
+
+        window.addEventListener('beforeunload', function () {
+          if (pollTimer) clearInterval(pollTimer);
+          if (wsReconnectTimer) clearTimeout(wsReconnectTimer);
+          if (ws) ws.close();
+        });
+      })();
+    </script>
+  </body>
+</html>

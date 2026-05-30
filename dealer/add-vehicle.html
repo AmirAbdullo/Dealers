@@ -1,0 +1,805 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CarFox — Add Vehicle</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <style>
+      .photo-thumb--ghost { opacity: 0.5; transform: scale(0.95); }
+      .photo-thumb--chosen { opacity: 0.5; transform: scale(0.95); }
+    </style>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] }
+          }
+        }
+      };
+    </script>
+  </head>
+  <body class="bg-gray-50 text-gray-900 font-sans">
+    <header class="sticky top-0 z-40 bg-white border-b border-gray-200">
+      <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <a href="/dealer/dashboard.html" class="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+          </svg>
+          <span class="text-sm font-semibold">Back</span>
+        </a>
+        <div id="pageTitle" class="text-base sm:text-lg font-semibold">Add Vehicle</div>
+        <div class="w-12"></div>
+      </div>
+    </header>
+
+    <div id="toast" class="hidden fixed top-20 left-1/2 -translate-x-1/2 z-50 max-w-sm w-full mx-4 rounded-lg border border-red-200 bg-red-50 text-red-800 text-sm px-4 py-3 shadow-lg"></div>
+
+    <div id="pageLoading" class="mx-auto max-w-3xl px-4 py-16 text-center text-gray-600">
+      <p class="text-sm">Loading…</p>
+    </div>
+
+    <main id="pageContent" class="hidden mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-6 pb-28 space-y-6">
+      <section class="bg-white border border-gray-200 rounded-lg p-4 sm:p-5">
+        <h2 class="text-lg font-bold">Vehicle Information</h2>
+        <div class="mt-4 space-y-4">
+          <div>
+            <label for="make" class="block text-sm font-medium text-gray-700">Make</label>
+            <select id="make" class="mt-1 block w-full px-3 py-2 text-base border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500">
+              <option value="">Select a make...</option>
+            </select>
+            <p id="makeError" class="hidden mt-1 text-sm text-red-600"></p>
+          </div>
+          <div id="modelFieldWrap">
+            <label for="model" class="block text-sm font-medium text-gray-700">Model</label>
+            <select id="model" disabled class="mt-1 block w-full px-3 py-2 text-base border border-gray-300 rounded-lg bg-white disabled:bg-gray-50">
+              <option value="">Select a model...</option>
+            </select>
+            <input id="modelText" type="text" placeholder="Enter model name" class="hidden mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg" />
+            <p id="modelError" class="hidden mt-1 text-sm text-red-600"></p>
+          </div>
+          <div>
+            <label for="year" class="block text-sm font-medium text-gray-700">Year</label>
+            <select id="year" class="mt-1 block w-full px-3 py-2 text-base border border-gray-300 rounded-lg bg-white">
+              <option value="">Select year...</option>
+            </select>
+            <p id="yearError" class="hidden mt-1 text-sm text-red-600"></p>
+          </div>
+          <div>
+            <label for="trim" class="block text-sm font-medium text-gray-700">Trim <span class="text-gray-500 font-normal">(optional)</span></label>
+            <input id="trim" type="text" placeholder="e.g. SE, GLi, Sport" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg" />
+          </div>
+        </div>
+      </section>
+
+      <section class="bg-white border border-gray-200 rounded-lg p-4 sm:p-5">
+        <h2 class="text-lg font-bold">Specifications</h2>
+        <div class="mt-4 space-y-4">
+          <div>
+            <label for="body_type" class="block text-sm font-medium text-gray-700">Body type</label>
+            <select id="body_type" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg bg-white">
+              <option value="">Select body type...</option>
+              <option>Sedan</option><option>SUV</option><option>Hatchback</option><option>Coupe</option>
+              <option>Pickup</option><option>Van</option><option>Wagon</option><option>Convertible</option><option>Other</option>
+            </select>
+          </div>
+          <div>
+            <label for="transmission" class="block text-sm font-medium text-gray-700">Transmission</label>
+            <select id="transmission" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg bg-white">
+              <option value="">Select transmission...</option>
+              <option>Automatic</option><option>Manual</option><option>CVT</option><option>Semi-Automatic</option>
+            </select>
+          </div>
+          <div>
+            <label for="fuel_type" class="block text-sm font-medium text-gray-700">Fuel type</label>
+            <select id="fuel_type" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg bg-white">
+              <option value="">Select fuel type...</option>
+              <option>Gasoline</option><option>Diesel</option><option>Hybrid</option><option>Electric</option><option>LPG</option><option>Other</option>
+            </select>
+          </div>
+          <div>
+            <label for="exterior_color" class="block text-sm font-medium text-gray-700">Exterior color</label>
+            <input id="exterior_color" type="text" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg" />
+          </div>
+          <div>
+            <label for="interior_color" class="block text-sm font-medium text-gray-700">Interior color</label>
+            <input id="interior_color" type="text" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg" />
+          </div>
+        </div>
+      </section>
+
+      <section class="bg-white border border-gray-200 rounded-lg p-4 sm:p-5">
+        <h2 class="text-lg font-bold">Listing Details</h2>
+        <div class="mt-4 space-y-4">
+          <div>
+            <label for="mileage" class="block text-sm font-medium text-gray-700">Mileage (km)</label>
+            <input id="mileage" type="text" inputmode="numeric" autocomplete="off" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg" />
+            <p id="mileageError" class="hidden mt-1 text-sm text-red-600"></p>
+          </div>
+          <div>
+            <label for="price" class="block text-sm font-medium text-gray-700">Price (EGP)</label>
+            <input id="price" type="text" inputmode="numeric" autocomplete="off" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="1,850,000" />
+            <p id="priceError" class="hidden mt-1 text-sm text-red-600"></p>
+          </div>
+          <div>
+            <label for="chassis_number" class="block text-sm font-medium text-gray-700">Chassis Number <span class="text-gray-500 font-normal">(optional)</span></label>
+            <input id="chassis_number" type="text" maxlength="17" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg font-mono uppercase" oninput="this.value=this.value.toUpperCase()" />
+            <p class="mt-1 text-xs text-gray-500">VIN or chassis — for your records</p>
+          </div>
+          <div>
+            <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
+            <textarea id="description" rows="4" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <section class="bg-white border border-gray-200 rounded-lg p-4 sm:p-5">
+        <h2 class="text-lg font-bold">Photos</h2>
+        <p class="mt-1 text-sm text-gray-600">At least 1 photo required. Drag photos to reorder — the first photo is the primary.</p>
+        <div id="dropZone" class="mt-4 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-10 cursor-pointer hover:border-blue-400 transition">
+          <p class="text-sm font-medium text-gray-700">Tap to add photos or drag and drop</p>
+          <p class="mt-1 text-xs text-gray-500">JPEG, PNG, or WebP — up to 10 MB each</p>
+        </div>
+        <input id="photoInput" type="file" accept="image/*" capture="environment" multiple class="hidden" />
+        <div id="photoGrid" class="mt-4 grid grid-cols-3 md:grid-cols-4 gap-3"></div>
+        <p id="photoCount" class="mt-3 text-sm text-gray-600">0 photos added</p>
+        <p id="photosError" class="hidden mt-1 text-sm text-red-600"></p>
+      </section>
+    </main>
+
+    <div id="actionBar" class="hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-30">
+      <div class="mx-auto max-w-3xl flex gap-3">
+        <button id="saveDraftBtn" type="button" class="rounded-lg bg-gray-200 text-gray-900 font-semibold px-4 py-3">Save Draft</button>
+        <button id="previewBtn" type="button" class="flex-1 rounded-lg bg-blue-700 hover:bg-blue-800 text-white font-semibold px-4 py-3">Preview</button>
+      </div>
+    </div>
+
+    <script>
+      const TOKEN_KEY = 'carfox_token';
+      const CURRENT_YEAR = 2026;
+      const MAX_PARALLEL = 3;
+      const AUTOSAVE_MS = 500;
+
+      let vehicleId = null;
+      let isEditMode = false;
+      let modelUseTextInput = false;
+      let photoItems = [];
+      let uploadQueue = [];
+      let activeUploads = 0;
+      let nextPhotoKey = 0;
+      let saveTimer = null;
+      let autosaveInFlight = false;
+      let photoSortable = null;
+
+      const pageLoading = document.getElementById('pageLoading');
+      const pageContent = document.getElementById('pageContent');
+      const actionBar = document.getElementById('actionBar');
+      const pageTitle = document.getElementById('pageTitle');
+      const toast = document.getElementById('toast');
+      const makeEl = document.getElementById('make');
+      const modelEl = document.getElementById('model');
+      const modelTextEl = document.getElementById('modelText');
+      const yearEl = document.getElementById('year');
+      const trimEl = document.getElementById('trim');
+      const bodyEl = document.getElementById('body_type');
+      const transEl = document.getElementById('transmission');
+      const fuelEl = document.getElementById('fuel_type');
+      const extEl = document.getElementById('exterior_color');
+      const intEl = document.getElementById('interior_color');
+      const milesEl = document.getElementById('mileage');
+      const priceEl = document.getElementById('price');
+      const chassisEl = document.getElementById('chassis_number');
+      const descEl = document.getElementById('description');
+      const dropZone = document.getElementById('dropZone');
+      const photoInput = document.getElementById('photoInput');
+      const photoGrid = document.getElementById('photoGrid');
+      const photoCount = document.getElementById('photoCount');
+
+      function token() { return localStorage.getItem(TOKEN_KEY) || ''; }
+      function authHeaders(json) {
+        const h = { Authorization: 'Bearer ' + token() };
+        if (json) h['Content-Type'] = 'application/json';
+        return h;
+      }
+      function showToast(msg) {
+        toast.textContent = msg;
+        toast.classList.remove('hidden');
+        setTimeout(function () { toast.classList.add('hidden'); }, 4000);
+      }
+      function getModelInput() { return modelUseTextInput ? modelTextEl : modelEl; }
+      function getModelValue() {
+        return modelUseTextInput ? (modelTextEl.value || '').trim() : (modelEl.value || '').trim();
+      }
+      function countDonePhotos() {
+        return photoItems.filter(function (p) { return p.status === 'done'; }).length;
+      }
+
+      function setFieldError(el, errEl, msg) {
+        const bad = Boolean(msg);
+        el.classList.toggle('border-red-500', bad);
+        if (errEl) {
+          errEl.textContent = msg || '';
+          errEl.classList.toggle('hidden', !msg);
+        }
+      }
+
+      function parseMileageFromInput() {
+        const mileageRaw = milesEl.value.replace(/,/g, '').trim();
+        if (mileageRaw === '') return null;
+        const mileage = parseInt(mileageRaw, 10);
+        return isNaN(mileage) ? null : mileage;
+      }
+
+      function parsePriceCentsFromInput() {
+        const priceRaw = priceEl.value.replace(/,/g, '').trim();
+        if (priceRaw === '') return null;
+        const priceDollars = parseInt(priceRaw, 10);
+        if (isNaN(priceDollars)) return null;
+        return priceDollars * 100;
+      }
+
+      function buildPayload() {
+        const mileage = parseMileageFromInput();
+        const priceCents = parsePriceCentsFromInput();
+        const payload = {
+          make: (makeEl.value || '').trim(),
+          model: getModelValue(),
+          year: yearEl.value ? Number(yearEl.value) : undefined,
+          trim: (trimEl.value || '').trim() || null,
+          mileage: mileage === null ? undefined : mileage,
+          price: priceCents === null ? undefined : priceCents,
+          chassis_number: (chassisEl.value || '').trim().toUpperCase(),
+          body_type: (bodyEl.value || '').trim() || null,
+          transmission: (transEl.value || '').trim() || null,
+          fuel_type: (fuelEl.value || '').trim() || null,
+          exterior_color: (extEl.value || '').trim() || null,
+          interior_color: (intEl.value || '').trim() || null,
+          description: (descEl.value || '').trim() || null
+        };
+        Object.keys(payload).forEach(function (k) {
+          if (payload[k] === undefined) delete payload[k];
+        });
+        return payload;
+      }
+
+      function scheduleAutosave() {
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(flushAutosave, AUTOSAVE_MS);
+      }
+
+      async function flushAutosave() {
+        if (!vehicleId || autosaveInFlight) return;
+        autosaveInFlight = true;
+        const payload = buildPayload();
+        if (Object.keys(payload).length === 0) {
+          autosaveInFlight = false;
+          return;
+        }
+        try {
+          const r = await fetch('/api/vehicles/' + vehicleId, {
+            method: 'PATCH',
+            headers: authHeaders(true),
+            body: JSON.stringify(payload)
+          });
+          if (!r.ok) {
+            const b = await r.json().catch(function () { return {}; });
+            showToast(b.error || "Couldn't save changes");
+          }
+        } catch (e) {
+          showToast("Couldn't save changes");
+        } finally {
+          autosaveInFlight = false;
+        }
+      }
+
+      function attachAutosave(el) {
+        el.addEventListener('input', scheduleAutosave);
+        el.addEventListener('change', scheduleAutosave);
+        el.addEventListener('blur', function () {
+          clearTimeout(saveTimer);
+          flushAutosave();
+        });
+      }
+
+      function digitsOnlyString(raw) {
+        let val = String(raw || '').replace(/,/g, '').replace(/[^0-9]/g, '');
+        val = val.replace(/^0+(?=\d)/, '');
+        return val;
+      }
+
+      function formatInputWithCommas(inputEl) {
+        const cleaned = digitsOnlyString(inputEl.value);
+        if (cleaned === '') {
+          inputEl.value = '';
+          return;
+        }
+        inputEl.value = Number(cleaned).toLocaleString('en-EG');
+      }
+
+      function setFormattedNumberInput(inputEl, plainNumber) {
+        if (plainNumber == null || plainNumber === '' || Number(plainNumber) <= 0) {
+          inputEl.value = '';
+          return;
+        }
+        inputEl.value = Number(plainNumber).toLocaleString('en-EG');
+      }
+
+      function attachFormattedNumberInput(inputEl) {
+        inputEl.addEventListener('focus', function () {
+          inputEl.value = inputEl.value.replace(/,/g, '');
+        });
+        inputEl.addEventListener('input', function () {
+          const next = digitsOnlyString(inputEl.value);
+          if (inputEl.value !== next) inputEl.value = next;
+          scheduleAutosave();
+        });
+        inputEl.addEventListener('paste', function (e) {
+          e.preventDefault();
+          const pasted = (e.clipboardData || window.clipboardData).getData('text');
+          const merged = digitsOnlyString(
+            inputEl.value.slice(0, inputEl.selectionStart).replace(/,/g, '') +
+            pasted +
+            inputEl.value.slice(inputEl.selectionEnd).replace(/,/g, '')
+          );
+          inputEl.value = merged;
+          scheduleAutosave();
+        });
+        inputEl.addEventListener('blur', function () {
+          formatInputWithCommas(inputEl);
+          clearTimeout(saveTimer);
+          flushAutosave();
+        });
+      }
+
+      function getReorderablePhotoIds() {
+        return photoItems
+          .filter(function (p) { return p.status === 'done' && p.serverId; })
+          .map(function (p) { return p.serverId; });
+      }
+
+      async function persistPhotoOrder(previousOrder) {
+        const ids = getReorderablePhotoIds();
+        if (ids.length === 0) return true;
+        try {
+          const r = await fetch('/api/vehicles/' + vehicleId + '/photos/reorder', {
+            method: 'PATCH',
+            headers: authHeaders(true),
+            body: JSON.stringify({ photo_ids: ids })
+          });
+          if (!r.ok) throw new Error('reorder failed');
+          return true;
+        } catch (e) {
+          photoItems = previousOrder;
+          renderPhotoGrid();
+          showToast("Couldn't save order");
+          return false;
+        }
+      }
+
+      async function onPhotoSortEnd(evt) {
+        if (evt.oldIndex === evt.newIndex) return;
+        const previousOrder = photoItems.slice();
+        const moved = photoItems.splice(evt.oldIndex, 1)[0];
+        photoItems.splice(evt.newIndex, 0, moved);
+        updatePrimaryBadges();
+        await persistPhotoOrder(previousOrder);
+      }
+
+      function updatePrimaryBadges() {
+        photoGrid.querySelectorAll('[data-primary-badge]').forEach(function (el) {
+          el.remove();
+        });
+        const firstDoneIdx = photoItems.findIndex(function (p) { return p.status === 'done'; });
+        if (firstDoneIdx === -1) return;
+        const wraps = photoGrid.querySelectorAll('.photo-thumb');
+        const wrap = wraps[firstDoneIdx];
+        if (!wrap) return;
+        const b = document.createElement('span');
+        b.dataset.primaryBadge = '1';
+        b.className = 'absolute bottom-1 left-1 text-[10px] font-bold uppercase bg-blue-700 text-white px-1.5 py-0.5 rounded pointer-events-none';
+        b.textContent = 'Primary';
+        wrap.appendChild(b);
+      }
+
+      function initPhotoSortable() {
+        if (typeof Sortable === 'undefined') return;
+        if (photoSortable) {
+          photoSortable.destroy();
+          photoSortable = null;
+        }
+        photoSortable = new Sortable(photoGrid, {
+          animation: 150,
+          delay: 120,
+          delayOnTouchOnly: true,
+          touchStartThreshold: 4,
+          draggable: '.photo-thumb--sortable',
+          ghostClass: 'photo-thumb--ghost',
+          chosenClass: 'photo-thumb--chosen',
+          filter: '.photo-thumb--locked',
+          preventOnFilter: true,
+          onEnd: onPhotoSortEnd
+        });
+      }
+
+      function populateYearOptions() {
+        for (let y = CURRENT_YEAR; y >= 1990; y--) {
+          const o = document.createElement('option');
+          o.value = String(y);
+          o.textContent = String(y);
+          yearEl.appendChild(o);
+        }
+      }
+
+      async function loadMakes() {
+        const r = await fetch('/api/car-data/makes');
+        const data = await r.json();
+        (data.makes || []).forEach(function (name) {
+          const o = document.createElement('option');
+          o.value = name;
+          o.textContent = name;
+          makeEl.appendChild(o);
+        });
+      }
+
+      function resetModelField() {
+        modelUseTextInput = false;
+        modelEl.innerHTML = '<option value="">Select a model...</option>';
+        modelEl.classList.remove('hidden');
+        modelTextEl.classList.add('hidden');
+        modelEl.disabled = true;
+        modelTextEl.value = '';
+      }
+
+      async function loadModelsForMake(make, selectedModel) {
+        resetModelField();
+        if (!make) return;
+        const r = await fetch('/api/car-data/models?make=' + encodeURIComponent(make));
+        const data = await r.json();
+        const models = data.models || [];
+        if (models.length === 0) {
+          modelUseTextInput = true;
+          modelEl.classList.add('hidden');
+          modelTextEl.classList.remove('hidden');
+          if (selectedModel) modelTextEl.value = selectedModel;
+        } else {
+          models.forEach(function (m) {
+            const o = document.createElement('option');
+            o.value = m;
+            o.textContent = m;
+            modelEl.appendChild(o);
+          });
+          modelEl.disabled = false;
+          if (selectedModel) modelEl.value = selectedModel;
+        }
+      }
+
+      function setSelectValue(el, val) {
+        if (!val) return;
+        const opts = Array.from(el.options).map(function (o) { return o.value || o.text; });
+        if (opts.includes(val)) el.value = val;
+        else {
+          const o = document.createElement('option');
+          o.value = val;
+          o.textContent = val;
+          el.appendChild(o);
+          el.value = val;
+        }
+      }
+
+      async function fillFormFromVehicle(v) {
+        if (v.make) {
+          makeEl.value = v.make;
+          await loadModelsForMake(v.make, v.model || '');
+        }
+        if (v.year) yearEl.value = String(v.year);
+        if (v.trim) trimEl.value = v.trim;
+        if (v.mileage != null && v.mileage > 0) {
+          setFormattedNumberInput(milesEl, v.mileage);
+        }
+        if (v.price > 0) {
+          setFormattedNumberInput(priceEl, Math.floor(v.price / 100));
+        }
+        if (v.vin) chassisEl.value = v.vin;
+        setSelectValue(bodyEl, v.body_type);
+        setSelectValue(transEl, v.transmission);
+        setSelectValue(fuelEl, v.fuel_type);
+        if (v.exterior_color) extEl.value = v.exterior_color;
+        if (v.interior_color) intEl.value = v.interior_color;
+        if (v.description) descEl.value = v.description;
+      }
+
+      function loadServerPhotos(photos) {
+        photoItems = [];
+        const sorted = (photos || []).slice().sort(function (a, b) {
+          return (a.display_order - b.display_order) || (a.id - b.id);
+        });
+        sorted.forEach(function (p) {
+          photoItems.push({
+            key: 'srv-' + p.id,
+            serverId: p.id,
+            previewUrl: p.url,
+            status: 'done',
+            file: null,
+            isPrimary: p.is_primary === 1
+          });
+        });
+        renderPhotoGrid();
+      }
+
+      function renderPhotoGrid() {
+        photoGrid.innerHTML = '';
+        const firstDone = photoItems.findIndex(function (p) { return p.status === 'done'; });
+        photoItems.forEach(function (item, idx) {
+          const wrap = document.createElement('div');
+          wrap.className = 'photo-thumb relative aspect-square rounded-lg overflow-hidden bg-gray-100 border border-gray-200';
+          wrap.dataset.photoKey = String(item.key);
+          if (item.status === 'done' && item.serverId) {
+            wrap.classList.add('photo-thumb--sortable', 'cursor-grab', 'active:cursor-grabbing');
+          } else {
+            wrap.classList.add('photo-thumb--locked');
+          }
+          if (item.status === 'failed') wrap.classList.add('border-2', 'border-red-500', 'cursor-pointer');
+
+          const img = document.createElement('img');
+          img.src = item.previewUrl;
+          img.alt = 'Vehicle photo';
+          img.draggable = false;
+          img.className = 'h-full w-full object-cover pointer-events-none' + (item.status === 'uploading' ? ' opacity-50' : '');
+          wrap.appendChild(img);
+
+          if (item.status === 'uploading') {
+            const ov = document.createElement('div');
+            ov.className = 'absolute inset-0 flex items-center justify-center pointer-events-none';
+            ov.innerHTML = '<svg class="h-8 w-8 animate-spin text-blue-700" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>';
+            wrap.appendChild(ov);
+          }
+          if (item.status === 'failed') {
+            wrap.addEventListener('click', function (e) {
+              if (!e.target.closest('[data-del]')) retryPhoto(item.key);
+            });
+          }
+          if (item.status === 'done' && idx === firstDone) {
+            const b = document.createElement('span');
+            b.dataset.primaryBadge = '1';
+            b.className = 'absolute bottom-1 left-1 text-[10px] font-bold uppercase bg-blue-700 text-white px-1.5 py-0.5 rounded pointer-events-none';
+            b.textContent = 'Primary';
+            wrap.appendChild(b);
+          }
+          const del = document.createElement('button');
+          del.type = 'button';
+          del.dataset.del = '1';
+          del.className = 'absolute top-1 right-1 z-10 h-6 w-6 rounded-full bg-black/60 text-white text-xs flex items-center justify-center';
+          del.textContent = '×';
+          del.addEventListener('click', function (e) {
+            e.stopPropagation();
+            deletePhoto(item.key);
+          });
+          wrap.appendChild(del);
+          photoGrid.appendChild(wrap);
+        });
+        photoCount.textContent = countDonePhotos() + ' photos added';
+        initPhotoSortable();
+      }
+
+      function addFiles(files) {
+        Array.from(files || []).filter(function (f) { return f.type && f.type.startsWith('image/'); }).forEach(function (file) {
+          const key = ++nextPhotoKey;
+          photoItems.push({
+            key: key,
+            file: file,
+            previewUrl: URL.createObjectURL(file),
+            serverId: null,
+            status: 'uploading'
+          });
+          uploadQueue.push(key);
+        });
+        renderPhotoGrid();
+        processUploadQueue();
+      }
+
+      async function uploadPhoto(key) {
+        const item = photoItems.find(function (p) { return p.key === key; });
+        if (!item || !item.file) return;
+        const fd = new FormData();
+        fd.append('photo', item.file);
+        try {
+          const r = await fetch('/api/vehicles/' + vehicleId + '/photos', {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + token() },
+            body: fd
+          });
+          const b = await r.json().catch(function () { return {}; });
+          if (r.status === 201 && b.photo) {
+            item.status = 'done';
+            item.serverId = b.photo.id;
+            item.previewUrl = b.photo.url;
+          } else {
+            item.status = 'failed';
+          }
+        } catch (e) {
+          item.status = 'failed';
+        }
+        renderPhotoGrid();
+      }
+
+      function processUploadQueue() {
+        while (activeUploads < MAX_PARALLEL && uploadQueue.length) {
+          const key = uploadQueue.shift();
+          const item = photoItems.find(function (p) { return p.key === key; });
+          if (!item || item.status !== 'uploading') continue;
+          activeUploads++;
+          uploadPhoto(key).finally(function () {
+            activeUploads--;
+            processUploadQueue();
+          });
+        }
+      }
+
+      function retryPhoto(key) {
+        const item = photoItems.find(function (p) { return p.key === key; });
+        if (!item || !item.file) return;
+        item.status = 'uploading';
+        uploadQueue.push(key);
+        renderPhotoGrid();
+        processUploadQueue();
+      }
+
+      async function deletePhoto(key) {
+        const idx = photoItems.findIndex(function (p) { return p.key === key; });
+        if (idx === -1) return;
+        const item = photoItems[idx];
+        if (item.status === 'done' && item.serverId) {
+          await fetch('/api/vehicles/' + vehicleId + '/photos/' + item.serverId, {
+            method: 'DELETE',
+            headers: authHeaders()
+          });
+        }
+        if (item.previewUrl && item.file) URL.revokeObjectURL(item.previewUrl);
+        photoItems.splice(idx, 1);
+        renderPhotoGrid();
+      }
+
+      makeEl.addEventListener('change', function () {
+        loadModelsForMake(makeEl.value);
+        scheduleAutosave();
+      });
+
+      dropZone.addEventListener('click', function () { photoInput.click(); });
+      photoInput.addEventListener('change', function () {
+        if (photoInput.files.length) addFiles(photoInput.files);
+        photoInput.value = '';
+      });
+      dropZone.addEventListener('dragover', function (e) { e.preventDefault(); dropZone.classList.add('border-blue-500'); });
+      dropZone.addEventListener('dragleave', function () { dropZone.classList.remove('border-blue-500'); });
+      dropZone.addEventListener('drop', function (e) {
+        e.preventDefault();
+        dropZone.classList.remove('border-blue-500');
+        if (e.dataTransfer.files) addFiles(e.dataTransfer.files);
+      });
+
+      attachFormattedNumberInput(milesEl);
+      attachFormattedNumberInput(priceEl);
+      [trimEl, bodyEl, transEl, fuelEl, extEl, intEl, chassisEl, descEl, modelEl, modelTextEl, yearEl].forEach(attachAutosave);
+
+      function validateForPreview() {
+        let ok = true;
+        const make = (makeEl.value || '').trim();
+        const model = getModelValue();
+        const year = Number(yearEl.value);
+        const mileage = parseMileageFromInput();
+        const priceCents = parsePriceCentsFromInput();
+
+        setFieldError(makeEl, document.getElementById('makeError'), '');
+        setFieldError(getModelInput(), document.getElementById('modelError'), '');
+        setFieldError(yearEl, document.getElementById('yearError'), '');
+        setFieldError(milesEl, document.getElementById('mileageError'), '');
+        setFieldError(priceEl, document.getElementById('priceError'), '');
+        document.getElementById('photosError').classList.add('hidden');
+
+        if (!make) { setFieldError(makeEl, document.getElementById('makeError'), 'Make is required'); ok = false; }
+        if (!model) { setFieldError(getModelInput(), document.getElementById('modelError'), 'Model is required'); ok = false; }
+        if (!year) { setFieldError(yearEl, document.getElementById('yearError'), 'Year is required'); ok = false; }
+        if (!mileage || mileage <= 0) { setFieldError(milesEl, document.getElementById('mileageError'), 'Mileage is required'); ok = false; }
+        if (!priceCents || priceCents <= 0) { setFieldError(priceEl, document.getElementById('priceError'), 'Price is required'); ok = false; }
+        if (countDonePhotos() < 1) {
+          const pe = document.getElementById('photosError');
+          pe.textContent = 'At least 1 photo required';
+          pe.classList.remove('hidden');
+          ok = false;
+        }
+        if (!ok) {
+          const first = document.querySelector('.border-red-500, #photosError:not(.hidden)');
+          if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        return ok;
+      }
+
+      async function patchAll(status) {
+        const payload = buildPayload();
+        if (status) payload.status = status;
+        const r = await fetch('/api/vehicles/' + vehicleId, {
+          method: 'PATCH',
+          headers: authHeaders(true),
+          body: JSON.stringify(payload)
+        });
+        const b = await r.json().catch(function () { return {}; });
+        if (!r.ok) throw new Error(b.error || 'Save failed');
+        return b.vehicle;
+      }
+
+      document.getElementById('saveDraftBtn').addEventListener('click', async function () {
+        try {
+          clearTimeout(saveTimer);
+          await patchAll('draft');
+          window.location.href = '/dealer/dashboard.html?draft=1';
+        } catch (e) {
+          showToast(e.message || 'Could not save draft');
+        }
+      });
+
+      document.getElementById('previewBtn').addEventListener('click', async function () {
+        if (!validateForPreview()) return;
+        const btn = document.getElementById('previewBtn');
+        btn.disabled = true;
+        try {
+          clearTimeout(saveTimer);
+          await patchAll('draft');
+          window.location.href = '/dealer/preview-vehicle.html?id=' + vehicleId;
+        } catch (e) {
+          showToast(e.message || 'Could not save');
+        } finally {
+          btn.disabled = false;
+        }
+      });
+
+      (async function init() {
+        if (!token()) { window.location.replace('/dealer/login.html'); return; }
+        try {
+          const me = await fetch('/api/auth/me', { headers: authHeaders() });
+          if (!me.ok) throw new Error('auth');
+          const md = await me.json();
+          if (!md.dealership || md.dealership.status !== 'approved') throw new Error('auth');
+        } catch (e) {
+          window.location.replace('/dealer/login.html');
+          return;
+        }
+
+        populateYearOptions();
+        await loadMakes();
+
+        const params = new URLSearchParams(window.location.search);
+        const idParam = params.get('id');
+
+        if (idParam) {
+          isEditMode = true;
+          pageTitle.textContent = 'Edit Listing';
+          vehicleId = Number(idParam);
+          const r = await fetch('/api/vehicles/' + vehicleId, { headers: authHeaders() });
+          if (!r.ok) { pageLoading.innerHTML = '<p class="text-red-600">Listing not found</p>'; return; }
+          const data = await r.json();
+          await fillFormFromVehicle(data.vehicle);
+          loadServerPhotos(data.photos);
+        } else {
+          const dr = await fetch('/api/vehicles/draft', { method: 'POST', headers: authHeaders(true) });
+          const dd = await dr.json();
+          if (!dr.ok) { pageLoading.innerHTML = '<p class="text-red-600">Could not start draft</p>'; return; }
+          vehicleId = dd.vehicle.id;
+          history.replaceState(null, '', '/dealer/add-vehicle.html?id=' + vehicleId);
+        }
+
+        pageLoading.classList.add('hidden');
+        pageContent.classList.remove('hidden');
+        actionBar.classList.remove('hidden');
+      })();
+    </script>
+    <div id="dealerBottomNav"></div>
+    <script src="/js/carfox-dealer-nav.js"></script>
+    <script>
+      CarfoxDealerNav.mountDealerBottomNav(document.getElementById('dealerBottomNav'), 'inventory');
+    </script>
+  </body>
+</html>

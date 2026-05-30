@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CarFox — Inquiries</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] }
+          }
+        }
+      };
+    </script>
+  </head>
+  <body class="bg-gray-50 text-gray-900 font-sans min-h-screen pb-20">
+    <header class="sticky top-0 z-40 bg-white border-b border-gray-200 h-16">
+      <div class="mx-auto max-w-lg px-4 h-full grid grid-cols-3 items-center">
+        <a href="/dealer/dashboard.html" class="justify-self-start leading-tight">
+          <span class="text-lg font-extrabold tracking-tight block">
+            <span class="text-blue-700">Car</span><span class="text-orange-500">Fox</span>
+          </span>
+          <span class="text-[10px] text-gray-500 font-medium">Dealer</span>
+        </a>
+        <h1 class="text-base font-bold text-gray-900 text-center justify-self-center">Inquiries</h1>
+        <span class="justify-self-end w-8" aria-hidden="true"></span>
+      </div>
+    </header>
+
+    <div id="pageLoading" class="px-4 py-16 text-center text-sm text-gray-600">Loading inquiries…</div>
+
+    <main id="pageContent" class="hidden">
+      <div class="px-4 py-4 bg-white border-b border-gray-100">
+        <h2 class="text-2xl font-bold text-gray-900">Customer Inquiries</h2>
+        <p id="convSubtitle" class="text-sm text-gray-600 mt-1">0 active conversations</p>
+      </div>
+
+      <div class="sticky top-16 z-30 bg-white border-b border-gray-100">
+        <div id="filterTabs" class="flex gap-2 overflow-x-auto px-4 py-2 scrollbar-hide" role="tablist">
+          <button type="button" data-tab="all" class="filter-tab shrink-0 px-4 py-1.5 rounded-full text-sm font-semibold bg-blue-700 text-white">All</button>
+          <button type="button" data-tab="unread" class="filter-tab shrink-0 px-4 py-1.5 rounded-full text-sm font-semibold bg-gray-100 text-gray-700">Unread</button>
+          <button type="button" data-tab="active" class="filter-tab shrink-0 px-4 py-1.5 rounded-full text-sm font-semibold bg-gray-100 text-gray-700">Active listings</button>
+          <button type="button" data-tab="general" class="filter-tab shrink-0 px-4 py-1.5 rounded-full text-sm font-semibold bg-gray-100 text-gray-700">General</button>
+        </div>
+      </div>
+
+      <div id="emptyState" class="hidden px-4 py-16 text-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-300 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+        </svg>
+        <p class="mt-4 text-lg font-semibold text-gray-900">No inquiries yet</p>
+        <p class="mt-2 text-sm text-gray-600 max-w-xs mx-auto">
+          When buyers contact you about your listings, they'll show up here.
+        </p>
+      </div>
+
+      <div id="filterEmpty" class="hidden px-4 py-12 text-center text-sm text-gray-600">
+        No conversations match this filter.
+      </div>
+
+      <div id="convList" class="px-2 bg-white"></div>
+    </main>
+
+    <div id="dealerBottomNav"></div>
+
+    <script src="/js/carfox-dealer-nav.js"></script>
+    <script>
+      (function () {
+        let session = null;
+        let allConversations = [];
+        let activeTab = 'all';
+
+        const filterTabs = document.getElementById('filterTabs');
+        const convList = document.getElementById('convList');
+        const emptyState = document.getElementById('emptyState');
+        const filterEmpty = document.getElementById('filterEmpty');
+
+        function setActiveTab(tab) {
+          activeTab = tab;
+          filterTabs.querySelectorAll('.filter-tab').forEach(function (btn) {
+            const on = btn.getAttribute('data-tab') === tab;
+            btn.className =
+              'filter-tab shrink-0 px-4 py-1.5 rounded-full text-sm font-semibold ' +
+              (on ? 'bg-blue-700 text-white' : 'bg-gray-100 text-gray-700');
+          });
+          renderList();
+        }
+
+        function renderList() {
+          const filtered = CarfoxDealerNav.filterConversations(allConversations, activeTab);
+          const total = allConversations.length;
+          document.getElementById('convSubtitle').textContent =
+            total + ' active conversation' + (total === 1 ? '' : 's');
+
+          if (total === 0) {
+            convList.innerHTML = '';
+            emptyState.classList.remove('hidden');
+            filterEmpty.classList.add('hidden');
+            return;
+          }
+
+          emptyState.classList.add('hidden');
+
+          if (filtered.length === 0) {
+            convList.innerHTML = '';
+            filterEmpty.classList.remove('hidden');
+            return;
+          }
+
+          filterEmpty.classList.add('hidden');
+          convList.innerHTML = filtered
+            .map(function (c) {
+              return CarfoxDealerNav.renderInquiryCardHtml(c, false);
+            })
+            .join('');
+        }
+
+        filterTabs.addEventListener('click', function (e) {
+          const btn = e.target.closest('[data-tab]');
+          if (!btn) return;
+          setActiveTab(btn.getAttribute('data-tab'));
+        });
+
+        CarfoxDealerNav.requireDealerPageAuth('/dealer/inquiries.html').then(function (s) {
+          if (!s) return;
+          session = s;
+          CarfoxDealerNav.mountDealerBottomNav(
+            document.getElementById('dealerBottomNav'),
+            'inquiries'
+          );
+
+          return fetch('/api/conversations?limit=20&offset=0', {
+            headers: { Authorization: 'Bearer ' + session.token }
+          });
+        }).then(function (res) {
+          if (!res) return;
+          if (!res.ok) throw new Error('load failed');
+          return res.json();
+        }).then(function (data) {
+          if (!data) return;
+          allConversations = data.conversations || [];
+          document.getElementById('pageLoading').classList.add('hidden');
+          document.getElementById('pageContent').classList.remove('hidden');
+          setActiveTab('all');
+        }).catch(function () {
+          document.getElementById('pageLoading').textContent =
+            'Could not load inquiries. Please refresh.';
+        });
+      })();
+    </script>
+  </body>
+</html>

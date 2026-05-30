@@ -1,0 +1,6 @@
+node_modules/
+.env
+carfox.db
+carfox.db-wal
+carfox.db-shm
+*.log

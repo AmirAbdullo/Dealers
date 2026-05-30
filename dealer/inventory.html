@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CarFox — Inventory</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] }
+          }
+        }
+      };
+    </script>
+  </head>
+  <body class="bg-gray-50 text-gray-900 font-sans min-h-screen pb-24">
+
+    <!-- Header -->
+    <header class="sticky top-0 z-40 bg-white border-b border-gray-200 h-16">
+      <div class="mx-auto max-w-lg px-4 h-full flex items-center justify-between">
+        <a href="/" class="text-lg font-extrabold tracking-tight">
+          <span class="text-blue-700">Car</span><span class="text-orange-500">Fox</span>
+        </a>
+        <h1 class="text-base font-bold text-gray-900">Inventory</h1>
+        <a href="/dealer/add-vehicle.html"
+           class="bg-blue-700 text-white text-sm font-semibold px-3 py-1.5 rounded-lg hover:bg-blue-800">
+          + Add
+        </a>
+      </div>
+    </header>
+
+    <!-- Stats bar -->
+    <section class="bg-white border-b border-gray-100 px-4 py-3">
+      <div class="mx-auto max-w-lg flex gap-4 text-center">
+        <div class="flex-1">
+          <p class="text-xl font-bold text-gray-900" id="statTotal">—</p>
+          <p class="text-xs text-gray-500">Total</p>
+        </div>
+        <div class="flex-1">
+          <p class="text-xl font-bold text-green-600" id="statActive">—</p>
+          <p class="text-xs text-gray-500">Active</p>
+        </div>
+        <div class="flex-1">
+          <p class="text-xl font-bold text-gray-400" id="statSold">—</p>
+          <p class="text-xs text-gray-500">Sold</p>
+        </div>
+        <div class="flex-1">
+          <p class="text-xl font-bold text-orange-500" id="statDraft">—</p>
+          <p class="text-xs text-gray-500">Draft</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Filter tabs -->
+    <div class="bg-white border-b border-gray-200 px-4">
+      <div class="mx-auto max-w-lg flex gap-1 overflow-x-auto -mb-px" style="scrollbar-width:none;-webkit-overflow-scrolling:touch;">
+        <button data-filter="default" class="filter-tab whitespace-nowrap py-3 px-3 text-sm font-medium border-b-2 text-blue-700 border-blue-700">All</button>
+        <button data-filter="active"  class="filter-tab whitespace-nowrap py-3 px-3 text-sm font-medium border-b-2 text-gray-600 border-transparent hover:text-gray-900">Active</button>
+        <button data-filter="sold"    class="filter-tab whitespace-nowrap py-3 px-3 text-sm font-medium border-b-2 text-gray-600 border-transparent hover:text-gray-900">Sold</button>
+        <button data-filter="draft"   class="filter-tab whitespace-nowrap py-3 px-3 text-sm font-medium border-b-2 text-gray-600 border-transparent hover:text-gray-900">Draft</button>
+        <button data-filter="paused"  class="filter-tab whitespace-nowrap py-3 px-3 text-sm font-medium border-b-2 text-gray-600 border-transparent hover:text-gray-900">Paused</button>
+      </div>
+    </div>
+
+    <!-- Vehicle list -->
+    <main id="vehicleList" class="mx-auto max-w-lg px-4 py-3 space-y-3"></main>
+
+    <!-- Dealer bottom nav injected here -->
+    <div id="dealerNavContainer"></div>
+
+    <script src="/js/carfox-dealer-nav.js"></script>
+    <script>
+      (function () {
+        'use strict';
+
+        var TOKEN_KEY = 'carfox_token';
+        var USER_KEY  = 'carfox_user';
+        var esc       = CarfoxDealerNav.escapeHtml;
+
+        var token         = null;
+        var currentFilter = 'default';
+
+        // ── Formatting helpers ──────────────────────────────────────────────
+
+        function formatPrice(cents) {
+          if (!cents || Number(cents) <= 0) return 'Price on request';
+          return Math.round(Number(cents) / 100).toLocaleString('en-EG') + ' EGP';
+        }
+
+        function formatDaysAgo(publishedAt) {
+          if (!publishedAt) return 'Draft';
+          var days = Math.floor((Date.now() - new Date(publishedAt)) / 86400000);
+          if (days <= 0) return 'Today';
+          if (days === 1) return '1 day ago';
+          return days + ' days ago';
+        }
+
+        function statusBadgeCls(status) {
+          var map = {
+            active:   'bg-green-100 text-green-700',
+            sold:     'bg-gray-100 text-gray-500',
+            draft:    'bg-orange-100 text-orange-700',
+            paused:   'bg-yellow-100 text-yellow-700',
+            archived: 'bg-gray-100 text-gray-400'
+          };
+          return map[status] || 'bg-gray-100 text-gray-500';
+        }
+
+        function carIconSvg() {
+          return '<svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 text-gray-300" fill="none" ' +
+            'viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">' +
+            '<path stroke-linecap="round" stroke-linejoin="round" d="M8 17h8M6 11h12l-1-4H7l-1 4zM5 11l1.5-6h11L19 11"/>' +
+            '<circle cx="7.5" cy="17.5" r="1.5" fill="currentColor" stroke="none"/>' +
+            '<circle cx="16.5" cy="17.5" r="1.5" fill="currentColor" stroke="none"/></svg>';
+        }
+
+        // ── Skeleton loading cards ──────────────────────────────────────────
+
+        function showSkeletons() {
+          var list = document.getElementById('vehicleList');
+          list.innerHTML = '';
+          for (var i = 0; i < 3; i++) {
+            var s = document.createElement('div');
+            s.className = 'bg-white rounded-xl border border-gray-200 overflow-hidden flex gap-3 p-3 animate-pulse';
+            s.innerHTML =
+              '<div class="w-24 h-20 rounded-lg bg-gray-200 flex-shrink-0"></div>' +
+              '<div class="flex-1 min-w-0 space-y-2 py-1">' +
+              '<div class="h-4 bg-gray-200 rounded w-3/4"></div>' +
+              '<div class="h-3 bg-gray-200 rounded w-1/2"></div>' +
+              '<div class="h-3 bg-gray-200 rounded w-1/3"></div>' +
+              '</div>';
+            list.appendChild(s);
+          }
+        }
+
+        // ── Action helper ───────────────────────────────────────────────────
+
+        function doAction(method, url, btn) {
+          if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; }
+          return fetch(url, { method: method, headers: { Authorization: 'Bearer ' + token } })
+            .then(function (res) {
+              if (!res.ok) {
+                return res.json().catch(function () { return {}; }).then(function (d) {
+                  alert(d.error || 'Action failed. Please try again.');
+                  return false;
+                });
+              }
+              return true;
+            })
+            .catch(function () {
+              alert('Network error. Please try again.');
+              return false;
+            })
+            .finally(function () {
+              if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+            });
+        }
+
+        function addBtn(container, label, extraCls, handler) {
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'text-xs font-medium border rounded-md px-2 py-1 ' + extraCls;
+          btn.textContent = label;
+          btn.addEventListener('click', function () { handler(btn); });
+          container.appendChild(btn);
+        }
+
+        // ── Card renderer ───────────────────────────────────────────────────
+
+        function renderCard(v) {
+          var title = [v.year, v.make, v.model].filter(Boolean).join(' ') || 'Untitled';
+          var badgeCls = statusBadgeCls(v.status);
+          var badgeLabel = v.status.charAt(0).toUpperCase() + v.status.slice(1);
+
+          var card = document.createElement('div');
+          card.className = 'bg-white rounded-xl border border-gray-200 overflow-hidden flex gap-3 p-3';
+
+          // Thumbnail
+          var thumb = document.createElement('div');
+          thumb.className = 'w-24 h-20 rounded-lg bg-gray-100 flex-shrink-0 overflow-hidden flex items-center justify-center';
+          if (v.primary_photo_url) {
+            var img = document.createElement('img');
+            img.src = v.primary_photo_url;
+            img.alt = '';
+            img.className = 'w-full h-full object-cover';
+            img.loading = 'lazy';
+            thumb.appendChild(img);
+          } else {
+            thumb.innerHTML = carIconSvg();
+          }
+          card.appendChild(thumb);
+
+          // Info column
+          var info = document.createElement('div');
+          info.className = 'flex-1 min-w-0';
+
+          // Title + badge row
+          var titleRow = document.createElement('div');
+          titleRow.className = 'flex items-start justify-between gap-1';
+          titleRow.innerHTML =
+            '<p class="font-semibold text-gray-900 text-sm leading-tight truncate">' + esc(title) + '</p>' +
+            '<span class="text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ' + badgeCls + '">' + esc(badgeLabel) + '</span>';
+          info.appendChild(titleRow);
+
+          // Price
+          var priceEl = document.createElement('p');
+          priceEl.className = 'text-blue-700 font-bold text-sm mt-0.5';
+          priceEl.textContent = formatPrice(v.price);
+          info.appendChild(priceEl);
+
+          // Meta: views + days ago
+          var metaEl = document.createElement('div');
+          metaEl.className = 'flex items-center gap-3 mt-1 text-xs text-gray-500';
+          metaEl.innerHTML =
+            '<span>👁 ' + esc(String(v.views || 0)) + ' views</span>' +
+            '<span>' + esc(formatDaysAgo(v.published_at)) + '</span>';
+          info.appendChild(metaEl);
+
+          // Action buttons
+          var actionsEl = document.createElement('div');
+          actionsEl.className = 'flex flex-wrap gap-2 mt-2';
+
+          // Edit — always shown
+          var editLink = document.createElement('a');
+          editLink.href = '/dealer/add-vehicle.html?id=' + v.id;
+          editLink.className = 'text-xs font-medium text-blue-700 border border-blue-200 rounded-md px-2 py-1 hover:bg-blue-50';
+          editLink.textContent = 'Edit';
+          actionsEl.appendChild(editLink);
+
+          if (v.status === 'active') {
+            addBtn(actionsEl, 'Mark Sold', 'text-gray-600 border-gray-300 hover:bg-gray-50', function (btn) {
+              doAction('POST', '/api/vehicles/' + v.id + '/mark-sold', btn).then(function (ok) {
+                if (ok) { loadVehicleList(currentFilter); loadStats(); }
+              });
+            });
+            addBtn(actionsEl, 'Pause', 'text-yellow-700 border-yellow-300 hover:bg-yellow-50', function (btn) {
+              doAction('POST', '/api/vehicles/' + v.id + '/pause', btn).then(function (ok) {
+                if (ok) loadVehicleList(currentFilter);
+              });
+            });
+          }
+
+          if (v.status === 'draft') {
+            addBtn(actionsEl, 'Publish', 'text-green-700 border-green-200 hover:bg-green-50', function (btn) {
+              doAction('POST', '/api/vehicles/' + v.id + '/publish', btn).then(function (ok) {
+                if (ok) { loadVehicleList(currentFilter); loadStats(); }
+              });
+            });
+            addBtn(actionsEl, 'Delete', 'text-red-600 border-red-200 hover:bg-red-50', function (btn) {
+              if (!confirm('Delete this listing? This cannot be undone.')) return;
+              doAction('DELETE', '/api/vehicles/' + v.id, btn).then(function (ok) {
+                if (ok) { loadVehicleList(currentFilter); loadStats(); }
+              });
+            });
+          }
+
+          if (v.status === 'paused') {
+            addBtn(actionsEl, 'Resume', 'text-green-700 border-green-200 hover:bg-green-50', function (btn) {
+              doAction('POST', '/api/vehicles/' + v.id + '/resume', btn).then(function (ok) {
+                if (ok) loadVehicleList(currentFilter);
+              });
+            });
+            addBtn(actionsEl, 'Delete', 'text-red-600 border-red-200 hover:bg-red-50', function (btn) {
+              if (!confirm('Delete this listing? This cannot be undone.')) return;
+              doAction('DELETE', '/api/vehicles/' + v.id, btn).then(function (ok) {
+                if (ok) { loadVehicleList(currentFilter); loadStats(); }
+              });
+            });
+          }
+
+          info.appendChild(actionsEl);
+          card.appendChild(info);
+          return card;
+        }
+
+        // ── Empty state ─────────────────────────────────────────────────────
+
+        function showEmptyState() {
+          var list = document.getElementById('vehicleList');
+          list.innerHTML =
+            '<div class="text-center py-16">' +
+            '<p class="text-4xl mb-3">🚗</p>' +
+            '<p class="font-semibold text-gray-700">No listings yet</p>' +
+            '<p class="text-sm text-gray-500 mt-1">Add your first car to get started</p>' +
+            '<a href="/dealer/add-vehicle.html" class="inline-block mt-4 bg-blue-700 text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:bg-blue-800">+ Add Vehicle</a>' +
+            '</div>';
+        }
+
+        // ── Data loaders ────────────────────────────────────────────────────
+
+        function loadVehicleList(filter) {
+          showSkeletons();
+          fetch('/api/dealer/vehicles?status=' + filter + '&limit=50', {
+            headers: { Authorization: 'Bearer ' + token }
+          })
+            .then(function (res) {
+              if (!res.ok) throw new Error('load failed');
+              return res.json();
+            })
+            .then(function (data) {
+              var vehicles = data.vehicles || [];
+              var list = document.getElementById('vehicleList');
+              list.innerHTML = '';
+              if (!vehicles.length) { showEmptyState(); return; }
+              vehicles.forEach(function (v) { list.appendChild(renderCard(v)); });
+            })
+            .catch(function () {
+              document.getElementById('vehicleList').innerHTML =
+                '<p class="text-center text-sm text-gray-500 py-8">Could not load listings. Please refresh.</p>';
+            });
+        }
+
+        function loadStats() {
+          fetch('/api/dealer/vehicles?status=all&limit=100', {
+            headers: { Authorization: 'Bearer ' + token }
+          })
+            .then(function (res) { return res.ok ? res.json() : null; })
+            .then(function (data) {
+              if (!data) return;
+              var vv = data.vehicles || [];
+              document.getElementById('statTotal').textContent  = vv.length;
+              document.getElementById('statActive').textContent = vv.filter(function (v) { return v.status === 'active'; }).length;
+              document.getElementById('statSold').textContent   = vv.filter(function (v) { return v.status === 'sold'; }).length;
+              document.getElementById('statDraft').textContent  = vv.filter(function (v) { return v.status === 'draft'; }).length;
+            })
+            .catch(function () {});
+        }
+
+        // ── Tab switching ───────────────────────────────────────────────────
+
+        function setActiveTab(filter) {
+          currentFilter = filter;
+          document.querySelectorAll('.filter-tab').forEach(function (btn) {
+            var active = btn.getAttribute('data-filter') === filter;
+            btn.classList.toggle('text-blue-700',      active);
+            btn.classList.toggle('border-blue-700',    active);
+            btn.classList.toggle('text-gray-600',      !active);
+            btn.classList.toggle('border-transparent', !active);
+          });
+          loadVehicleList(filter);
+        }
+
+        document.querySelectorAll('.filter-tab').forEach(function (btn) {
+          btn.addEventListener('click', function () { setActiveTab(btn.getAttribute('data-filter')); });
+        });
+
+        // ── Bootstrap ───────────────────────────────────────────────────────
+
+        token = localStorage.getItem(TOKEN_KEY);
+        if (!token) { window.location.replace('/dealer/login.html'); return; }
+
+        fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + token } })
+          .then(function (res) {
+            if (!res.ok) {
+              localStorage.removeItem(TOKEN_KEY);
+              localStorage.removeItem(USER_KEY);
+              window.location.replace('/dealer/login.html');
+              return null;
+            }
+            return res.json();
+          })
+          .then(function (data) {
+            if (!data || !data.user || data.user.role !== 'dealer') {
+              localStorage.removeItem(TOKEN_KEY);
+              localStorage.removeItem(USER_KEY);
+              window.location.replace('/dealer/login.html');
+              return;
+            }
+            try { localStorage.setItem(USER_KEY, JSON.stringify(data.user)); } catch (_) {}
+
+            // Mount dealer bottom nav and ensure it sits above content
+            var navContainer = document.getElementById('dealerNavContainer');
+            CarfoxDealerNav.mountDealerBottomNav(navContainer, 'inventory');
+            var navEl = navContainer.querySelector('nav');
+            if (navEl) navEl.style.zIndex = '100';
+
+            loadStats();
+            loadVehicleList(currentFilter);
+          })
+          .catch(function () { window.location.replace('/dealer/login.html'); });
+
+      })();
+    </script>
+  </body>
+</html>

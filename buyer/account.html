@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CarFox — Account</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] }
+          }
+        }
+      };
+    </script>
+  </head>
+  <body class="bg-gray-50 text-gray-900 font-sans min-h-screen pb-20">
+    <header class="sticky top-0 z-40 bg-white border-b border-gray-200 h-16">
+      <div class="mx-auto max-w-lg px-4 h-full grid grid-cols-3 items-center">
+        <a href="/" class="text-lg font-extrabold tracking-tight justify-self-start">
+          <span class="text-blue-700">Car</span><span class="text-orange-500">Fox</span>
+        </a>
+        <h1 class="text-base font-bold text-gray-900 text-center justify-self-center">Account</h1>
+        <span class="justify-self-end w-8" aria-hidden="true"></span>
+      </div>
+    </header>
+
+    <div id="pageLoading" class="px-4 py-16 text-center text-sm text-gray-600">Loading your account…</div>
+
+    <main id="pageContent" class="hidden">
+      <section class="bg-white px-4 py-6">
+        <div class="relative w-20 h-20 mx-auto cursor-pointer" id="avatarWrapper" onclick="document.getElementById('avatarFileInput').click()">
+          <!-- Initials fallback -->
+          <div
+            id="avatarInitials"
+            class="w-20 h-20 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-2xl font-bold"
+          ></div>
+          <!-- Photo (hidden until loaded) -->
+          <img
+            id="avatarPhoto"
+            class="hidden w-20 h-20 rounded-full object-cover absolute inset-0"
+            alt="Profile photo"
+          />
+          <!-- Camera overlay -->
+          <div class="absolute inset-0 rounded-full bg-black bg-opacity-30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+            <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+          </div>
+          <input type="file" id="avatarFileInput" accept="image/*" class="hidden" />
+        </div>
+        <p class="text-center text-xs text-gray-400 mt-1">Tap to change photo</p>
+        <p id="profileName" class="text-xl font-bold text-gray-900 mt-3 text-center"></p>
+        <p id="profileEmail" class="text-sm text-gray-600 mt-1 text-center"></p>
+        <p id="memberSince" class="text-xs text-gray-500 mt-1 text-center"></p>
+      </section>
+
+      <section class="px-4 py-4 space-y-3">
+        <a href="/buyer/saved-cars.html" class="block bg-white border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 21s-6.7-4.9-9.3-7.6C.7 11.4.5 8.5 2.2 6.8 3.3 5.7 4.8 5.3 6.2 5.6c.9.2 1.8.8 2.5 1.5.7-.7 1.6-1.3 2.5-1.5 1.4-.3 2.9.1 4 1.2 1.7 1.7 1.5 4.6-.5 6.6C18.7 16.1 12 21 12 21z"/>
+              </svg>
+              <span class="font-semibold text-gray-900">Saved Cars</span>
+            </div>
+            <div class="flex items-center gap-2 text-gray-500">
+              <span id="savedCountBadge" class="text-sm font-medium bg-gray-100 px-2 py-0.5 rounded-full">0</span>
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+              </svg>
+            </div>
+          </div>
+        </a>
+
+        <a href="/buyer/inbox.html" class="block bg-white border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 0 1-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+              </svg>
+              <span class="font-semibold text-gray-900">Messages</span>
+            </div>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+            </svg>
+          </div>
+          <p class="text-xs text-gray-500 mt-2">Chat with dealers about listings</p>
+        </a>
+      </section>
+
+      <section class="px-4 py-2">
+        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100 opacity-60 cursor-not-allowed">
+            <span class="text-sm font-medium text-gray-900">Edit Profile</span>
+            <span class="text-xs text-gray-400">Coming soon</span>
+          </div>
+          <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100 opacity-60 cursor-not-allowed">
+            <span class="text-sm font-medium text-gray-900">Notifications</span>
+            <span class="text-xs text-gray-400">Coming soon</span>
+          </div>
+          <div class="flex items-center justify-between px-4 py-3 opacity-60 cursor-not-allowed">
+            <span class="text-sm font-medium text-gray-900">Language</span>
+            <span class="text-xs text-gray-400">Coming soon</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="px-4 py-6">
+        <button
+          type="button"
+          id="signOutBtn"
+          class="w-full bg-red-50 text-red-700 hover:bg-red-100 px-4 py-3 rounded-lg font-semibold border border-red-200"
+        >
+          Sign Out
+        </button>
+      </section>
+    </main>
+
+    <nav class="fixed bottom-0 left-0 right-0 z-[100] md:hidden border-t border-gray-200 bg-white h-16" style="padding-bottom: env(safe-area-inset-bottom);">
+      <div class="mx-auto max-w-7xl grid grid-cols-4 h-full">
+        <a href="/index.html" class="flex flex-col items-center justify-center text-gray-600 hover:text-gray-900">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.172 2.25 10.5V21h6.75v-6h6v6h6V10.5L12 3.172z"/></svg>
+          <span class="text-[11px] leading-tight mt-1">Home</span>
+        </a>
+        <a href="/cars.html" class="flex flex-col items-center justify-center text-gray-600 hover:text-gray-900">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M10.5 3a7.5 7.5 0 0 1 5.3 12.8l4.2 4.2-1.4 1.4-4.2-4.2A7.5 7.5 0 1 1 10.5 3zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11z"/></svg>
+          <span class="text-[11px] leading-tight mt-1">Browse</span>
+        </a>
+        <a href="/buyer/inbox.html" class="relative flex flex-col items-center justify-center text-gray-600 hover:text-gray-900">
+          <span class="relative inline-flex">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 0 1-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+            </svg>
+            <span data-messages-unread-dot class="hidden absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-red-500" aria-hidden="true"></span>
+          </span>
+          <span class="text-[11px] leading-tight mt-1">Messages</span>
+        </a>
+        <a href="/buyer/account.html" data-nav="account" class="flex flex-col items-center justify-center text-blue-700">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5zm0 2c-4.4 0-8 2.2-8 5v3h16v-3c0-2.8-3.6-5-8-5z"/></svg>
+          <span class="text-[11px] leading-tight mt-1">Account</span>
+        </a>
+      </div>
+    </nav>
+
+    <script src="/js/carfox-auth.js"></script>
+    <script src="/js/carfox-buyer-nav.js"></script>
+    <script>
+      (function () {
+        const TOKEN_KEY = 'carfox_token';
+        const USER_KEY = 'carfox_user';
+
+        function clearAuthAndGoLogin() {
+          try {
+            localStorage.removeItem(TOKEN_KEY);
+            localStorage.removeItem(USER_KEY);
+          } catch (_) {}
+          window.location.replace('/buyer/login.html');
+        }
+
+        function initialsFromName(fullName) {
+          const parts = String(fullName || '').trim().split(/\s+/).filter(Boolean);
+          if (parts.length === 0) return '?';
+          if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+          return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+        }
+
+        function formatMemberSince(createdAt) {
+          if (!createdAt) return 'Member since recently';
+          const d = new Date(createdAt);
+          if (isNaN(d.getTime())) return 'Member since recently';
+          return 'Member since ' + d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        }
+
+        function renderProfile(user) {
+          document.getElementById('avatarInitials').textContent = initialsFromName(user.full_name || user.fullName);
+          document.getElementById('profileName').textContent = user.full_name || user.fullName || 'Account';
+          document.getElementById('profileEmail').textContent = user.email || '';
+          document.getElementById('memberSince').textContent = formatMemberSince(user.created_at);
+
+          if (user.avatar_url) {
+            const img = document.getElementById('avatarPhoto');
+            img.src = user.avatar_url;
+            img.classList.remove('hidden');
+            document.getElementById('avatarInitials').classList.add('hidden');
+          }
+
+          document.getElementById('pageLoading').classList.add('hidden');
+          document.getElementById('pageContent').classList.remove('hidden');
+        }
+
+        const token = localStorage.getItem(TOKEN_KEY);
+        if (!token) {
+          clearAuthAndGoLogin();
+          return;
+        }
+
+        if (window.CarfoxAuth) CarfoxAuth.applyAccountNavRouting();
+        if (window.CarfoxBuyerNav) CarfoxBuyerNav.initMessagesUnreadBadge();
+
+        fetch('/api/auth/me', {
+          headers: { Authorization: 'Bearer ' + token }
+        })
+          .then(function (res) {
+            if (res.status === 401) {
+              clearAuthAndGoLogin();
+              return null;
+            }
+            if (!res.ok) {
+              clearAuthAndGoLogin();
+              return null;
+            }
+            return res.json();
+          })
+          .then(function (data) {
+            if (!data || !data.user) {
+              clearAuthAndGoLogin();
+              return;
+            }
+            const user = data.user;
+            if (user.role !== 'buyer') {
+              window.location.replace('/');
+              return;
+            }
+            try {
+              localStorage.setItem(USER_KEY, JSON.stringify(user));
+            } catch (_) {}
+            renderProfile(user);
+            // Fetch live saved count
+            fetch('/api/saved-cars', { headers: { Authorization: 'Bearer ' + token } })
+              .then(function (r) { return r.ok ? r.json() : null; })
+              .then(function (d) {
+                if (!d || !d.saved) return;
+                var badge = document.getElementById('savedCountBadge');
+                if (badge) badge.textContent = String(d.saved.length);
+              })
+              .catch(function () {});
+          })
+          .catch(function () {
+            clearAuthAndGoLogin();
+          });
+
+        document.getElementById('signOutBtn').addEventListener('click', function () {
+          try {
+            localStorage.removeItem(TOKEN_KEY);
+            localStorage.removeItem(USER_KEY);
+          } catch (_) {}
+          window.location.href = '/';
+        });
+
+        document.getElementById('avatarFileInput').addEventListener('change', async function () {
+          const file = this.files[0];
+          if (!file) return;
+
+          const token = localStorage.getItem('carfox_token');
+          const formData = new FormData();
+          formData.append('photo', file);
+
+          const wrapper = document.getElementById('avatarWrapper');
+          wrapper.style.opacity = '0.5';
+          wrapper.style.pointerEvents = 'none';
+
+          try {
+            const res = await fetch('/api/user/avatar', {
+              method: 'POST',
+              headers: { 'Authorization': 'Bearer ' + token },
+              body: formData
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Upload failed');
+
+            const img = document.getElementById('avatarPhoto');
+            img.src = data.avatar_url + '?t=' + Date.now();
+            img.classList.remove('hidden');
+            document.getElementById('avatarInitials').classList.add('hidden');
+          } catch (err) {
+            alert('Could not upload photo: ' + err.message);
+          } finally {
+            wrapper.style.opacity = '';
+            wrapper.style.pointerEvents = '';
+            this.value = '';
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>

@@ -1,837 +1,735 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>BrokerZ — Rent & Buy Properties</title>
-  <meta name="description" content="Find your next home. Rent or buy apartments, houses, and unique stays on BrokerZ." />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <style>
-    :root {
-      --bg: #fffdf7;
-      --surface: #ffffff;
-      --surface-hover: #fff6df;
-      --border: rgba(140, 104, 12, 0.2);
-      --text: #1f2329;
-      --text-muted: #6f7684;
-      --accent: #e8a317;
-      --accent-dim: #c48912;
-      --rent: #3b82f6;
-      --sale: #22c55e;
-      --radius: 14px;
-      --radius-sm: 10px;
-      --shadow: 0 16px 36px rgba(140, 104, 12, 0.16);
-    }
-
-    * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
-    body {
-      margin: 0;
-      font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.5;
-      min-height: 100vh;
-      overflow-x: hidden;
-    }
-
-    /* Header */
-    .header {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      background: rgba(255, 253, 247, 0.92);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--border);
-    }
-    .header-inner {
-      max-width: 1280px;
-      margin: 0 auto;
-      padding: 14px 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 24px;
-    }
-    .logo {
-      font-size: 1.5rem;
-      font-weight: 800;
-      letter-spacing: -0.03em;
-      color: var(--text);
-      text-decoration: none;
-    }
-    .logo span { color: var(--accent); }
-    .header-actions {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .nav {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .nav a {
-      color: var(--text-muted);
-      text-decoration: none;
-      font-weight: 500;
-      padding: 8px 14px;
-      border-radius: var(--radius-sm);
-      transition: color 0.2s, background 0.2s;
-    }
-    .nav a:hover { color: var(--text); background: var(--surface-hover); }
-    .nav a.active { color: var(--accent); }
-    .btn-header {
-      background: linear-gradient(135deg, var(--accent), var(--accent-dim));
-      color: #1f2329;
-      font-weight: 600;
-      padding: 10px 18px;
-      border-radius: var(--radius-sm);
-      text-decoration: none;
-      border: 0;
-      cursor: pointer;
-      transition: transform 0.15s, box-shadow 0.2s;
-    }
-    .btn-header:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 8px 24px rgba(232, 163, 23, 0.35);
-    }
-    .lang-toggle {
-      background: #fff9ed;
-      border: 1px solid var(--border);
-      color: var(--text);
-      font-family: inherit;
-      font-weight: 700;
-      border-radius: var(--radius-sm);
-      padding: 8px 10px;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      line-height: 1;
-    }
-    .lang-toggle-icon {
-      width: 17px;
-      height: 17px;
-      fill: currentColor;
-      display: block;
-    }
-    .lang-code {
-      font-size: 0.75rem;
-      min-width: 22px;
-      text-align: center;
-    }
-
-    /* Hero */
-    .hero {
-      position: relative;
-      padding: 56px 24px 64px;
-      max-width: 1280px;
-      margin: 0 auto;
-    }
-    .hero-bg {
-      position: absolute;
-      inset: 0;
-      background:
-        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(232, 163, 23, 0.2), transparent 50%),
-        radial-gradient(ellipse 60% 40% at 80% 60%, rgba(255, 215, 120, 0.22), transparent 45%);
-      pointer-events: none;
-    }
-    .hero h1 {
-      position: relative;
-      font-size: clamp(2rem, 4vw, 3rem);
-      font-weight: 800;
-      letter-spacing: -0.04em;
-      margin: 0 0 12px 0;
-      line-height: 1.15;
-    }
-    .hero p {
-      position: relative;
-      color: var(--text-muted);
-      font-size: 1.1rem;
-      margin: 0 0 32px 0;
-      max-width: 520px;
-    }
-
-    /* Search bar */
-    .search-wrap {
-      position: relative;
-      max-width: 720px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 8px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      box-shadow: var(--shadow);
-    }
-    .search-field {
-      flex: 1;
-      min-width: 160px;
-      padding: 14px 18px;
-      background: #fff9ed;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      color: var(--text);
-      font-family: inherit;
-      font-size: 0.95rem;
-    }
-    .search-field::placeholder { color: var(--text-muted); }
-    .search-field:focus {
-      outline: none;
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(232, 163, 23, 0.2);
-    }
-    .search-btn {
-      padding: 14px 24px;
-      background: linear-gradient(135deg, var(--accent), var(--accent-dim));
-      color: #1f2329;
-      font-weight: 600;
-      font-family: inherit;
-      font-size: 0.95rem;
-      border: 0;
-      border-radius: var(--radius-sm);
-      cursor: pointer;
-      transition: transform 0.15s, box-shadow 0.2s;
-    }
-    .search-btn:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 8px 24px rgba(232, 163, 23, 0.35);
-    }
-
-    /* Listing type tabs */
-    .tabs-wrap {
-      max-width: 1280px;
-      margin: 0 auto;
-      padding: 0 24px 24px;
-      display: flex;
-      gap: 6px;
-    }
-    .tab {
-      padding: 10px 20px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      color: var(--text-muted);
-      font-weight: 500;
-      font-family: inherit;
-      font-size: 0.95rem;
-      cursor: pointer;
-      transition: color 0.2s, background 0.2s, border-color 0.2s;
-    }
-    .tab:hover { color: var(--text); background: var(--surface-hover); }
-    .tab.active {
-      background: rgba(232, 163, 23, 0.18);
-      border-color: var(--accent);
-      color: var(--accent);
-    }
-
-    /* Property grid */
-    .section {
-      max-width: 1280px;
-      margin: 0 auto;
-      padding: 0 24px 64px;
-    }
-    .section-title {
-      font-size: 1.5rem;
-      font-weight: 700;
-      margin: 0 0 24px 0;
-      letter-spacing: -0.02em;
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 24px;
-    }
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
-      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
-      text-decoration: none;
-      color: inherit;
-      display: block;
-    }
-    .card:hover {
-      transform: translateY(-4px);
-      box-shadow: var(--shadow);
-      border-color: rgba(232, 163, 23, 0.25);
-    }
-    .card-img-wrap {
-      position: relative;
-      aspect-ratio: 4/3;
-      overflow: hidden;
-      background: var(--surface-hover);
-    }
-    .card-img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      transition: transform 0.35s ease;
-    }
-    .card:hover .card-img { transform: scale(1.05); }
-    .card-badge {
-      position: absolute;
-      top: 12px;
-      left: 12px;
-      padding: 6px 12px;
-      border-radius: 8px;
-      font-size: 0.75rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-    .card-badge.rent { background: var(--rent); color: #fff; }
-    .card-badge.sale { background: var(--sale); color: #fff; }
-    .card-body { padding: 18px; }
-    .card-title { font-size: 1.1rem; font-weight: 600; margin: 0 0 6px 0; }
-    .card-location {
-      font-size: 0.9rem;
-      color: var(--text-muted);
-      margin: 0 0 10px 0;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .card-price {
-      font-size: 1.25rem;
-      font-weight: 700;
-      color: var(--accent);
-    }
-    .card-price span { font-size: 0.85rem; font-weight: 500; color: var(--text-muted); }
-    .card-snippet {
-      margin: 10px 0 0;
-      color: var(--text-muted);
-      font-size: 0.9rem;
-    }
-
-    /* Footer */
-    footer {
-      border-top: 1px solid var(--border);
-      padding: 40px 24px 32px;
-      margin-top: 32px;
-    }
-    .footer-inner {
-      max-width: 1280px;
-      margin: 0 auto;
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      gap: 32px;
-    }
-    .footer-brand { font-size: 1.25rem; font-weight: 800; }
-    .footer-brand span { color: var(--accent); }
-    .footer-links {
-      display: flex;
-      gap: 24px;
-      flex-wrap: wrap;
-    }
-    .footer-links a {
-      color: var(--text-muted);
-      text-decoration: none;
-      font-size: 0.9rem;
-    }
-    .footer-links a:hover { color: var(--accent); }
-    .footer-copy {
-      width: 100%;
-      margin-top: 24px;
-      padding-top: 24px;
-      border-top: 1px solid var(--border);
-      font-size: 0.85rem;
-      color: var(--text-muted);
-    }
-    .mobile-footer-nav {
-      display: none;
-      position: fixed;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      z-index: 140;
-      background: rgba(255, 253, 247, 0.97);
-      border-top: 1px solid var(--border);
-      backdrop-filter: blur(8px);
-      padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
-    .mobile-footer-link {
-      display: inline-flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-      text-decoration: none;
-      color: var(--text-muted);
-      font-size: 0.78rem;
-      font-weight: 600;
-      border-radius: var(--radius-sm);
-      padding: 6px 4px;
-      min-height: 50px;
-    }
-    .mobile-footer-link.active,
-    .mobile-footer-link:hover {
-      color: var(--accent);
-      background: rgba(232, 163, 23, 0.1);
-    }
-    .mobile-footer-icon {
-      width: 18px;
-      height: 18px;
-      display: block;
-      fill: currentColor;
-    }
-
-    @media (max-width: 900px) {
-      .header-inner { gap: 12px; }
-      .nav { gap: 4px; }
-      .nav a { padding: 8px 10px; }
-      .hero { padding: 40px 18px 48px; }
-      .tabs-wrap,
-      .section,
-      footer { padding-left: 18px; padding-right: 18px; }
-      .grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
-    }
-
-    @media (max-width: 640px) {
-      .header-inner { flex-wrap: wrap; }
-      .nav {
-        order: 3;
-        width: 100%;
-        overflow-x: auto;
-        padding-bottom: 2px;
-        scrollbar-width: thin;
-      }
-      .nav a { white-space: nowrap; }
-      .header-actions {
-        width: auto;
-        order: 2;
-        position: fixed;
-        top: 10px;
-        right: 14px;
-        z-index: 180;
-      }
-      .btn-header { display: none; }
-      .lang-toggle { min-width: 72px; justify-content: center; }
-      .hero { padding: 32px 14px 38px; }
-      .hero p { font-size: 1rem; margin-bottom: 20px; }
-      .search-wrap { flex-direction: column; }
-      .search-field { min-width: 100%; }
-      .search-btn { width: 100%; }
-      .tabs-wrap {
-        overflow-x: auto;
-        padding: 0 14px 18px;
-        scrollbar-width: thin;
-      }
-      .tab { white-space: nowrap; }
-      .section { padding: 0 14px 42px; }
-      .grid { grid-template-columns: 1fr; gap: 14px; }
-      .card-body { padding: 14px; }
-      footer { padding: 28px 14px 22px; }
-      .footer-inner { gap: 18px; }
-      .mobile-footer-nav { display: grid; }
-      body { padding-bottom: calc(78px + env(safe-area-inset-bottom)); }
-    }
-  </style>
-</head>
-<body>
-  <header class="header">
-    <div class="header-inner">
-      <a href="index.html?reset=1" class="logo">Broker<span>Z</span></a>
-      <nav class="nav">
-        <a href="#listings" class="active" id="nav-explore">Explore</a>
-        <a href="#" id="nav-rent">Rent</a>
-        <a href="#" id="nav-buy">Buy</a>
-        <a href="#" id="nav-list">List your property</a>
-      </nav>
-      <div class="header-actions">
-        <button type="button" class="lang-toggle" id="lang-toggle" aria-label="Change language">
-          <svg class="lang-toggle-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12.87 15.07l-2.54-2.56.03-.03c1.74-1.94 2.97-4.17 3.69-6.48H17V4h-7V2H8v2H1v2h11.17A14.08 14.08 0 0 1 9.5 10.4 13.9 13.9 0 0 1 7.4 8H5.4a16.02 16.02 0 0 0 2.92 3.5l-5.1 5.02L4.63 18l4.87-4.93L12.5 16l.37-.93zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.5 7l1.62-4.33L19.25 17H16z"></path>
-          </svg>
-          <span class="lang-code" id="lang-code">AR</span>
-        </button>
-        <a href="login.html" class="btn-header" id="header-signin">Sign in</a>
-      </div>
-    </div>
-  </header>
-
-  <section class="hero">
-    <div class="hero-bg" aria-hidden="true"></div>
-    <h1 id="hero-title">Find your next home</h1>
-    <p id="hero-text">Rent short-term stays or buy your forever place. Apartments, houses, and unique properties in one place.</p>
-    <div class="search-wrap">
-      <input type="text" class="search-field" id="location-search" list="egypt-cities" placeholder="Choose a city in Egypt" aria-label="Search location" />
-      <input type="text" class="search-field" placeholder="Rent or Buy" aria-label="Listing type" readonly id="search-type-display" />
-      <button type="button" class="search-btn" id="search-btn">Search</button>
-    </div>
-    <datalist id="egypt-cities">
-      <option value="Cairo"></option>
-      <option value="New Cairo"></option>
-      <option value="Giza"></option>
-      <option value="Alexandria"></option>
-      <option value="Sheikh Zayed"></option>
-      <option value="6th of October"></option>
-      <option value="Madinaty"></option>
-      <option value="New Administrative Capital"></option>
-      <option value="Hurghada"></option>
-      <option value="El Gouna"></option>
-      <option value="Sharm El Sheikh"></option>
-      <option value="Ain Sokhna"></option>
-      <option value="Marsa Matrouh"></option>
-      <option value="Mansoura"></option>
-      <option value="Tanta"></option>
-      <option value="Aswan"></option>
-      <option value="Luxor"></option>
-      <option value="Ismailia"></option>
-    </datalist>
-  </section>
-
-  <div class="tabs-wrap">
-    <button type="button" class="tab active" data-filter="all" id="tab-all">All</button>
-    <button type="button" class="tab" data-filter="rent" id="tab-rent">Rent</button>
-    <button type="button" class="tab" data-filter="sale" id="tab-sale">For Sale</button>
-  </div>
-
-  <section class="section" id="listings">
-    <h2 class="section-title" id="section-title">Properties</h2>
-    <div class="grid" id="property-grid">
-      <!-- Rent -->
-      <a href="property.html?id=loft-downtown" class="card" data-id="loft-downtown" data-type="rent" data-city="cairo" data-city-ar="القاهرة">
-        <div class="card-img-wrap">
-          <img class="card-img" src="https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600&q=80" alt="Modern apartment" />
-          <span class="card-badge rent">Rent</span>
-        </div>
-        <div class="card-body">
-          <h3 class="card-title">Luxury loft in downtown</h3>
-          <p class="card-location">Cairo, Egypt</p>
-          <p class="card-price">$2,400 <span>/ month</span></p>
-          <p class="card-snippet">Click to view full details and amenities.</p>
-        </div>
-      </a>
-      <a href="property.html?id=family-house-garden" class="card" data-id="family-house-garden" data-type="sale" data-city="new cairo" data-city-ar="القاهرة الجديدة">
-        <div class="card-img-wrap">
-          <img class="card-img" src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=600&q=80" alt="House with garden" />
-          <span class="card-badge sale">For Sale</span>
-        </div>
-        <div class="card-body">
-          <h3 class="card-title">Family house with garden</h3>
-          <p class="card-location">New Cairo, Egypt</p>
-          <p class="card-price">$485,000</p>
-          <p class="card-snippet">Click to view full details and amenities.</p>
-        </div>
-      </a>
-      <a href="property.html?id=cozy-2br-beach" class="card" data-id="cozy-2br-beach" data-type="rent" data-city="alexandria" data-city-ar="الإسكندرية">
-        <div class="card-img-wrap">
-          <img class="card-img" src="https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=600&q=80" alt="Cozy apartment" />
-          <span class="card-badge rent">Rent</span>
-        </div>
-        <div class="card-body">
-          <h3 class="card-title">Cozy 2BR by the beach</h3>
-          <p class="card-location">Alexandria, Egypt</p>
-          <p class="card-price">$1,850 <span>/ month</span></p>
-          <p class="card-snippet">Click to view full details and amenities.</p>
-        </div>
-      </a>
-      <a href="property.html?id=modern-villa-pool" class="card" data-id="modern-villa-pool" data-type="sale" data-city="giza" data-city-ar="الجيزة">
-        <div class="card-img-wrap">
-          <img class="card-img" src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600&q=80" alt="Modern villa" />
-          <span class="card-badge sale">For Sale</span>
-        </div>
-        <div class="card-body">
-          <h3 class="card-title">Modern villa with pool</h3>
-          <p class="card-location">Giza, Egypt</p>
-          <p class="card-price">$1.2M</p>
-          <p class="card-snippet">Click to view full details and amenities.</p>
-        </div>
-      </a>
-      <a href="property.html?id=city-view-penthouse" class="card" data-id="city-view-penthouse" data-type="rent" data-city="new administrative capital" data-city-ar="العاصمة الإدارية الجديدة">
-        <div class="card-img-wrap">
-          <img class="card-img" src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&q=80" alt="City apartment" />
-          <span class="card-badge rent">Rent</span>
-        </div>
-        <div class="card-body">
-          <h3 class="card-title">City view penthouse</h3>
-          <p class="card-location">New Administrative Capital, Egypt</p>
-          <p class="card-price">$3,200 <span>/ month</span></p>
-          <p class="card-snippet">Click to view full details and amenities.</p>
-        </div>
-      </a>
-      <a href="property.html?id=suburban-4br-home" class="card" data-id="suburban-4br-home" data-type="sale" data-city="hurghada" data-city-ar="الغردقة">
-        <div class="card-img-wrap">
-          <img class="card-img" src="https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=600&q=80" alt="Suburban home" />
-          <span class="card-badge sale">For Sale</span>
-        </div>
-        <div class="card-body">
-          <h3 class="card-title">Suburban 4BR home</h3>
-          <p class="card-location">Hurghada, Egypt</p>
-          <p class="card-price">$620,000</p>
-          <p class="card-snippet">Click to view full details and amenities.</p>
-        </div>
-      </a>
-    </div>
-  </section>
-
-  <footer>
-    <div class="footer-inner">
-      <div class="footer-brand">Broker<span>Z</span></div>
-      <div class="footer-links">
-        <a href="#" id="footer-about">About</a>
-        <a href="#" id="footer-rent">Rent</a>
-        <a href="#" id="footer-buy">Buy</a>
-        <a href="#" id="footer-list">List property</a>
-        <a href="#" id="footer-contact">Contact</a>
-      </div>
-    </div>
-    <p class="footer-copy" id="footer-copy">© 2025 BrokerZ. Rent and buy properties in one place.</p>
-  </footer>
-
-  <nav class="mobile-footer-nav" aria-label="Mobile navigation">
-    <a href="index.html?reset=1#listings" class="mobile-footer-link active">
-      <svg class="mobile-footer-icon" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M10 3h4a7 7 0 0 1 7 7v4a7 7 0 0 1-7 7h-4a7 7 0 0 1-7-7v-4a7 7 0 0 1 7-7zm0 2a5 5 0 0 0-5 5v4a5 5 0 0 0 5 5h4a5 5 0 0 0 5-5v-4a5 5 0 0 0-5-5h-4z"/>
-      </svg>
-      <span id="mobile-explore">Explore</span>
-    </a>
-    <a href="login.html" class="mobile-footer-link">
-      <svg class="mobile-footer-icon" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12 3a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM4 20a8 8 0 0 1 16 0v1H4v-1zm2-.5h12a6 6 0 0 0-12 0z"/>
-      </svg>
-      <span id="mobile-profile">Profile</span>
-    </a>
-  </nav>
-
-  <script>
-    (function () {
-      var tabs = document.querySelectorAll('.tab');
-      var cards = document.querySelectorAll('.card');
-      var display = document.getElementById('search-type-display');
-      var locationSearch = document.getElementById('location-search');
-      var searchButton = document.getElementById('search-btn');
-      var langToggle = document.getElementById('lang-toggle');
-      var cityList = document.getElementById('egypt-cities');
-      var currentLanguage = localStorage.getItem('brokerz_lang') || ((navigator.language || '').toLowerCase().indexOf('ar') === 0 ? 'ar' : 'en');
-
-      var i18n = {
-        en: {
-          pageTitle: 'BrokerZ — Rent & Buy Properties',
-          navExplore: 'Explore',
-          navRent: 'Rent',
-          navBuy: 'Buy',
-          navList: 'List your property',
-          signIn: 'Sign in',
-          heroTitle: 'Find your next home',
-          heroText: 'Rent short-term stays or buy your forever place. Apartments, houses, and unique properties in one place.',
-          cityPlaceholder: 'Choose a city in Egypt',
-          search: 'Search',
-          tabAll: 'All',
-          tabRent: 'Rent',
-          tabSale: 'For Sale',
-          sectionTitle: 'Properties',
-          footerAbout: 'About',
-          footerRent: 'Rent',
-          footerBuy: 'Buy',
-          footerList: 'List property',
-          footerContact: 'Contact',
-          footerCopy: '© 2025 BrokerZ. Rent and buy properties in one place.',
-          mobileExplore: 'Explore',
-          mobileProfile: 'Profile',
-          searchTypeAll: 'Rent or Buy',
-          searchTypeRent: 'Rent',
-          searchTypeSale: 'Buy',
-          cities: ['Cairo', 'New Cairo', 'Giza', 'Alexandria', 'Sheikh Zayed', '6th of October', 'Madinaty', 'New Administrative Capital', 'Hurghada', 'El Gouna', 'Sharm El Sheikh', 'Ain Sokhna', 'Marsa Matrouh', 'Mansoura', 'Tanta', 'Aswan', 'Luxor', 'Ismailia'],
-          cards: {
-            'loft-downtown': { badge: 'Rent', title: 'Luxury loft in downtown', location: 'Cairo, Egypt', snippet: 'Click to view full details and amenities.' },
-            'family-house-garden': { badge: 'For Sale', title: 'Family house with garden', location: 'New Cairo, Egypt', snippet: 'Click to view full details and amenities.' },
-            'cozy-2br-beach': { badge: 'Rent', title: 'Cozy 2BR by the beach', location: 'Alexandria, Egypt', snippet: 'Click to view full details and amenities.' },
-            'modern-villa-pool': { badge: 'For Sale', title: 'Modern villa with pool', location: 'Giza, Egypt', snippet: 'Click to view full details and amenities.' },
-            'city-view-penthouse': { badge: 'Rent', title: 'City view penthouse', location: 'New Administrative Capital, Egypt', snippet: 'Click to view full details and amenities.' },
-            'suburban-4br-home': { badge: 'For Sale', title: 'Suburban 4BR home', location: 'Hurghada, Egypt', snippet: 'Click to view full details and amenities.' }
-          }
-        },
-        ar: {
-          pageTitle: 'BrokerZ — إيجار وشراء العقارات',
-          navExplore: 'استكشاف',
-          navRent: 'إيجار',
-          navBuy: 'شراء',
-          navList: 'اعرض عقارك',
-          signIn: 'تسجيل الدخول',
-          heroTitle: 'اعثر على منزلك القادم',
-          heroText: 'استأجر إقامة قصيرة أو اشترِ منزلك الدائم. شقق ومنازل وعقارات مميزة في مكان واحد.',
-          cityPlaceholder: 'اختر مدينة في مصر',
-          search: 'بحث',
-          tabAll: 'الكل',
-          tabRent: 'إيجار',
-          tabSale: 'للبيع',
-          sectionTitle: 'العقارات',
-          footerAbout: 'من نحن',
-          footerRent: 'إيجار',
-          footerBuy: 'شراء',
-          footerList: 'اعرض عقاراً',
-          footerContact: 'تواصل معنا',
-          footerCopy: '© 2025 BrokerZ. إيجار وشراء العقارات في مكان واحد.',
-          mobileExplore: 'استكشاف',
-          mobileProfile: 'الملف الشخصي',
-          searchTypeAll: 'إيجار أو شراء',
-          searchTypeRent: 'إيجار',
-          searchTypeSale: 'شراء',
-          cities: ['القاهرة', 'القاهرة الجديدة', 'الجيزة', 'الإسكندرية', 'الشيخ زايد', '6 أكتوبر', 'مدينتي', 'العاصمة الإدارية الجديدة', 'الغردقة', 'الجونة', 'شرم الشيخ', 'العين السخنة', 'مرسى مطروح', 'المنصورة', 'طنطا', 'أسوان', 'الأقصر', 'الإسماعيلية'],
-          cards: {
-            'loft-downtown': { badge: 'إيجار', title: 'لوفت فاخر في وسط المدينة', location: 'القاهرة، مصر', snippet: 'اضغط لعرض كل التفاصيل والمزايا.' },
-            'family-house-garden': { badge: 'للبيع', title: 'منزل عائلي بحديقة', location: 'القاهرة الجديدة، مصر', snippet: 'اضغط لعرض كل التفاصيل والمزايا.' },
-            'cozy-2br-beach': { badge: 'إيجار', title: 'شقة غرفتين قرب البحر', location: 'الإسكندرية، مصر', snippet: 'اضغط لعرض كل التفاصيل والمزايا.' },
-            'modern-villa-pool': { badge: 'للبيع', title: 'فيلا عصرية مع مسبح', location: 'الجيزة، مصر', snippet: 'اضغط لعرض كل التفاصيل والمزايا.' },
-            'city-view-penthouse': { badge: 'إيجار', title: 'بنتهاوس بإطلالة مدينة', location: 'العاصمة الإدارية الجديدة، مصر', snippet: 'اضغط لعرض كل التفاصيل والمزايا.' },
-            'suburban-4br-home': { badge: 'للبيع', title: 'منزل ضواحي 4 غرف', location: 'الغردقة، مصر', snippet: 'اضغط لعرض كل التفاصيل والمزايا.' }
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CarFox — Verified Dealers Only</title>
+    <meta name="description" content="Skip the private seller chaos. Shop verified dealers only on CarFox." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] }
           }
         }
       };
+    </script>
+    <style>
+      .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+      .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+      }
+      body.font-cairo {
+        font-family: 'Cairo', ui-sans-serif, system-ui, sans-serif;
+      }
+      [dir="rtl"] nav.fixed .grid {
+        direction: ltr;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 text-gray-900 font-sans pb-20 md:pb-0">
+    <!-- Navbar -->
+    <header class="sticky top-0 z-40 bg-[#0f1f3d]">
+      <nav class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <!-- Left: Logo -->
+        <a href="/" class="text-xl font-extrabold tracking-tight">
+          <span class="text-white">Car</span><span class="text-orange-500">Fox</span>
+        </a>
+        <!-- Center: Desktop nav -->
+        <div class="hidden md:flex items-center gap-6 text-sm font-medium">
+          <a href="/cars.html" class="text-gray-300 hover:text-white" data-i18n="cars.title">Browse Cars</a>
+          <a href="#" class="text-gray-300 hover:text-white">How It Works</a>
+          <a href="#" class="text-gray-300 hover:text-white">For Dealers</a>
+        </div>
+        <!-- Right: Actions -->
+        <div class="flex items-center gap-3">
+          <button
+            type="button"
+            id="langToggle"
+            class="flex items-center gap-1 text-sm font-semibold text-gray-300 hover:text-white"
+            aria-label="Switch language"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.128"/>
+            </svg>
+            <span id="langLabel">AR</span>
+          </button>
+          <div id="desktopAuth" class="hidden md:flex items-center gap-3">
+            <a href="/buyer/login.html" class="text-gray-300 hover:text-white text-sm font-semibold" data-i18n="auth.sign_in">Sign In</a>
+            <a href="/dealer/signup.html" class="inline-flex items-center rounded-lg bg-blue-700 px-4 py-2 text-white text-sm font-semibold hover:bg-blue-800" data-i18n="auth.become_dealer">Become a Dealer</a>
+          </div>
+        </div>
+      </nav>
+    </header>
 
-      function updateTypePlaceholder(filter) {
-        if (!display) return;
-        if (filter === 'rent') display.placeholder = i18n[currentLanguage].searchTypeRent;
-        else if (filter === 'sale') display.placeholder = i18n[currentLanguage].searchTypeSale;
-        else display.placeholder = i18n[currentLanguage].searchTypeAll;
+    <!-- Search -->
+    <section class="bg-white px-4 py-4 shadow-sm">
+      <form
+        id="homeSearchForm"
+        class="flex w-full items-stretch overflow-hidden rounded-full border border-gray-200 bg-white shadow-sm"
+      >
+        <span class="flex shrink-0 items-center pl-4 text-gray-400" aria-hidden="true">
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+        </span>
+        <input
+          id="homeSearchInput"
+          type="search"
+          data-i18n-placeholder="home.search_placeholder"
+          placeholder="Search make, model..."
+          class="min-w-0 flex-1 border-0 bg-transparent py-3.5 pl-2 pr-2 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0"
+          aria-label="Search make or model"
+        />
+        <button
+          type="submit"
+          class="flex shrink-0 items-center justify-center bg-blue-700 px-4 text-white hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset"
+          aria-label="Search"
+        >
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+        </button>
+      </form>
+    </section>
+
+    <!-- City filter chips -->
+    <div
+      id="cityChipsRow"
+      class="overflow-x-auto scrollbar-hide flex gap-2 px-4 py-3 bg-white border-b border-gray-100"
+    ></div>
+
+    <!-- Browse by Brand -->
+    <section class="pb-6 pt-2">
+      <div class="bg-white rounded-xl mx-4 p-4 shadow-sm">
+        <h2 class="font-semibold text-gray-900 mb-3" data-i18n="home.browse_by_brand">Browse by Brand</h2>
+        <div id="brandGridMobile" class="grid grid-cols-4 gap-2 md:hidden"></div>
+        <div id="brandGridDesktop" class="hidden md:grid grid-cols-4 gap-2"></div>
+        <button
+          type="button"
+          id="brandGridToggle"
+          class="mt-3 w-full py-2.5 text-sm font-semibold text-blue-700 hover:text-blue-800 hidden"
+          data-i18n="home.show_all_brands"
+          aria-expanded="false"
+        >
+          Show all brands
+        </button>
+      </div>
+    </section>
+
+    <!-- New Arrivals -->
+    <section class="px-4 pb-6">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-semibold text-gray-900" data-i18n="home.new_arrivals">New Arrivals</h2>
+        <a href="/cars.html" class="text-sm font-medium text-blue-700 hover:text-blue-800" data-i18n="home.see_all">See all →</a>
+      </div>
+      <div id="newArrivalsRow" class="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+        <p class="text-sm text-gray-500 py-4 shrink-0" data-i18n="cars.loading">Loading…</p>
+      </div>
+    </section>
+
+    <!-- Latest Listings -->
+    <section class="px-4 pb-6">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-semibold text-gray-900" data-i18n="home.latest_listings">Latest Listings</h2>
+        <a href="/cars.html" class="text-sm font-medium text-blue-700 hover:text-blue-800" data-i18n="home.see_all">See all →</a>
+      </div>
+      <div id="latestCarsList" class="divide-y divide-gray-100 rounded-xl bg-white shadow-sm">
+        <p class="text-sm text-gray-500 py-4 text-center" data-i18n="cars.loading">Loading listings…</p>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white">
+      <div class="mx-auto max-w-7xl px-6 py-12 grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div>
+          <div class="text-xl font-extrabold">
+            <span class="text-blue-700">Car</span><span class="text-orange-500">Fox</span>
+          </div>
+          <p class="mt-2 text-sm text-gray-300">
+            Skip the private seller chaos — shop verified dealers only.
+          </p>
+          <p class="mt-4 text-xs text-gray-400">© 2026 CarFox</p>
+        </div>
+        <div>
+          <div class="text-sm font-semibold mb-3">Shop</div>
+          <ul class="space-y-2 text-sm text-gray-300">
+            <li><a href="/cars.html" class="hover:text-white">Browse Cars</a></li>
+            <li><a href="#" class="hover:text-white">Search by Make</a></li>
+            <li><a href="#" class="hover:text-white">Search by Location</a></li>
+          </ul>
+        </div>
+        <div>
+          <div class="text-sm font-semibold mb-3">Dealers</div>
+          <ul class="space-y-2 text-sm text-gray-300">
+            <li><a href="/dealer/signup.html" class="hover:text-white">Become a Dealer</a></li>
+            <li><a href="/dealer/login.html" class="hover:text-white">Dealer Login</a></li>
+            <li><a href="#" class="hover:text-white">Dealer Resources</a></li>
+          </ul>
+        </div>
+        <div>
+          <div class="text-sm font-semibold mb-3">Company</div>
+          <ul class="space-y-2 text-sm text-gray-300">
+            <li><a href="#" class="hover:text-white">About</a></li>
+            <li><a href="#" class="hover:text-white">Contact</a></li>
+            <li><a href="#" class="hover:text-white">Terms</a></li>
+            <li><a href="#" class="hover:text-white">Privacy</a></li>
+          </ul>
+        </div>
+      </div>
+      <p class="mt-8 text-center text-sm text-gray-400">
+        Are you a dealer?
+        <a href="/dealer/login.html" class="text-gray-300 hover:text-white underline">Sign in here</a>
+      </p>
+    </footer>
+
+    <!-- Mobile bottom navigation (visible on mobile only) -->
+    <nav dir="ltr" class="fixed bottom-0 left-0 right-0 md:hidden border-t border-gray-200 bg-white h-16" style="padding-bottom: env(safe-area-inset-bottom);">
+      <div class="mx-auto max-w-7xl grid grid-cols-4 h-full">
+        <!-- Home (active) -->
+        <a href="/index.html" class="flex flex-col items-center justify-center text-blue-700">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 3.172 2.25 10.5V21h6.75v-6h6v6h6V10.5L12 3.172z"/>
+          </svg>
+          <span class="text-[11px] leading-tight mt-1" data-i18n="nav.home">Home</span>
+        </a>
+        <!-- Browse -->
+        <a href="/cars.html" class="flex flex-col items-center justify-center text-gray-600 hover:text-gray-900">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10.5 3a7.5 7.5 0 0 1 5.3 12.8l4.2 4.2-1.4 1.4-4.2-4.2A7.5 7.5 0 1 1 10.5 3zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11z"/>
+          </svg>
+          <span class="text-[11px] leading-tight mt-1" data-i18n="nav.browse">Browse</span>
+        </a>
+        <!-- Messages -->
+        <a href="/buyer/inbox.html" class="relative flex flex-col items-center justify-center text-gray-600 hover:text-gray-900">
+          <span class="relative inline-flex">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 0 1-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+            </svg>
+            <span data-messages-unread-dot class="hidden absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-red-500" aria-hidden="true"></span>
+          </span>
+          <span class="text-[11px] leading-tight mt-1" data-i18n="nav.messages">Messages</span>
+        </a>
+        <!-- Account -->
+        <a href="/buyer/login.html" data-nav="account" class="flex flex-col items-center justify-center text-gray-600 hover:text-gray-900">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5zm0 2c-4.4 0-8 2.2-8 5v3h16v-3c0-2.8-3.6-5-8-5z"/>
+          </svg>
+          <span class="text-[11px] leading-tight mt-1" data-i18n="nav.account">Account</span>
+        </a>
+      </div>
+    </nav>
+
+    <script src="/js/carfox-i18n.js"></script>
+    <script src="/js/carfox-auth.js"></script>
+    <script src="/js/carfox-buyer-nav.js"></script>
+    <script>
+      if (window.CarfoxAuth) CarfoxAuth.initBuyerNav();
+      if (window.CarfoxBuyerNav) CarfoxBuyerNav.initMessagesUnreadBadge();
+
+      const ALL_BRANDS = [
+        'Toyota', 'Hyundai', 'Kia', 'Nissan', 'Mercedes', 'BMW',
+        'Chevrolet', 'Honda', 'Volkswagen', 'Peugeot', 'Renault',
+        'Mitsubishi', 'Chery', 'MG', 'Opel', 'Fiat', 'Skoda',
+        'Jeep', 'Ford', 'Suzuki', 'Mazda', 'Audi', 'Volvo',
+        'Land Rover', 'Porsche', 'Subaru', 'BAIC', 'Geely',
+        'BYD', 'Haval', 'JAC', 'Lifan', 'Isuzu', 'Lexus'
+      ];
+
+      const BRAND_LOGOS = {
+        'Mercedes': 'https://www.carlogos.org/car-logos/mercedes-benz-logo.png',
+      };
+
+      function brandLogoUrl(brand) {
+        if (BRAND_LOGOS[brand]) return BRAND_LOGOS[brand];
+        const slug = String(brand).toLowerCase().replace(/\s+/g, '-');
+        return 'https://www.carlogos.org/car-logos/' + slug + '-logo.png';
       }
 
-      function getActiveFilter() {
-        var activeTab = document.querySelector('.tab.active');
-        return activeTab ? activeTab.getAttribute('data-filter') : 'all';
+      function formatPriceEgp(cents) {
+        if (!cents || cents <= 0) return 'Price on request';
+        return Math.round(Number(cents) / 100).toLocaleString('en-EG') + ' EGP';
       }
 
-      function applyFilters() {
-        var filter = getActiveFilter();
-        var cityQuery = locationSearch ? locationSearch.value.trim().toLowerCase() : '';
+      function formatMileage(km) {
+        if (km == null || km === '' || Number(km) <= 0) return '';
+        return Number(km).toLocaleString('en-US') + ' km';
+      }
 
-        cards.forEach(function (card) {
-          var type = card.getAttribute('data-type');
-          var city = (card.getAttribute('data-city') || '').toLowerCase();
-          var cityAr = (card.getAttribute('data-city-ar') || '').toLowerCase();
-          var locationText = (card.querySelector('.card-location') ? card.querySelector('.card-location').textContent : '').toLowerCase();
-          var typeMatch = filter === 'all' || type === filter;
-          var cityMatch = !cityQuery || city.indexOf(cityQuery) !== -1 || cityAr.indexOf(cityQuery) !== -1 || locationText.indexOf(cityQuery) !== -1;
-          card.style.display = (typeMatch && cityMatch) ? '' : 'none';
+      function escapeHtml(str) {
+        return String(str || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function showBrandLogoFallback(img) {
+        img.classList.add('hidden');
+        img.setAttribute('aria-hidden', 'true');
+        const fallback = img.nextElementSibling;
+        if (fallback) {
+          fallback.classList.remove('hidden');
+          fallback.setAttribute('aria-hidden', 'false');
+        }
+      }
+
+      function renderBrandCard(brand) {
+        const card = document.createElement('a');
+        card.href = '/cars.html?make=' + encodeURIComponent(brand);
+        card.className =
+          'bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col items-center justify-center py-3 px-1 cursor-pointer hover:border-gray-200 active:bg-gray-50';
+
+        const iconWrap = document.createElement('div');
+        iconWrap.className = 'w-12 h-12 flex items-center justify-center';
+
+        const img = document.createElement('img');
+        img.src = brandLogoUrl(brand);
+        img.alt = '';
+        img.width = 48;
+        img.height = 48;
+        img.loading = 'lazy';
+        img.className = 'w-12 h-12 object-contain';
+        img.addEventListener('error', function () {
+          showBrandLogoFallback(img);
+        });
+
+        const fallback = document.createElement('div');
+        fallback.className =
+          'hidden w-12 h-12 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-base font-bold';
+        fallback.setAttribute('aria-hidden', 'true');
+        fallback.textContent = brand.charAt(0).toUpperCase();
+
+        iconWrap.appendChild(img);
+        iconWrap.appendChild(fallback);
+
+        const label = document.createElement('span');
+        label.className =
+          'text-[11px] font-medium text-gray-700 mt-2 text-center leading-tight px-0.5';
+        label.textContent = brand;
+
+        card.appendChild(iconWrap);
+        card.appendChild(label);
+        return card;
+      }
+
+      function renderAllBrandsCard() {
+        const miniBrands = ['Volkswagen', 'Honda', 'Renault', 'Mitsubishi'];
+        const card = document.createElement('a');
+        card.href = '/cars.html';
+        card.className =
+          'bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col items-center justify-center py-3 px-1 cursor-pointer hover:border-gray-200 active:bg-gray-50';
+
+        const iconWrap = document.createElement('div');
+        iconWrap.className = 'grid grid-cols-2 gap-0.5 w-12 h-12 place-items-center';
+
+        miniBrands.forEach(function (brand) {
+          const img = document.createElement('img');
+          img.src = brandLogoUrl(brand);
+          img.alt = '';
+          img.width = 20;
+          img.height = 20;
+          img.loading = 'lazy';
+          img.className = 'w-5 h-5 object-contain';
+          iconWrap.appendChild(img);
+        });
+
+        const label = document.createElement('span');
+        label.className =
+          'text-[11px] font-medium text-gray-700 mt-2 text-center leading-tight px-0.5';
+        label.setAttribute('data-i18n', 'home.all_brands');
+        label.textContent = window.CarfoxI18n ? CarfoxI18n.t('home.all_brands') : 'All Brands';
+
+        card.appendChild(iconWrap);
+        card.appendChild(label);
+        return card;
+      }
+
+      function renderAllCarsCard() {
+        const card = document.createElement('a');
+        card.href = '/cars.html';
+        card.className =
+          'bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col items-center justify-center py-3 px-1 cursor-pointer hover:border-gray-200 active:bg-gray-50';
+        card.innerHTML =
+          '<div class="w-12 h-12 flex items-center justify-center">' +
+          '<div class="w-12 h-12 rounded-full bg-blue-50 text-blue-700 flex items-center justify-center">' +
+          '<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">' +
+          '<path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>' +
+          '</svg></div></div>' +
+          '<span class="text-[11px] font-medium text-gray-700 mt-2 text-center leading-tight">All Cars</span>';
+        return card;
+      }
+
+      const BRANDS_VISIBLE_COLLAPSED = 12;
+      const BRANDS_MOBILE_COUNT = 7;
+
+      function initBrandGridMobile() {
+        const grid = document.getElementById('brandGridMobile');
+        if (!grid) return;
+
+        grid.innerHTML = '';
+        ALL_BRANDS.slice(0, BRANDS_MOBILE_COUNT).forEach(function (brand) {
+          grid.appendChild(renderBrandCard(brand));
+        });
+        grid.appendChild(renderAllBrandsCard());
+      }
+
+      function initBrandGridDesktop() {
+        const grid = document.getElementById('brandGridDesktop');
+        const toggleBtn = document.getElementById('brandGridToggle');
+        if (!grid) return;
+
+        grid.innerHTML = '';
+        ALL_BRANDS.forEach(function (brand, index) {
+          const card = renderBrandCard(brand);
+          if (index >= BRANDS_VISIBLE_COLLAPSED) {
+            card.classList.add('hidden', 'brand-grid-extra');
+          }
+          grid.appendChild(card);
+        });
+
+        const allCarsCard = renderAllCarsCard();
+        allCarsCard.classList.add('hidden', 'brand-grid-extra');
+        grid.appendChild(allCarsCard);
+
+        if (!toggleBtn || ALL_BRANDS.length <= BRANDS_VISIBLE_COLLAPSED) return;
+
+        toggleBtn.classList.add('md:block');
+        let expanded = false;
+
+        toggleBtn.addEventListener('click', function () {
+          expanded = !expanded;
+          grid.querySelectorAll('.brand-grid-extra').forEach(function (el) {
+            el.classList.toggle('hidden', !expanded);
+          });
+          toggleBtn.setAttribute(
+            'data-i18n',
+            expanded ? 'home.show_less' : 'home.show_all_brands'
+          );
+          if (window.CarfoxI18n) CarfoxI18n.apply();
+          toggleBtn.setAttribute('aria-expanded', String(expanded));
         });
       }
 
-      function resetHomeState() {
-        if (locationSearch) locationSearch.value = '';
-        tabs.forEach(function (t) { t.classList.remove('active'); });
-        var allTab = document.querySelector('.tab[data-filter="all"]');
-        if (allTab) allTab.classList.add('active');
-        updateTypePlaceholder('all');
-        applyFilters();
+      function initBrandGrid() {
+        initBrandGridMobile();
+        initBrandGridDesktop();
       }
 
-      function applyLanguage() {
-        var tr = i18n[currentLanguage];
-        document.documentElement.lang = currentLanguage;
-        document.body.dir = currentLanguage === 'ar' ? 'rtl' : 'ltr';
-        document.title = tr.pageTitle;
-        var langCode = document.getElementById('lang-code');
-        if (langCode) langCode.textContent = currentLanguage === 'en' ? 'AR' : 'EN';
+      function listingLocation(car) {
+        return (
+          car.governorate ||
+          (car.dealer && (car.dealer.governorate || car.dealer.city)) ||
+          car.city ||
+          ''
+        );
+      }
 
-        document.getElementById('nav-explore').textContent = tr.navExplore;
-        document.getElementById('nav-rent').textContent = tr.navRent;
-        document.getElementById('nav-buy').textContent = tr.navBuy;
-        document.getElementById('nav-list').textContent = tr.navList;
-        document.getElementById('header-signin').textContent = tr.signIn;
-        document.getElementById('hero-title').textContent = tr.heroTitle;
-        document.getElementById('hero-text').textContent = tr.heroText;
-        document.getElementById('search-btn').textContent = tr.search;
-        document.getElementById('tab-all').textContent = tr.tabAll;
-        document.getElementById('tab-rent').textContent = tr.tabRent;
-        document.getElementById('tab-sale').textContent = tr.tabSale;
-        document.getElementById('section-title').textContent = tr.sectionTitle;
-        document.getElementById('footer-about').textContent = tr.footerAbout;
-        document.getElementById('footer-rent').textContent = tr.footerRent;
-        document.getElementById('footer-buy').textContent = tr.footerBuy;
-        document.getElementById('footer-list').textContent = tr.footerList;
-        document.getElementById('footer-contact').textContent = tr.footerContact;
-        document.getElementById('footer-copy').textContent = tr.footerCopy;
-        document.getElementById('mobile-explore').textContent = tr.mobileExplore;
-        document.getElementById('mobile-profile').textContent = tr.mobileProfile;
+      function listingDealerName(car) {
+        return (
+          car.dealer_name ||
+          car.business_name ||
+          (car.dealer && car.dealer.business_name) ||
+          ''
+        );
+      }
 
-        if (locationSearch) locationSearch.placeholder = tr.cityPlaceholder;
-        updateTypePlaceholder(getActiveFilter());
+      function renderNewArrivalCard(car) {
+        const link = document.createElement('a');
+        link.href = '/cars-detail.html?id=' + encodeURIComponent(car.id);
+        link.className =
+          'min-w-[160px] w-40 shrink-0 flex flex-col rounded-xl overflow-hidden bg-white shadow-sm border border-gray-100 hover:shadow-md transition-shadow active:opacity-90';
 
-        if (cityList) {
-          cityList.innerHTML = tr.cities.map(function (city) {
-            return '<option value="' + city + '"></option>';
-          }).join('');
+        const title = [car.year, car.make, car.model].filter(Boolean).join(' ');
+        const mileage = formatMileage(car.mileage);
+        const photoUrl = car.primary_photo_url;
+
+        const photoHtml = photoUrl
+          ? '<img src="' +
+            escapeHtml(photoUrl) +
+            '" alt="" class="w-full h-28 object-cover bg-gray-100" loading="lazy" />'
+          : '<div class="w-full h-28 bg-gray-100 flex items-center justify-center text-2xl" aria-hidden="true">🚗</div>';
+
+        link.innerHTML =
+          photoHtml +
+          '<div class="bg-white p-2 mt-1">' +
+          '<p class="text-xs font-semibold text-gray-800 truncate">' +
+          escapeHtml(title) +
+          '</p>' +
+          '<p class="text-xs font-bold text-blue-700 mt-1">' +
+          escapeHtml(formatPriceEgp(car.price)) +
+          '</p>' +
+          (mileage
+            ? '<p class="text-[10px] text-gray-400 mt-0.5">' + escapeHtml(mileage) + '</p>'
+            : '') +
+          '</div>';
+        return link;
+      }
+
+      function loadNewArrivals() {
+        const row = document.getElementById('newArrivalsRow');
+        if (!row) return;
+
+        fetch('/api/vehicles?status=active&limit=10&sort=newest')
+          .then(function (res) {
+            return res.ok ? res.json() : Promise.reject();
+          })
+          .then(function (data) {
+            const cars = (data && data.vehicles) || [];
+            if (!cars.length) {
+              row.innerHTML =
+                '<p class="text-sm text-gray-500 py-2 shrink-0">No new listings yet.</p>';
+              return;
+            }
+            row.innerHTML = '';
+            cars.forEach(function (car) {
+              row.appendChild(renderNewArrivalCard(car));
+            });
+          })
+          .catch(function () {
+            row.innerHTML =
+              '<p class="text-sm text-gray-500 py-2 shrink-0">Could not load new arrivals.</p>';
+          });
+      }
+
+      function renderLatestCarCard(car) {
+        const link = document.createElement('a');
+        link.href = '/cars-detail.html?id=' + encodeURIComponent(car.id);
+        link.className = 'flex gap-3 py-3 bg-white active:bg-gray-50';
+
+        const photoUrl = car.primary_photo_url;
+        const thumb = photoUrl
+          ? '<img src="' +
+            escapeHtml(photoUrl) +
+            '" alt="" class="w-28 h-20 shrink-0 rounded-lg object-cover bg-gray-100" loading="lazy" />'
+          : '<div class="w-28 h-20 shrink-0 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 text-xs">' +
+            escapeHtml(window.CarfoxI18n ? CarfoxI18n.t('home.no_photo') : 'No photo') +
+            '</div>';
+
+        const title = [car.year, car.make, car.model].filter(Boolean).join(' ');
+        const mileage = formatMileage(car.mileage);
+        const dealerName = listingDealerName(car);
+        const location = listingLocation(car);
+
+        let bodyHtml =
+          '<p class="font-semibold text-gray-900 text-sm truncate">' +
+          escapeHtml(title) +
+          '</p>';
+
+        if (dealerName) {
+          bodyHtml +=
+            '<p class="text-xs text-gray-500 mt-0.5 truncate">' + escapeHtml(dealerName) + '</p>';
         }
 
-        cards.forEach(function (card) {
-          var id = card.getAttribute('data-id');
-          var text = tr.cards[id];
-          if (!text) return;
-          var badge = card.querySelector('.card-badge');
-          var title = card.querySelector('.card-title');
-          var location = card.querySelector('.card-location');
-          var snippet = card.querySelector('.card-snippet');
-          if (badge) badge.textContent = text.badge;
-          if (title) title.textContent = text.title;
-          if (location) location.textContent = text.location;
-          if (snippet) snippet.textContent = text.snippet;
-        });
+        bodyHtml +=
+          '<p class="font-bold text-blue-700 text-sm mt-1">' +
+          escapeHtml(formatPriceEgp(car.price)) +
+          '</p>';
 
-        applyFilters();
+        if (mileage) {
+          bodyHtml +=
+            '<p class="text-xs text-gray-500 mt-0.5">' + escapeHtml(mileage) + '</p>';
+        }
+
+        if (location) {
+          bodyHtml +=
+            '<p class="text-xs text-gray-400 mt-0.5 truncate">' + escapeHtml(location) + '</p>';
+        }
+
+        link.innerHTML =
+          thumb + '<div class="flex flex-col justify-center min-w-0 flex-1">' + bodyHtml + '</div>';
+        return link;
       }
 
-      tabs.forEach(function (tab) {
-        tab.addEventListener('click', function () {
-          var filter = this.getAttribute('data-filter');
-          tabs.forEach(function (t) { t.classList.remove('active'); });
-          this.classList.add('active');
-          updateTypePlaceholder(filter);
-
-          applyFilters();
-        });
-      });
-
-      if (searchButton) {
-        searchButton.addEventListener('click', applyFilters);
+      function loadLatestCars() {
+        const list = document.getElementById('latestCarsList');
+        fetch('/api/vehicles?status=active&limit=8')
+          .then(function (res) {
+            return res.ok ? res.json() : Promise.reject();
+          })
+          .then(function (data) {
+            const cars = (data && data.vehicles) || [];
+            if (!cars.length) {
+              list.innerHTML =
+                '<p class="text-sm text-gray-500 py-4 text-center">No listings yet.</p>';
+              return;
+            }
+            list.innerHTML = '';
+            cars.forEach(function (car) {
+              list.appendChild(renderLatestCarCard(car));
+            });
+          })
+          .catch(function () {
+            list.innerHTML =
+              '<p class="text-sm text-gray-500 py-4 text-center">Could not load listings.</p>';
+          });
       }
 
-      if (locationSearch) {
-        locationSearch.addEventListener('keydown', function (event) {
-          if (event.key === 'Enter') {
-            event.preventDefault();
-            applyFilters();
+      const CITIES_EN = [
+        'All Egypt', 'Cairo', 'Giza', 'Alexandria', 'Sharqia', 'Dakahlia', 'Qalyubia', 'Gharbia',
+        'Monufia', 'Port Said', 'Suez', 'Ismailia', 'Faiyum', 'Beni Suef', 'Minya', 'Asyut',
+        'Sohag', 'Qena', 'Luxor', 'Aswan'
+      ];
+
+      const CITIES_AR = [
+        'كل مصر', 'القاهرة', 'الجيزة', 'الإسكندرية', 'الشرقية', 'الدقهلية', 'القليوبية', 'الغربية',
+        'المنوفية', 'بورسعيد', 'السويس', 'الإسماعيلية', 'الفيوم', 'بني سويف', 'المنيا', 'أسيوط',
+        'سوهاج', 'قنا', 'الأقصر', 'أسوان'
+      ];
+
+      const CITY_CHIP_BASE =
+        'shrink-0 rounded-full px-4 py-1.5 text-sm font-medium cursor-pointer';
+      const CITY_CHIP_ACTIVE = CITY_CHIP_BASE + ' bg-blue-700 text-white';
+      const CITY_CHIP_INACTIVE = CITY_CHIP_BASE + ' bg-gray-100 text-gray-700';
+
+      var cityChipActiveIndex = 0;
+
+      function setCityChipActive(chip, row) {
+        row.querySelectorAll('[data-city-chip]').forEach(function (el) {
+          el.className = CITY_CHIP_INACTIVE;
+        });
+        chip.className = CITY_CHIP_ACTIVE;
+      }
+
+      function renderCityChips() {
+        const row = document.getElementById('cityChipsRow');
+        if (!row) return;
+
+        const lang = window.CarfoxI18n ? CarfoxI18n.getLang() : 'en';
+        const labels = lang === 'ar' ? CITIES_AR : CITIES_EN;
+
+        row.innerHTML = '';
+        CITIES_EN.forEach(function (governorateEn, index) {
+          const chip = document.createElement('button');
+          chip.type = 'button';
+          chip.textContent = labels[index];
+          chip.setAttribute('data-city-chip', governorateEn);
+          chip.className = index === cityChipActiveIndex ? CITY_CHIP_ACTIVE : CITY_CHIP_INACTIVE;
+
+          chip.addEventListener('click', function () {
+            cityChipActiveIndex = index;
+            setCityChipActive(chip, row);
+            if (governorateEn === 'All Egypt') {
+              window.location.href = '/cars.html';
+            } else {
+              window.location.href =
+                '/cars.html?governorate=' + encodeURIComponent(governorateEn);
+            }
+          });
+
+          row.appendChild(chip);
+        });
+      }
+
+      function getCityFromCoords(lat, lng) {
+        if (lat >= 29.5 && lat <= 31.5 && lng >= 29.5 && lng <= 32.5) return 'Cairo';
+        if (lat >= 29.5 && lat <= 31.0 && lng >= 30.5 && lng <= 31.5) return 'Giza';
+        if (lat >= 30.8 && lat <= 31.5 && lng >= 29.5 && lng <= 30.5) return 'Alexandria';
+        if (lat >= 30.0 && lat <= 31.5 && lng >= 31.5 && lng <= 32.5) return 'Sharqia';
+        if (lat >= 30.5 && lat <= 31.5 && lng >= 31.0 && lng <= 32.0) return 'Dakahlia';
+        if (lat >= 30.0 && lat <= 30.8 && lng >= 31.0 && lng <= 31.8) return 'Qalyubia';
+        if (lat >= 31.0 && lat <= 32.0 && lng >= 32.0 && lng <= 33.0) return 'Port Said';
+        if (lat >= 29.5 && lat <= 30.5 && lng >= 32.0 && lng <= 33.0) return 'Suez';
+        if (lat >= 30.5 && lat <= 31.0 && lng >= 32.0 && lng <= 32.5) return 'Ismailia';
+        return null;
+      }
+
+      function activateCityChip(cityEn) {
+        var index = CITIES_EN.indexOf(cityEn);
+        if (index < 0) return;
+        cityChipActiveIndex = index;
+        var row = document.getElementById('cityChipsRow');
+        if (!row) return;
+        var chips = row.querySelectorAll('[data-city-chip]');
+        for (var i = 0; i < chips.length; i++) {
+          if (chips[i].getAttribute('data-city-chip') === cityEn) {
+            setCityChipActive(chips[i], row);
+            chips[i].scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+            return;
+          }
+        }
+      }
+
+      function requestLocation() {
+        if (!navigator.geolocation) return;
+        navigator.geolocation.getCurrentPosition(
+          function (pos) {
+            var city = getCityFromCoords(pos.coords.latitude, pos.coords.longitude);
+            if (city) {
+              activateCityChip(city);
+              try {
+                localStorage.setItem('carfox_city', city);
+              } catch (_) {}
+            }
+          },
+          function () {}
+        );
+      }
+
+      function initCityFromStorageOrLocation() {
+        var saved = null;
+        try {
+          saved = localStorage.getItem('carfox_city');
+        } catch (_) {}
+        if (saved && CITIES_EN.indexOf(saved) !== -1) {
+          activateCityChip(saved);
+          return;
+        }
+        if (!saved) {
+          requestLocation();
+        }
+      }
+
+      const homeSearchForm = document.getElementById('homeSearchForm');
+      const homeSearchInput = document.getElementById('homeSearchInput');
+      if (homeSearchForm && homeSearchInput) {
+        homeSearchForm.addEventListener('submit', function (e) {
+          e.preventDefault();
+          const value = homeSearchInput.value.trim();
+          if (value) {
+            window.location.href = '/cars.html?q=' + encodeURIComponent(value);
+          } else {
+            window.location.href = '/cars.html';
           }
         });
       }
 
-      if (langToggle) {
+      function updateLangToggleLabel() {
+        var label = document.getElementById('langLabel');
+        if (!label || !window.CarfoxI18n) return;
+        label.textContent = CarfoxI18n.getLang() === 'en' ? 'AR' : 'EN';
+      }
+
+      var langToggle = document.getElementById('langToggle');
+      if (langToggle && window.CarfoxI18n) {
         langToggle.addEventListener('click', function () {
-          currentLanguage = currentLanguage === 'en' ? 'ar' : 'en';
-          localStorage.setItem('brokerz_lang', currentLanguage);
-          applyLanguage();
+          var next = CarfoxI18n.getLang() === 'en' ? 'ar' : 'en';
+          CarfoxI18n.setLang(next);
+          updateLangToggleLabel();
         });
+        CarfoxI18n.applyDir();
+        CarfoxI18n.apply();
+        updateLangToggleLabel();
       }
 
-      var logoLink = document.querySelector('.logo');
-      if (logoLink) {
-        logoLink.addEventListener('click', function (event) {
-          event.preventDefault();
-          resetHomeState();
-          window.location.href = 'index.html?reset=1';
-        });
-      }
+      window.addEventListener('carfox:langchange', function () {
+        updateLangToggleLabel();
+        renderCityChips();
+      });
 
-      var params = new URLSearchParams(window.location.search);
-      if (params.get('reset') === '1') {
-        resetHomeState();
-        if (window.history && window.history.replaceState) {
-          window.history.replaceState({}, '', 'index.html');
-        }
-      }
-
-      applyLanguage();
-      applyFilters();
-    })();
-  </script>
-</body>
+      renderCityChips();
+      initCityFromStorageOrLocation();
+      initBrandGrid();
+      loadNewArrivals();
+      loadLatestCars();
+    </script>
+  </body>
 </html>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CarFox - Pricing</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; background: #f4f7fb; color: #0f172a; }
+    .wrap { width: min(980px, 92%); margin: 0 auto; }
+    header { background: #fff; border-bottom: 1px solid #d9e2ec; }
+    .top { min-height: 64px; display: flex; align-items: center; justify-content: space-between; }
+    .logo { font-size: 1.4rem; font-weight: 800; text-decoration: none; color: #0f172a; }
+    .logo span { color: #ea580c; }
+    nav a { text-decoration: none; color: #64748b; margin-left: 10px; font-weight: 600; }
+    h1 { margin: 24px 0 8px; }
+    p { color: #64748b; }
+    .plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 16px 0 24px; }
+    .plan { background: #fff; border: 1px solid #d9e2ec; border-radius: 12px; padding: 16px; }
+    .plan h2 { margin: 0; font-size: 1.1rem; }
+    .price { font-size: 1.6rem; font-weight: 800; margin: 10px 0; }
+    ul { margin: 0 0 12px; padding-left: 18px; }
+    li { margin-bottom: 6px; color: #334155; }
+    .btn { display: inline-block; text-decoration: none; border: 0; border-radius: 8px; padding: 10px 14px; font-weight: 700; background: #ea580c; color: #fff; }
+    @media (max-width: 860px) { .plans { grid-template-columns: 1fr; } nav { display: none; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap top">
+      <a class="logo" href="index.html">Car<span>Fox</span></a>
+      <nav>
+        <a href="index.html">Home</a>
+        <a href="check-car.html">Check</a>
+        <a href="report.html">Report</a>
+        <a href="pricing.html">Pricing</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <h1>Pricing Plans</h1>
+    <p>Flexible options for individual buyers, dealers, and marketplaces in Arab countries.</p>
+
+    <section class="plans">
+      <article class="plan">
+        <h2>Basic</h2>
+        <p class="price">4 EGP</p>
+        <ul>
+          <li>1 vehicle report</li>
+          <li>Ownership overview</li>
+          <li>Accident indicator</li>
+        </ul>
+        <a class="btn" href="check-car.html">Choose Basic</a>
+      </article>
+      <article class="plan" style="border-color:#fb923c;">
+        <h2>Pro</h2>
+        <p class="price">19 EGP</p>
+        <ul>
+          <li>8 vehicle reports</li>
+          <li>Mileage and service timeline</li>
+          <li>Priority processing</li>
+        </ul>
+        <a class="btn" href="check-car.html">Choose Pro</a>
+      </article>
+      <article class="plan">
+        <h2>Dealer</h2>
+        <p class="price">79 EGP</p>
+        <ul>
+          <li>50 reports/month</li>
+          <li>Team dashboard</li>
+          <li>Export and API access</li>
+        </ul>
+        <a class="btn" href="login.html">Contact Sales</a>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

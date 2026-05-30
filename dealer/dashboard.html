@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dealer Dashboard • CarFox</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] }
+          }
+        }
+      }
+    </script>
+    <style>
+      /* Avoid FOUC: hide app until data is loaded */
+      .app-hidden { visibility: hidden; }
+    </style>
+  </head>
+  <body class="bg-white text-gray-900 font-sans">
+    <!-- Top bar -->
+    <header class="sticky top-0 z-40 bg-white border-b border-gray-200">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <a href="/" class="text-lg font-extrabold tracking-tight">
+          <span class="text-blue-700">Car</span><span class="text-orange-500">Fox</span>
+        </a>
+        <div class="relative">
+          <button id="acctBtn" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-200 text-sm font-medium text-gray-900 hover:bg-gray-50">
+            <span id="topBusinessName" class="truncate max-w-[160px]">—</span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 15.5 6 9.5l1.4-1.4L12 12.7l4.6-4.6L18 9.5l-6 6z"/>
+            </svg>
+          </button>
+          <div id="acctMenu" class="hidden absolute right-0 mt-2 w-40 rounded-md border border-gray-200 bg-white shadow-lg">
+            <a href="/dealer/account.html" class="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">Profile</a>
+            <button id="signOutBtn" class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">Sign Out</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div id="toastBanner" class="hidden bg-green-50 border-b border-green-200 text-green-800">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-2 text-sm font-medium" id="toastBannerText"></div>
+    </div>
+
+    <!-- Status banner (shown only if not approved) -->
+    <div id="statusBanner" class="hidden bg-yellow-50 border-b border-yellow-200 text-yellow-800">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-2 text-sm">
+        Your account is <span id="dealStatusText" class="font-semibold">pending</span>. Some features may be limited.
+      </div>
+    </div>
+
+    <!-- App content -->
+    <main id="app" class="app-hidden mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-20 md:pb-0">
+      <!-- Welcome -->
+      <section class="py-6">
+        <h1 class="text-2xl font-bold text-gray-900">Welcome back, <span id="firstName">—</span></h1>
+        <p class="mt-1 text-sm text-gray-600">
+          <span id="businessName">—</span> · Dealer dashboard
+        </p>
+      </section>
+
+      <!-- Quick stats -->
+      <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white border border-gray-200 rounded-lg p-4">
+          <div class="text-sm text-gray-600">Active Listings</div>
+          <div id="statActive" class="mt-1 text-2xl font-bold text-gray-900">—</div>
+        </div>
+        <div class="bg-white border border-gray-200 rounded-lg p-4">
+          <div class="text-sm text-gray-600">Total Views (30d)</div>
+          <div id="statViews" class="mt-1 text-2xl font-bold text-gray-900">—</div>
+        </div>
+        <div id="statInquiriesCard" class="bg-white border border-gray-200 rounded-lg p-4">
+          <div class="text-sm text-gray-600">New Inquiries</div>
+          <div id="statInquiries" class="mt-1 text-2xl font-bold text-gray-900">—</div>
+        </div>
+        <div class="bg-white border border-gray-200 rounded-lg p-4">
+          <div class="text-sm text-gray-600">Sold This Month</div>
+          <div id="statSold" class="mt-1 text-2xl font-bold text-gray-900">—</div>
+        </div>
+      </section>
+
+      <!-- Primary action -->
+      <section class="mt-6">
+        <a href="/dealer/add-vehicle.html"
+           class="w-full inline-flex items-center justify-center rounded-lg bg-blue-700 hover:bg-blue-800 text-white font-semibold px-6 py-4 text-lg">
+          + Add a Vehicle
+        </a>
+      </section>
+
+      <!-- Your listings -->
+      <section class="mt-8">
+        <h2 class="text-lg font-semibold text-gray-900">Your listings</h2>
+        <div id="listingsEmpty" class="hidden mt-3 rounded-lg border border-gray-200 bg-gray-50 p-6 text-center">
+          <p class="text-sm text-gray-600">No vehicles yet. Add your first vehicle to get started.</p>
+          <a href="/dealer/add-vehicle.html" class="inline-block mt-2 text-sm text-blue-700 hover:text-blue-800 font-semibold">
+            Add a Vehicle →
+          </a>
+        </div>
+        <div id="listingsList" class="hidden mt-3 space-y-3"></div>
+        <a id="viewAllLink" href="/dealer/inventory.html" class="hidden inline-block mt-4 text-sm font-semibold text-blue-700 hover:text-blue-800">
+          View all listings →
+        </a>
+      </section>
+
+      <section class="mt-8">
+        <h2 class="text-lg font-semibold text-gray-900">Recent inquiries</h2>
+        <div id="recentInquiriesEmpty" class="hidden mt-3 text-sm text-gray-500">No inquiries yet</div>
+        <div id="recentInquiriesList" class="hidden mt-3 bg-white border border-gray-200 rounded-lg overflow-hidden divide-y divide-gray-100"></div>
+        <a id="recentInquiriesViewAll" href="/dealer/inquiries.html" class="hidden inline-block mt-4 text-sm font-semibold text-blue-700 hover:text-blue-800">
+          View all →
+        </a>
+      </section>
+    </main>
+
+    <div id="dealerBottomNav"></div>
+
+    <script src="/js/carfox-dealer-nav.js"></script>
+    <script>
+      (function showQueryToast() {
+        const params = new URLSearchParams(window.location.search);
+        const toast = document.getElementById('toastBanner');
+        const text = document.getElementById('toastBannerText');
+        if (!toast || !text) return;
+        let message = null;
+        if (params.get('published') === '1') {
+          message = 'Your listing is now live!';
+        } else if (params.get('draft') === '1') {
+          message = 'Draft saved.';
+        } else if (params.get('deleted') === '1') {
+          message = 'Listing archived';
+        }
+        if (message) {
+          text.textContent = message;
+          toast.classList.remove('hidden');
+          if (params.get('deleted') === '1') {
+            setTimeout(function () {
+              toast.classList.add('hidden');
+            }, 3000);
+          }
+        }
+      })();
+
+      (async function init() {
+        const TOKEN_KEY = 'carfox_token';
+        const USER_KEY = 'carfox_user';
+        const token = (typeof localStorage !== 'undefined') ? localStorage.getItem(TOKEN_KEY) : null;
+        if (!token) {
+          window.location.replace('/dealer/login.html');
+          return;
+        }
+        try {
+          const res = await fetch('/api/auth/me', {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          if (!res.ok) {
+            if (typeof localStorage !== 'undefined') {
+              localStorage.removeItem(TOKEN_KEY);
+              localStorage.removeItem(USER_KEY);
+            }
+            window.location.replace('/dealer/login.html');
+            return;
+          }
+          const data = await res.json();
+          if (!data || !data.user) {
+            window.location.replace('/dealer/login.html');
+            return;
+          }
+          // Persist latest user snapshot
+          try { localStorage.setItem(USER_KEY, JSON.stringify(data.user)); } catch (_) {}
+
+          const fullName = data.user.full_name || '';
+          const first = fullName.split(' ')[0] || data.user.email || 'Dealer';
+          const business = (data.dealership && data.dealership.business_name) ? data.dealership.business_name : 'Your Dealership';
+
+          document.getElementById('firstName').textContent = first;
+          document.getElementById('businessName').textContent = business;
+          document.getElementById('topBusinessName').textContent = business;
+
+          if (data.dealership && data.dealership.status && data.dealership.status !== 'approved') {
+            const banner = document.getElementById('statusBanner');
+            const txt = document.getElementById('dealStatusText');
+            txt.textContent = data.dealership.status;
+            banner.classList.remove('hidden');
+          }
+
+          await loadDashboardData(token);
+
+          CarfoxDealerNav.mountDealerBottomNav(
+            document.getElementById('dealerBottomNav'),
+            'dashboard'
+          );
+
+          // Show app
+          document.getElementById('app').classList.remove('app-hidden');
+        } catch (e) {
+          if (typeof localStorage !== 'undefined') {
+            localStorage.removeItem(TOKEN_KEY);
+            localStorage.removeItem(USER_KEY);
+          }
+          window.location.replace('/dealer/login.html');
+          return;
+        }
+      })();
+
+      function formatStatNumber(n) {
+        return Number(n || 0).toLocaleString('en-US');
+      }
+
+      function formatPriceCents(cents) {
+        if (!cents || Number(cents) <= 0) return 'Price on request';
+        return Math.round(Number(cents) / 100).toLocaleString('en-EG') + ' EGP';
+      }
+
+      function statusBadgeClass(status) {
+        if (status === 'active') {
+          return 'bg-green-100 text-green-800 border-green-200';
+        }
+        if (status === 'draft') {
+          return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        }
+        if (status === 'paused') {
+          return 'bg-orange-100 text-orange-800 border-orange-200';
+        }
+        return 'bg-gray-100 text-gray-700 border-gray-200';
+      }
+
+      function statusLabel(status) {
+        if (status === 'active') return 'Active';
+        if (status === 'draft') return 'Draft';
+        if (status === 'paused') return 'Paused';
+        if (status === 'sold') return 'Sold';
+        return status || '—';
+      }
+
+      function renderListings(vehicles) {
+        const empty = document.getElementById('listingsEmpty');
+        const list = document.getElementById('listingsList');
+        const viewAll = document.getElementById('viewAllLink');
+        list.innerHTML = '';
+
+        if (!vehicles || vehicles.length === 0) {
+          empty.classList.remove('hidden');
+          list.classList.add('hidden');
+          viewAll.classList.add('hidden');
+          return;
+        }
+
+        empty.classList.add('hidden');
+        list.classList.remove('hidden');
+        viewAll.classList.remove('hidden');
+
+        vehicles.forEach(function (v) {
+          const title = [v.year, v.make, v.model, v.trim].filter(Boolean).join(' ');
+          const card = document.createElement('a');
+          card.href = '/dealer/preview-vehicle.html?id=' + v.id;
+          card.className =
+            'flex gap-3 items-stretch rounded-lg border border-gray-200 bg-white p-3 hover:border-blue-300 hover:shadow-sm transition';
+
+          const thumbWrap = document.createElement('div');
+          thumbWrap.className = 'flex-shrink-0 w-[100px] max-w-[100px] aspect-video rounded-md overflow-hidden bg-gray-100';
+
+          if (v.primary_photo_url) {
+            const img = document.createElement('img');
+            img.src = v.primary_photo_url;
+            img.alt = title || 'Vehicle';
+            img.className = 'h-full w-full object-cover';
+            thumbWrap.appendChild(img);
+          } else {
+            thumbWrap.className += ' flex items-center justify-center text-gray-400';
+            thumbWrap.innerHTML =
+              '<svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
+              '<path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>';
+          }
+
+          const body = document.createElement('div');
+          body.className = 'flex-1 min-w-0 flex flex-col justify-center';
+
+          const row1 = document.createElement('div');
+          row1.className = 'flex items-start justify-between gap-2';
+          const h3 = document.createElement('h3');
+          h3.className = 'text-sm font-semibold text-gray-900 truncate';
+          h3.textContent = title || 'Vehicle';
+          const views = document.createElement('span');
+          views.className = 'text-xs text-gray-500 whitespace-nowrap flex-shrink-0';
+          views.textContent = formatStatNumber(v.views) + ' views';
+          row1.appendChild(h3);
+          row1.appendChild(views);
+
+          const row2 = document.createElement('div');
+          row2.className = 'mt-1 flex items-center gap-2 flex-wrap';
+          const price = document.createElement('span');
+          price.className = 'text-sm font-bold text-blue-700';
+          price.textContent = formatPriceCents(v.price);
+          const badge = document.createElement('span');
+          badge.className =
+            'text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded border ' + statusBadgeClass(v.status);
+          badge.textContent = statusLabel(v.status);
+          row2.appendChild(price);
+          row2.appendChild(badge);
+
+          body.appendChild(row1);
+          body.appendChild(row2);
+          card.appendChild(thumbWrap);
+          card.appendChild(body);
+          list.appendChild(card);
+        });
+      }
+
+      function renderRecentInquiries(conversations) {
+        const empty = document.getElementById('recentInquiriesEmpty');
+        const list = document.getElementById('recentInquiriesList');
+        const viewAll = document.getElementById('recentInquiriesViewAll');
+        const items = (conversations || []).slice(0, 3);
+
+        if (!items.length) {
+          empty.classList.remove('hidden');
+          list.classList.add('hidden');
+          viewAll.classList.add('hidden');
+          return;
+        }
+
+        empty.classList.add('hidden');
+        list.classList.remove('hidden');
+        viewAll.classList.remove('hidden');
+        list.innerHTML = items
+          .map(function (c) {
+            return CarfoxDealerNav.renderInquiryCardHtml(c, true);
+          })
+          .join('');
+      }
+
+      function wireInquiriesStatCard(unreadCount) {
+        const card = document.getElementById('statInquiriesCard');
+        const n = Number(unreadCount || 0);
+        document.getElementById('statInquiries').textContent = formatStatNumber(n);
+        card.classList.remove('hover:border-blue-300', 'hover:shadow-sm', 'cursor-pointer');
+        card.onclick = null;
+        if (n >= 1) {
+          card.classList.add('hover:border-blue-300', 'hover:shadow-sm', 'cursor-pointer');
+          card.onclick = function () {
+            window.location.href = '/dealer/inquiries.html';
+          };
+        }
+      }
+
+      async function loadDashboardData(token) {
+        const headers = { Authorization: 'Bearer ' + token };
+        const [statsRes, vehiclesRes, unreadRes, convRes] = await Promise.all([
+          fetch('/api/dealer/stats', { headers: headers }),
+          fetch('/api/dealer/vehicles?limit=5', { headers: headers }),
+          fetch('/api/conversations/unread-count', { headers: headers }),
+          fetch('/api/conversations?limit=20&offset=0', { headers: headers })
+        ]);
+
+        if (statsRes.ok) {
+          const stats = await statsRes.json();
+          document.getElementById('statActive').textContent = formatStatNumber(stats.active_listings);
+          document.getElementById('statViews').textContent = formatStatNumber(stats.total_views_30d);
+          document.getElementById('statSold').textContent = formatStatNumber(stats.sold_this_month);
+        }
+
+        if (unreadRes.ok) {
+          const unread = await unreadRes.json();
+          wireInquiriesStatCard(unread.conversation_count_with_unread);
+        } else {
+          wireInquiriesStatCard(0);
+        }
+
+        if (convRes.ok) {
+          const convData = await convRes.json();
+          renderRecentInquiries(convData.conversations || []);
+        }
+
+        if (vehiclesRes.ok) {
+          const data = await vehiclesRes.json();
+          renderListings(data.vehicles || []);
+        }
+      }
+
+      // Account menu toggle and sign out
+      const acctBtn = document.getElementById('acctBtn');
+      const acctMenu = document.getElementById('acctMenu');
+      const signOutBtn = document.getElementById('signOutBtn');
+      if (acctBtn && acctMenu) {
+        acctBtn.addEventListener('click', () => {
+          acctMenu.classList.toggle('hidden');
+        });
+        document.addEventListener('click', (e) => {
+          if (!acctBtn.contains(e.target) && !acctMenu.contains(e.target)) {
+            acctMenu.classList.add('hidden');
+          }
+        });
+      }
+      if (signOutBtn) {
+        signOutBtn.addEventListener('click', () => {
+          try {
+            localStorage.removeItem('carfox_token');
+            localStorage.removeItem('carfox_user');
+          } catch (_) {}
+          window.location.replace('/');
+        });
+      }
+    </script>
+  </body>
+  </html>
+

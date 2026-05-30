@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CarFox - Sign Up</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f7fb; margin: 0; color: #0f172a; }
+    .wrap { width: min(440px, 92%); margin: 48px auto; background: #fff; border: 1px solid #d9e2ec; border-radius: 12px; padding: 20px; }
+    h1 { margin-top: 0; font-size: 1.5rem; }
+    p { color: #64748b; }
+    label { display: block; margin: 12px 0 6px; font-weight: 600; }
+    input { width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; }
+    .password-wrap { position: relative; display: block; }
+    .password-wrap input { padding-right: 2.5rem; }
+    .toggle-password {
+      position: absolute;
+      right: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: #9ca3af;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .toggle-password:hover { color: #4b5563; }
+    .toggle-password svg { width: 1.25rem; height: 1.25rem; display: block; }
+    .toggle-password .password-toggle-eye-off { display: none; }
+    button { margin-top: 14px; width: 100%; border: 0; border-radius: 8px; padding: 11px; background: #ea580c; color: #fff; font-weight: 700; cursor: pointer; }
+    a { color: #ea580c; text-decoration: none; }
+    .message { font-size: 0.9rem; border-radius: 8px; padding: 10px; margin-bottom: 10px; display: none; }
+    .message.error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    .password-match-error { margin-top: 4px; font-size: 0.875rem; color: #dc2626; display: none; }
+    .password-match-ok { margin-top: 4px; font-size: 0.875rem; color: #16a34a; display: none; }
+    .password-strength { margin-top: 8px; padding: 12px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb; display: none; }
+    .password-strength-rule { display: flex; align-items: center; gap: 8px; font-size: 0.75rem; margin-top: 4px; }
+    .password-strength-rule:first-child { margin-top: 0; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <h1>Create your CarFox account</h1>
+    <p>Sign up in under a minute.</p>
+    <p style="font-size:0.85rem;color:#64748b;margin-top:-4px;">Use <strong>http://localhost:3000</strong> after <code>npm start</code> so your account is stored on the server (same login from any device on your network).</p>
+    <div id="feedback" class="message error" role="alert"></div>
+    <form id="signup-form">
+      <label for="fullName">Full name</label>
+      <input id="fullName" type="text" placeholder="Your full name" required />
+      <label for="email">Email</label>
+      <input id="email" type="email" placeholder="you@example.com" required />
+      <label for="password">Password</label>
+      <div class="password-wrap">
+        <input id="password" type="password" placeholder="Create a strong password" required autocomplete="new-password" minlength="8" />
+        <button type="button" class="toggle-password password-toggle" aria-label="Show password">
+          <span class="password-toggle-eye" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></span>
+          <span class="password-toggle-eye-off" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21"/></svg></span>
+        </button>
+      </div>
+      <div id="passwordStrength" class="password-strength" aria-live="polite">
+        <div class="password-strength-rule" data-pw-rule="length">
+          <span class="pw-rule-icon">✗</span>
+          <span class="pw-rule-text">At least 8 characters</span>
+        </div>
+        <div class="password-strength-rule" data-pw-rule="number">
+          <span class="pw-rule-icon">✗</span>
+          <span class="pw-rule-text">At least one number (0-9)</span>
+        </div>
+        <div class="password-strength-rule" data-pw-rule="upper">
+          <span class="pw-rule-icon">✗</span>
+          <span class="pw-rule-text">At least one uppercase letter (A-Z)</span>
+        </div>
+        <div class="password-strength-rule" data-pw-rule="lower">
+          <span class="pw-rule-icon">✗</span>
+          <span class="pw-rule-text">At least one lowercase letter (a-z)</span>
+        </div>
+        <div class="password-strength-rule" data-pw-rule="special">
+          <span class="pw-rule-icon">✗</span>
+          <span class="pw-rule-text">At least one special character (!@#$%^&*.)</span>
+        </div>
+      </div>
+      <label for="confirmPassword">Confirm password</label>
+      <div class="password-wrap">
+        <input id="confirmPassword" type="password" placeholder="Repeat password" required autocomplete="new-password" />
+        <button type="button" class="toggle-password password-toggle" aria-label="Show confirm password">
+          <span class="password-toggle-eye" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></span>
+          <span class="password-toggle-eye-off" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21"/></svg></span>
+        </button>
+      </div>
+      <p id="passwordMatchError" class="password-match-error" role="alert">Passwords do not match</p>
+      <p id="passwordMatchOk" class="password-match-ok">✓ Passwords match</p>
+      <button type="submit" id="submitBtn" disabled>Create Account</button>
+    </form>
+    <p>Already have an account? <a href="login.html">Sign in</a></p>
+  </main>
+  <script src="js/signup-password-validation.js"></script>
+  <script>
+    (function () {
+      var USERS_KEY = 'carfox_users';
+      var CURRENT_USER_KEY = 'carfox_current_user';
+      var TOKEN_KEY = 'carfox_token';
+      var form = document.getElementById('signup-form');
+      var feedback = document.getElementById('feedback');
+
+      function showError(text) {
+        feedback.textContent = text;
+        feedback.style.display = 'block';
+      }
+
+      function hideError() {
+        feedback.style.display = 'none';
+        feedback.textContent = '';
+      }
+
+      function normEmail(value) {
+        return String(value || '').trim().toLowerCase();
+      }
+
+      function getUsers() {
+        var backupKey = USERS_KEY + '_backup';
+        function parseUsers(raw) {
+          if (!raw) return [];
+          try {
+            var parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed : [];
+          } catch (_) {
+            return [];
+          }
+        }
+        var users = parseUsers(localStorage.getItem(USERS_KEY));
+        if (users.length === 0) {
+          var bak = localStorage.getItem(backupKey);
+          var restored = parseUsers(bak);
+          if (restored.length > 0) {
+            try {
+              localStorage.setItem(USERS_KEY, bak);
+            } catch (_) {}
+            users = restored;
+          }
+        }
+        return users;
+      }
+
+      function saveUsers(users) {
+        var json = JSON.stringify(users);
+        localStorage.setItem(USERS_KEY, json);
+        try {
+          localStorage.setItem(USERS_KEY + '_backup', json);
+        } catch (_) {}
+      }
+
+      var passwordInput = document.getElementById('password');
+      var confirmPasswordInput = document.getElementById('confirmPassword');
+      var submitBtn = document.getElementById('submitBtn');
+
+      var pwValidation = CarfoxSignupPassword.init({
+        passwordInput: passwordInput,
+        confirmInput: confirmPasswordInput,
+        strengthPanel: document.getElementById('passwordStrength'),
+        submitBtn: submitBtn,
+        matchErrorEl: document.getElementById('passwordMatchError'),
+        matchOkEl: document.getElementById('passwordMatchOk'),
+        useTailwind: false
+      });
+
+      document.querySelectorAll('.password-toggle').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var wrap = btn.parentElement;
+          var input = wrap.querySelector('input');
+          var eye = btn.querySelector('.password-toggle-eye');
+          var eyeOff = btn.querySelector('.password-toggle-eye-off');
+          var show = input.type === 'password';
+          input.type = show ? 'text' : 'password';
+          if (eye) eye.style.display = show ? 'none' : '';
+          if (eyeOff) eyeOff.style.display = show ? '' : 'none';
+          var label = btn.getAttribute('aria-label') || 'password';
+          if (label.indexOf('confirm') !== -1) {
+            btn.setAttribute('aria-label', show ? 'Hide confirm password' : 'Show confirm password');
+          } else {
+            btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+          }
+          pwValidation.updateSubmitState();
+        });
+      });
+
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        hideError();
+        pwValidation.updateSubmitState();
+
+        var fullName = document.getElementById('fullName').value.trim();
+        var email = normEmail(document.getElementById('email').value);
+        var password = passwordInput.value;
+        var confirmPassword = confirmPasswordInput.value;
+
+        if (!fullName || !email || !password || !confirmPassword) {
+          showError('Please fill all fields.');
+          return;
+        }
+        if (!pwValidation.isPasswordStrong()) {
+          showError('Please meet all password requirements.');
+          return;
+        }
+        if (!pwValidation.passwordsMatch()) {
+          showError('Passwords do not match.');
+          return;
+        }
+
+        var users = getUsers();
+        var exists = users.some(function (item) { return normEmail(item.email) === email; });
+        if (exists) {
+          showError('An account with this email already exists.');
+          return;
+        }
+
+        function saveLocalOnly() {
+          users.push({
+            fullName: fullName,
+            email: email,
+            password: password,
+            createdAt: new Date().toISOString()
+          });
+          try {
+            saveUsers(users);
+          } catch (err) {
+            showError('Could not save your account (browser storage blocked or full).');
+            return false;
+          }
+          return true;
+        }
+
+        fetch('/api/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fullName: fullName,
+            email: email,
+            password: password,
+            confirmPassword: confirmPassword
+          })
+        })
+          .then(function (res) {
+            return res.json().then(function (data) {
+              return { ok: res.ok, data: data };
+            });
+          })
+          .then(function (result) {
+            if (result.ok && result.data && result.data.token) {
+              localStorage.setItem(TOKEN_KEY, result.data.token);
+              localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(result.data.user));
+              window.location.href = 'index.html?auth=1';
+              return;
+            }
+            var msg = (result.data && result.data.error) || 'Could not create account.';
+            showError(msg);
+          })
+          .catch(function () {
+            if (!saveLocalOnly()) return;
+            window.location.href = 'login.html?created=1';
+          });
+      });
+    })();
+  </script>
+</body>
+</html>

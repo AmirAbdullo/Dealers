@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dealer Signup</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] }
+          }
+        }
+      }
+    </script>
+  </head>
+  <body class="bg-white text-gray-900 font-sans">
+    <main class="min-h-screen flex items-start justify-center px-4 sm:px-6 lg:px-8 py-10">
+      <div class="w-full max-w-md">
+        <header class="mb-8">
+          <h1 class="text-2xl font-semibold tracking-tight">Dealer Application</h1>
+          <p class="mt-2 text-sm text-gray-600">Apply to sell vehicles on our marketplace. Approvals typically take 1–2 business days.</p>
+        </header>
+
+        <section id="formSection" class="bg-white border border-gray-200 rounded-xl shadow-sm p-5 sm:p-6">
+          <form id="dealerForm" class="space-y-4">
+            <div class="space-y-1.5">
+              <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+              <input id="email" name="email" type="email" required autocomplete="email"
+                     class="block w-full px-3 py-2 border border-gray-300 rounded-lg text-base mt-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none" />
+            </div>
+
+            <div class="space-y-1.5">
+              <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+              <div class="relative mt-1">
+                <input id="password" name="password" type="password" minlength="8" required autocomplete="new-password"
+                       class="block w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none" />
+                <button type="button" class="password-toggle absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none" aria-label="Show password">
+                  <span class="password-toggle-eye" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></span>
+                  <span class="password-toggle-eye-off hidden" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21"/></svg></span>
+                </button>
+              </div>
+              <div id="passwordStrength" class="hidden mt-2 space-y-1 p-3 bg-gray-50 rounded-lg border border-gray-200" aria-live="polite">
+                <div class="flex items-center gap-2 text-xs" data-pw-rule="length">
+                  <span class="pw-rule-icon text-red-500">✗</span>
+                  <span class="pw-rule-text text-xs text-red-500">At least 8 characters</span>
+                </div>
+                <div class="flex items-center gap-2 text-xs" data-pw-rule="number">
+                  <span class="pw-rule-icon text-red-500">✗</span>
+                  <span class="pw-rule-text text-xs text-red-500">At least one number (0-9)</span>
+                </div>
+                <div class="flex items-center gap-2 text-xs" data-pw-rule="upper">
+                  <span class="pw-rule-icon text-red-500">✗</span>
+                  <span class="pw-rule-text text-xs text-red-500">At least one uppercase letter (A-Z)</span>
+                </div>
+                <div class="flex items-center gap-2 text-xs" data-pw-rule="lower">
+                  <span class="pw-rule-icon text-red-500">✗</span>
+                  <span class="pw-rule-text text-xs text-red-500">At least one lowercase letter (a-z)</span>
+                </div>
+                <div class="flex items-center gap-2 text-xs" data-pw-rule="special">
+                  <span class="pw-rule-icon text-red-500">✗</span>
+                  <span class="pw-rule-text text-xs text-red-500">At least one special character (!@#$%^&*.)</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-1.5">
+              <label for="confirm_password" class="block text-sm font-medium text-gray-700">Confirm password</label>
+              <div class="relative mt-1">
+                <input id="confirm_password" name="confirm_password" type="password" minlength="8" required autocomplete="new-password"
+                       class="block w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none" />
+                <button type="button" class="password-toggle absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none" aria-label="Show confirm password">
+                  <span class="password-toggle-eye" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></span>
+                  <span class="password-toggle-eye-off hidden" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21"/></svg></span>
+                </button>
+              </div>
+              <p id="passwordMatchError" class="hidden mt-1 text-sm text-red-600" role="alert">Passwords do not match</p>
+              <p id="passwordMatchOk" class="hidden mt-1 text-sm text-green-600">✓ Passwords match</p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="space-y-1.5">
+                <label for="first_name" class="block text-sm font-medium text-gray-700">First name</label>
+                <input id="first_name" name="first_name" type="text" required autocomplete="given-name"
+                       class="block w-full px-3 py-2 border border-gray-300 rounded-lg text-base mt-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none" />
+              </div>
+              <div class="space-y-1.5">
+                <label for="last_name" class="block text-sm font-medium text-gray-700">Last name</label>
+                <input id="last_name" name="last_name" type="text" required autocomplete="family-name"
+                       class="block w-full px-3 py-2 border border-gray-300 rounded-lg text-base mt-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none" />
+              </div>
+            </div>
+
+            <div class="space-y-1.5">
+              <label for="business_name" class="block text-sm font-medium text-gray-700">Business name</label>
+              <input id="business_name" name="business_name" type="text" required
+                     class="block w-full px-3 py-2 border border-gray-300 rounded-lg text-base mt-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none" />
+            </div>
+
+            <div class="space-y-1.5">
+              <label for="license_number" class="block text-sm font-medium text-gray-700">Dealer license number</label>
+              <input id="license_number" name="license_number" type="text" required
+                     class="block w-full px-3 py-2 border border-gray-300 rounded-lg text-base mt-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none" />
+            </div>
+
+            <div class="space-y-1.5">
+              <label for="phone" class="block text-sm font-medium text-gray-700">Phone</label>
+              <input id="phone" name="phone" type="tel" required autocomplete="tel"
+                     class="block w-full px-3 py-2 border border-gray-300 rounded-lg text-base mt-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none" />
+            </div>
+
+            <div class="space-y-1.5">
+              <label for="address" class="block text-sm font-medium text-gray-700">Address</label>
+              <input id="address" name="address" type="text" required autocomplete="street-address"
+                     class="block w-full px-3 py-2 border border-gray-300 rounded-lg text-base mt-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none" />
+            </div>
+
+            <div class="space-y-1.5">
+              <label for="governorate" class="block text-sm font-medium text-gray-700">Governorate</label>
+              <select id="governorate" name="governorate" required
+                      class="block w-full px-3 py-2 border border-gray-300 rounded-lg text-base mt-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none bg-white">
+                <option value="">Select your governorate</option>
+                <option value="Cairo">Cairo</option>
+                <option value="Giza">Giza</option>
+                <option value="Alexandria">Alexandria</option>
+                <option value="Sharqia">Sharqia</option>
+                <option value="Dakahlia">Dakahlia</option>
+                <option value="Beheira">Beheira</option>
+                <option value="Monufia">Monufia</option>
+                <option value="Gharbia">Gharbia</option>
+                <option value="Faiyum">Faiyum</option>
+                <option value="Beni Suef">Beni Suef</option>
+                <option value="Minya">Minya</option>
+                <option value="Asyut">Asyut</option>
+                <option value="Sohag">Sohag</option>
+                <option value="Qena">Qena</option>
+                <option value="Luxor">Luxor</option>
+                <option value="Aswan">Aswan</option>
+                <option value="Red Sea">Red Sea</option>
+                <option value="New Valley">New Valley</option>
+                <option value="Matrouh">Matrouh</option>
+                <option value="North Sinai">North Sinai</option>
+                <option value="South Sinai">South Sinai</option>
+                <option value="Ismailia">Ismailia</option>
+                <option value="Port Said">Port Said</option>
+                <option value="Suez">Suez</option>
+                <option value="Qalyubia">Qalyubia</option>
+                <option value="Kafr El Sheikh">Kafr El Sheikh</option>
+                <option value="Damietta">Damietta</option>
+              </select>
+            </div>
+
+            <div id="formAlert" class="hidden rounded-lg border text-sm p-3"></div>
+
+            <button id="submitBtn" type="submit" disabled
+                    class="w-full inline-flex items-center justify-center rounded-lg bg-blue-600 hover:bg-blue-700 opacity-50 cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 text-white font-semibold px-4 py-2.5 transition">
+              Submit application
+            </button>
+          </form>
+        </section>
+
+        <!-- Success card (hidden by default, shown after successful submission) -->
+        <section id="successCard" class="hidden bg-white border border-green-200 rounded-xl shadow-sm p-5 sm:p-6">
+          <div class="flex items-start gap-3">
+            <div class="mt-0.5 h-5 w-5 rounded-full bg-green-100 text-green-700 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414L9 14.414 5.293 10.707a1 1 0 011.414-1.414L9 11.586l6.293-6.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <h2 class="text-base font-semibold text-gray-900">Application submitted</h2>
+              <p class="mt-1 text-sm text-gray-600">Your application is under review. We’ll email you once it’s approved.</p>
+            </div>
+          </div>
+        </section>
+
+        <p class="mt-6 text-xs text-gray-500">
+          By submitting this application you agree to our terms. You’ll receive an email when your application is reviewed.
+        </p>
+      </div>
+    </main>
+
+    <script src="/js/signup-password-validation.js"></script>
+    <script>
+      const form = document.getElementById('dealerForm');
+      const formSection = document.getElementById('formSection');
+      const submitBtn = document.getElementById('submitBtn');
+      const alertBox = document.getElementById('formAlert');
+      const successCard = document.getElementById('successCard');
+
+      function setAlert(kind, message) {
+        const base = 'rounded-lg border text-sm p-3';
+        const styles = kind === 'error'
+          ? 'border-red-200 bg-red-50 text-red-800'
+          : 'border-green-200 bg-green-50 text-green-800';
+        alertBox.className = base + ' ' + styles;
+        alertBox.textContent = message;
+        alertBox.classList.remove('hidden');
+      }
+
+      function clearAlert() {
+        alertBox.classList.add('hidden');
+        alertBox.textContent = '';
+      }
+
+      const passwordInput = document.getElementById('password');
+      const confirmPasswordInput = document.getElementById('confirm_password');
+
+      const pwValidation = CarfoxSignupPassword.init({
+        passwordInput: passwordInput,
+        confirmInput: confirmPasswordInput,
+        strengthPanel: document.getElementById('passwordStrength'),
+        submitBtn: submitBtn,
+        matchErrorEl: document.getElementById('passwordMatchError'),
+        matchOkEl: document.getElementById('passwordMatchOk'),
+        useTailwind: true
+      });
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        clearAlert();
+        pwValidation.updateSubmitState();
+
+        const password = passwordInput.value;
+        const confirmPassword = confirmPasswordInput.value;
+        const firstName = form.first_name.value.trim();
+        const lastName = form.last_name.value.trim();
+
+        if (!pwValidation.isPasswordStrong()) {
+          setAlert('error', 'Please meet all password requirements.');
+          return;
+        }
+        if (!pwValidation.passwordsMatch()) {
+          setAlert('error', 'Passwords do not match.');
+          return;
+        }
+        if (!firstName || !lastName) {
+          setAlert('error', 'Please enter your first and last name.');
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+        const data = {
+          email: form.email.value.trim(),
+          password: password,
+          first_name: firstName,
+          last_name: lastName,
+          full_name: (firstName + ' ' + lastName).trim(),
+          business_name: form.business_name.value.trim(),
+          license_number: form.license_number.value.trim(),
+          phone: form.phone.value.trim(),
+          address: form.address.value.trim(),
+          governorate: form.governorate.value
+        };
+
+        try {
+          const res = await fetch('/api/auth/dealer-signup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+          const body = await res.json().catch(() => ({}));
+
+          if (res.ok && res.status === 201) {
+            // Hide the form section and show success card
+            formSection.classList.add('hidden');
+            successCard.classList.remove('hidden');
+            // Optionally clear the form (not visible anymore)
+            form.reset();
+          } else {
+            setAlert('error', body && body.error ? body.error : 'Submission failed. Please try again.');
+          }
+        } catch (err) {
+          setAlert('error', 'Network error. Please try again.');
+        } finally {
+          submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+          pwValidation.updateSubmitState();
+        }
+      });
+
+      document.querySelectorAll('.password-toggle').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var wrap = btn.parentElement;
+          var input = wrap.querySelector('input');
+          var eye = btn.querySelector('.password-toggle-eye');
+          var eyeOff = btn.querySelector('.password-toggle-eye-off');
+          var show = input.type === 'password';
+          var isConfirm = input.id === 'confirm_password';
+          input.type = show ? 'text' : 'password';
+          eye.classList.toggle('hidden', show);
+          eyeOff.classList.toggle('hidden', !show);
+          btn.setAttribute(
+            'aria-label',
+            show
+              ? (isConfirm ? 'Hide confirm password' : 'Hide password')
+              : (isConfirm ? 'Show confirm password' : 'Show password')
+          );
+          pwValidation.updateSubmitState();
+        });
+      });
+    </script>
+  </body>
+  </html>
+

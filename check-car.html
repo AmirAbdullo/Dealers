@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CarFox - Search</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; background: #f4f7fb; color: #0f172a; }
+    .wrap { width: min(1040px, 92%); margin: 0 auto; }
+    header { background: #fff; border-bottom: 1px solid #d9e2ec; position: sticky; top: 0; z-index: 20; }
+    .top { min-height: 64px; display: flex; align-items: center; justify-content: space-between; }
+    .logo { font-size: 1.4rem; font-weight: 800; text-decoration: none; color: #0f172a; }
+    .logo span { color: #ea580c; }
+    nav a { text-decoration: none; color: #64748b; margin-left: 10px; font-weight: 600; }
+
+    .page { padding: 20px 0 28px; }
+    .title { margin: 0 0 12px; font-size: 1.6rem; }
+    .top-tabs {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .top-tab {
+      border: 1px solid #d9e2ec;
+      background: #fff;
+      border-radius: 12px;
+      padding: 12px;
+      font-weight: 700;
+      color: #334155;
+      text-align: center;
+      cursor: pointer;
+    }
+    .top-tab.active {
+      border-color: #fb923c;
+      color: #ea580c;
+      background: #fff7ed;
+    }
+
+    .panel {
+      background: #fff;
+      border: 1px solid #d9e2ec;
+      border-radius: 14px;
+      padding: 16px;
+    }
+    .section-title { margin: 0 0 8px; font-size: 1.15rem; }
+    .section-note { margin: 0 0 12px; color: #64748b; }
+    .search-input {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 12px;
+      font: inherit;
+      margin-bottom: 14px;
+    }
+
+    .brands-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 10px;
+    }
+    .brand-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      background: #fff;
+      padding: 10px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .brand-card:hover {
+      border-color: #fb923c;
+      box-shadow: 0 4px 14px rgba(234, 88, 12, 0.12);
+    }
+    .brand-card:focus {
+      outline: 2px solid #ea580c;
+      outline-offset: 2px;
+    }
+    .brand-logo-wrap {
+      width: 44px;
+      height: 44px;
+      margin: 0 auto 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .brand-logo {
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+      display: block;
+    }
+    .brand-fallback {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #ea580c, #fb923c);
+      color: #fff;
+      font-weight: 800;
+      font-size: 1rem;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    .brand-name {
+      margin: 0;
+      font-size: 0.88rem;
+      color: #334155;
+      font-weight: 700;
+    }
+
+    .placeholder {
+      display: none;
+      border: 1px dashed #cbd5e1;
+      border-radius: 12px;
+      padding: 18px;
+      color: #64748b;
+      background: #f8fafc;
+      font-weight: 600;
+      text-align: center;
+    }
+    .placeholder.show { display: block; }
+    .hidden { display: none; }
+
+    .models-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .back-brands {
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      border-radius: 10px;
+      padding: 8px 12px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      color: #334155;
+    }
+    .back-brands:hover { border-color: #ea580c; color: #ea580c; }
+    .models-brand-title {
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 800;
+      flex: 1;
+      min-width: 0;
+    }
+    .models-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 8px;
+    }
+    .model-chip {
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: #f8fafc;
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: #0f172a;
+      cursor: pointer;
+      text-align: center;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .model-chip:hover {
+      background: #fff7ed;
+      border-color: #fed7aa;
+      color: #c2410c;
+    }
+
+    @media (max-width: 760px) {
+      .top-tabs { grid-template-columns: 1fr; }
+      .brands-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      nav { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap top">
+      <a class="logo" href="index.html">Car<span>Fox</span></a>
+      <nav>
+        <a href="index.html">Home</a>
+        <a href="check-car.html">Check</a>
+        <a href="report.html">Report</a>
+        <a href="pricing.html">Pricing</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap page">
+    <h1 class="title">Search Cars</h1>
+
+    <section class="top-tabs" aria-label="Search sections">
+      <button class="top-tab active" data-tab="make-model" type="button">Make&Model</button>
+      <button class="top-tab" data-tab="body-style" type="button">Body Style</button>
+      <button class="top-tab" data-tab="recent-activity" type="button">Recent activity</button>
+    </section>
+
+    <section class="panel" id="make-model-panel">
+      <h2 class="section-title">Make&Model</h2>
+      <p class="section-note" id="make-model-note">Search and choose a car brand.</p>
+
+      <div id="brand-list-view">
+        <input id="brand-search" class="search-input" type="text" placeholder="Search brands (Toyota, BMW, Kia...)" />
+        <div class="brands-grid" id="brands-grid">
+          <article class="brand-card" data-name="Toyota" tabindex="0" role="button" aria-label="Toyota models"><div class="brand-logo-wrap"><img class="brand-logo" src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/toyota.svg" alt="" /><span class="brand-fallback" aria-hidden="true">T</span></div><p class="brand-name">Toyota</p></article>
+          <article class="brand-card" data-name="Nissan" tabindex="0" role="button" aria-label="Nissan models"><div class="brand-logo-wrap"><img class="brand-logo" src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/nissan.svg" alt="" /><span class="brand-fallback" aria-hidden="true">N</span></div><p class="brand-name">Nissan</p></article>
+          <article class="brand-card" data-name="Hyundai" tabindex="0" role="button" aria-label="Hyundai models"><div class="brand-logo-wrap"><img class="brand-logo" src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/hyundai.svg" alt="" /><span class="brand-fallback" aria-hidden="true">H</span></div><p class="brand-name">Hyundai</p></article>
+          <article class="brand-card" data-name="Kia" tabindex="0" role="button" aria-label="Kia models"><div class="brand-logo-wrap"><img class="brand-logo" src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/kia.svg" alt="" /><span class="brand-fallback" aria-hidden="true">K</span></div><p class="brand-name">Kia</p></article>
+          <article class="brand-card" data-name="BMW" tabindex="0" role="button" aria-label="BMW models"><div class="brand-logo-wrap"><img class="brand-logo" src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/bmw.svg" alt="" /><span class="brand-fallback" aria-hidden="true">B</span></div><p class="brand-name">BMW</p></article>
+          <article class="brand-card" data-name="Mercedes" tabindex="0" role="button" aria-label="Mercedes models"><div class="brand-logo-wrap"><img class="brand-logo" src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/mercedes.svg" alt="" /><span class="brand-fallback" aria-hidden="true">M</span></div><p class="brand-name">Mercedes</p></article>
+          <article class="brand-card" data-name="Audi" tabindex="0" role="button" aria-label="Audi models"><div class="brand-logo-wrap"><img class="brand-logo" src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/audi.svg" alt="" /><span class="brand-fallback" aria-hidden="true">A</span></div><p class="brand-name">Audi</p></article>
+          <article class="brand-card" data-name="Chevrolet" tabindex="0" role="button" aria-label="Chevrolet models"><div class="brand-logo-wrap"><img class="brand-logo" src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/chevrolet.svg" alt="" /><span class="brand-fallback" aria-hidden="true">C</span></div><p class="brand-name">Chevrolet</p></article>
+          <article class="brand-card" data-name="Ford" tabindex="0" role="button" aria-label="Ford models"><div class="brand-logo-wrap"><img class="brand-logo" src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/ford.svg" alt="" /><span class="brand-fallback" aria-hidden="true">F</span></div><p class="brand-name">Ford</p></article>
+          <article class="brand-card" data-name="Honda" tabindex="0" role="button" aria-label="Honda models"><div class="brand-logo-wrap"><img class="brand-logo" src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/honda.svg" alt="" /><span class="brand-fallback" aria-hidden="true">H</span></div><p class="brand-name">Honda</p></article>
+          <article class="brand-card" data-name="Mazda" tabindex="0" role="button" aria-label="Mazda models"><div class="brand-logo-wrap"><img class="brand-logo" src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/mazda.svg" alt="" /><span class="brand-fallback" aria-hidden="true">M</span></div><p class="brand-name">Mazda</p></article>
+          <article class="brand-card" data-name="Lexus" tabindex="0" role="button" aria-label="Lexus models"><div class="brand-logo-wrap"><img class="brand-logo" src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/lexus.svg" alt="" /><span class="brand-fallback" aria-hidden="true">L</span></div><p class="brand-name">Lexus</p></article>
+        </div>
+      </div>
+
+      <div id="model-list-view" class="hidden">
+        <div class="models-toolbar">
+          <button type="button" class="back-brands" id="back-to-brands">All brands</button>
+          <h3 class="models-brand-title" id="selected-brand-title">Brand</h3>
+        </div>
+        <input id="model-search" class="search-input" type="text" placeholder="Filter models..." />
+        <div class="models-grid" id="models-grid"></div>
+      </div>
+    </section>
+
+    <section class="placeholder" id="body-style-panel">Body Style section is ready. We can add SUV/Sedan/Hatchback cards next.</section>
+    <section class="placeholder" id="recent-activity-panel">Recent activity section is ready. We can add viewed cars and recent searches next.</section>
+  </main>
+
+  <script>
+    (function () {
+      var BRAND_MODELS = {
+        Toyota: ['Camry', 'Corolla', 'RAV4', 'Highlander', 'Land Cruiser', 'Yaris', 'Prius', 'Avalon', 'C-HR', 'Venza', '4Runner', 'Sequoia', 'Tacoma', 'Tundra', 'Sienna', 'GR86', 'Supra', 'bZ4X'],
+        Nissan: ['Altima', 'Sentra', 'Versa', 'Maxima', 'Leaf', 'Rogue', 'Rogue Sport', 'Murano', 'Pathfinder', 'Armada', 'Kicks', 'Frontier', 'Titan', 'Z', 'GT-R', 'Ariya'],
+        Hyundai: ['Accent', 'Elantra', 'Sonata', 'Ioniq 5', 'Ioniq 6', 'Venue', 'Kona', 'Tucson', 'Santa Fe', 'Palisade', 'Santa Cruz', 'Nexo'],
+        Kia: ['Rio', 'Forte', 'K5', 'Stinger', 'Soul', 'Seltos', 'Sportage', 'Sorento', 'Telluride', 'Carnival', 'EV6', 'EV9', 'Niro'],
+        BMW: ['2 Series', '3 Series', '4 Series', '5 Series', '7 Series', '8 Series', 'X1', 'X2', 'X3', 'X4', 'X5', 'X6', 'X7', 'XM', 'i4', 'i5', 'i7', 'iX'],
+        Mercedes: ['A-Class', 'C-Class', 'E-Class', 'S-Class', 'CLA', 'CLS', 'GLA', 'GLB', 'GLC', 'GLE', 'GLS', 'G-Class', 'EQB', 'EQE', 'EQS', 'AMG GT'],
+        Audi: ['A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'Q3', 'Q4 e-tron', 'Q5', 'Q7', 'Q8', 'e-tron GT', 'RS3', 'RS5', 'RS6', 'RS7'],
+        Chevrolet: ['Spark', 'Malibu', 'Camaro', 'Corvette', 'Trax', 'Trailblazer', 'Equinox', 'Blazer', 'Tahoe', 'Suburban', 'Silverado', 'Colorado', 'Bolt EUV'],
+        Ford: ['Mustang', 'Mustang Mach-E', 'Bronco', 'Bronco Sport', 'Escape', 'Edge', 'Explorer', 'Expedition', 'F-150', 'F-150 Lightning', 'Ranger', 'Maverick', 'Transit'],
+        Honda: ['Civic', 'Accord', 'Insight', 'HR-V', 'CR-V', 'Passport', 'Pilot', 'Odyssey', 'Ridgeline', 'Prologue'],
+        Mazda: ['Mazda2', 'Mazda3', 'Mazda6', 'CX-3', 'CX-30', 'CX-5', 'CX-50', 'CX-70', 'CX-90', 'MX-5 Miata'],
+        Lexus: ['IS', 'ES', 'LS', 'LC', 'RC', 'UX', 'NX', 'RX', 'GX', 'LX', 'RZ']
+      };
+
+      var tabs = document.querySelectorAll('.top-tab');
+      var makeModelPanel = document.getElementById('make-model-panel');
+      var bodyStylePanel = document.getElementById('body-style-panel');
+      var recentActivityPanel = document.getElementById('recent-activity-panel');
+      var brandListView = document.getElementById('brand-list-view');
+      var modelListView = document.getElementById('model-list-view');
+      var makeModelNote = document.getElementById('make-model-note');
+      var selectedBrandTitle = document.getElementById('selected-brand-title');
+      var modelsGrid = document.getElementById('models-grid');
+      var modelSearch = document.getElementById('model-search');
+      var backToBrands = document.getElementById('back-to-brands');
+      var currentBrand = null;
+      var currentModels = [];
+
+      function setActiveTab(tabId) {
+        tabs.forEach(function (tab) {
+          tab.classList.toggle('active', tab.getAttribute('data-tab') === tabId);
+        });
+        makeModelPanel.classList.toggle('hidden', tabId !== 'make-model');
+        bodyStylePanel.classList.toggle('show', tabId === 'body-style');
+        recentActivityPanel.classList.toggle('show', tabId === 'recent-activity');
+      }
+
+      tabs.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+          setActiveTab(this.getAttribute('data-tab'));
+        });
+      });
+
+      var brandSearch = document.getElementById('brand-search');
+      var brandCards = document.querySelectorAll('.brand-card');
+      brandSearch.addEventListener('input', function () {
+        var query = brandSearch.value.trim().toLowerCase();
+        brandCards.forEach(function (card) {
+          var name = (card.getAttribute('data-name') || '').toLowerCase();
+          card.style.display = !query || name.indexOf(query) !== -1 ? '' : 'none';
+        });
+      });
+
+      document.querySelectorAll('.brand-logo').forEach(function (img) {
+        img.addEventListener('error', function () {
+          img.style.display = 'none';
+          var fb = img.parentElement && img.parentElement.querySelector('.brand-fallback');
+          if (fb) fb.style.display = 'flex';
+        });
+      });
+
+      function renderModels(filter) {
+        var q = (filter || '').trim().toLowerCase();
+        modelsGrid.innerHTML = '';
+        currentModels.forEach(function (modelName) {
+          if (q && modelName.toLowerCase().indexOf(q) === -1) return;
+          var chip = document.createElement('button');
+          chip.type = 'button';
+          chip.className = 'model-chip';
+          chip.textContent = modelName;
+          chip.addEventListener('click', function () {
+            window.location.href = 'report.html?brand=' + encodeURIComponent(currentBrand) + '&model=' + encodeURIComponent(modelName);
+          });
+          modelsGrid.appendChild(chip);
+        });
+      }
+
+      function openBrand(brandName) {
+        var models = BRAND_MODELS[brandName];
+        if (!models || !models.length) return;
+        currentBrand = brandName;
+        currentModels = models.slice();
+        selectedBrandTitle.textContent = brandName;
+        modelSearch.value = '';
+        makeModelNote.textContent = 'Pick a model for ' + brandName + '.';
+        brandListView.classList.add('hidden');
+        modelListView.classList.remove('hidden');
+        renderModels('');
+        modelSearch.focus();
+      }
+
+      function closeBrand() {
+        currentBrand = null;
+        currentModels = [];
+        makeModelNote.textContent = 'Search and choose a car brand.';
+        modelListView.classList.add('hidden');
+        brandListView.classList.remove('hidden');
+      }
+
+      brandCards.forEach(function (card) {
+        function activate() {
+          var name = card.getAttribute('data-name');
+          if (name) openBrand(name);
+        }
+        card.addEventListener('click', activate);
+        card.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            activate();
+          }
+        });
+      });
+
+      backToBrands.addEventListener('click', closeBrand);
+
+      modelSearch.addEventListener('input', function () {
+        renderModels(modelSearch.value);
+      });
+    })();
+  </script>
+</body>
+</html>

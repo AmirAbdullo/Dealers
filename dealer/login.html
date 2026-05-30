@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CarFox — Dealer Login</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] }
+          }
+        }
+      }
+    </script>
+  </head>
+  <body class="bg-white text-gray-900 font-sans pb-20 md:pb-0">
+    <main class="min-h-screen flex items-start justify-center px-4 sm:px-6 lg:px-8 py-10">
+      <div class="w-full max-w-md">
+        <header class="mb-6">
+          <div class="text-2xl font-extrabold tracking-tight">
+            <span class="text-blue-700">Car</span><span class="text-orange-500">Fox</span>
+          </div>
+          <h1 class="mt-2 text-xl font-semibold">Dealer Login</h1>
+          <p class="mt-1 text-sm text-gray-600">Sign in to manage your inventory.</p>
+        </header>
+
+        <div id="alertError" class="hidden mb-4 rounded-lg border border-red-200 bg-red-50 text-red-800 text-sm p-3"></div>
+        <div id="alertInfo" class="hidden mb-4 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 text-sm p-4"></div>
+        <div id="roleError" class="hidden mb-4 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 text-sm p-4"></div>
+
+        <section class="bg-white border border-gray-200 rounded-xl shadow-sm p-5 sm:p-6">
+          <form id="loginForm" class="space-y-4">
+            <div>
+              <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+              <input id="email" name="email" type="email" autocomplete="email" required
+                     class="mt-1 block w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+            </div>
+            <div>
+              <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+              <div class="relative mt-1">
+                <input id="password" name="password" type="password" autocomplete="current-password" required
+                       class="block w-full px-3 py-2 pr-10 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                <button type="button" class="password-toggle absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none" aria-label="Show password">
+                  <span class="password-toggle-eye" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></span>
+                  <span class="password-toggle-eye-off hidden" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21"/></svg></span>
+                </button>
+              </div>
+            </div>
+
+            <button id="submitBtn" type="submit"
+                    class="w-full inline-flex items-center justify-center rounded-lg bg-blue-700 hover:bg-blue-800 text-white font-semibold px-4 py-3 transition">
+              Sign In
+            </button>
+          </form>
+        </section>
+
+        <p class="mt-4 text-sm text-gray-600">
+          New to CarFox?
+          <a href="/dealer/signup.html" class="text-blue-700 font-semibold hover:underline">Apply to become a dealer</a>
+        </p>
+
+        <div class="border-t border-gray-200 my-4"></div>
+        <a href="/buyer/login.html" class="block text-center text-sm text-gray-600 hover:text-blue-700">
+          Looking to buy a car? <span class="text-blue-700 font-medium">Sign in here</span>
+        </a>
+      </div>
+    </main>
+
+    <nav class="fixed bottom-0 left-0 right-0 md:hidden border-t border-gray-200 bg-white h-16" style="padding-bottom: env(safe-area-inset-bottom);">
+      <div class="mx-auto max-w-7xl grid grid-cols-4 h-full">
+        <a href="/index.html" class="flex flex-col items-center justify-center text-gray-600 hover:text-gray-900">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 3.172 2.25 10.5V21h6.75v-6h6v6h6V10.5L12 3.172z"/>
+          </svg>
+          <span class="text-[11px] leading-tight mt-1">Home</span>
+        </a>
+        <a href="/cars.html" class="flex flex-col items-center justify-center text-gray-600 hover:text-gray-900">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10.5 3a7.5 7.5 0 0 1 5.3 12.8l4.2 4.2-1.4 1.4-4.2-4.2A7.5 7.5 0 1 1 10.5 3zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11z"/>
+          </svg>
+          <span class="text-[11px] leading-tight mt-1">Browse</span>
+        </a>
+        <a href="/saved.html" class="flex flex-col items-center justify-center text-gray-600 hover:text-gray-900">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 21s-6.7-4.9-9.3-7.6C.7 11.4.5 8.5 2.2 6.8 3.3 5.7 4.8 5.3 6.2 5.6c.9.2 1.8.8 2.5 1.5.7-.7 1.6-1.3 2.5-1.5 1.4-.3 2.9.1 4 1.2 1.7 1.7 1.5 4.6-.5 6.6C18.7 16.1 12 21 12 21z"/>
+          </svg>
+          <span class="text-[11px] leading-tight mt-1">Saved</span>
+        </a>
+        <a href="/dealer/login.html" data-nav="account" class="flex flex-col items-center justify-center text-blue-700">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5zm0 2c-4.4 0-8 2.2-8 5v3h16v-3c0-2.8-3.6-5-8-5z"/>
+          </svg>
+          <span class="text-[11px] leading-tight mt-1">Account</span>
+        </a>
+      </div>
+    </nav>
+
+    <script src="/js/carfox-auth.js"></script>
+    <script>
+      if (window.CarfoxAuth) CarfoxAuth.applyAccountNavRouting();
+
+      const form = document.getElementById('loginForm');
+      const btn = document.getElementById('submitBtn');
+      const alertError = document.getElementById('alertError');
+      const alertInfo = document.getElementById('alertInfo');
+      const roleError = document.getElementById('roleError');
+
+      function showText(el, message) {
+        el.textContent = message;
+        el.classList.remove('hidden');
+      }
+      function showHtml(el, html) {
+        el.innerHTML = html;
+        el.classList.remove('hidden');
+      }
+      function hide(el) {
+        el.classList.add('hidden');
+        el.textContent = '';
+        el.innerHTML = '';
+      }
+      function clearAlerts() {
+        hide(alertError);
+        hide(alertInfo);
+        hide(roleError);
+      }
+
+      form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        clearAlerts();
+
+        const email = form.email.value.trim();
+        const password = form.password.value;
+
+        btn.disabled = true;
+        const originalText = btn.textContent;
+        btn.textContent = 'Signing in...';
+        btn.classList.add('opacity-70', 'cursor-not-allowed');
+
+        try {
+          const res = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email, password: password })
+          });
+          const body = await res.json().catch(function () { return {}; });
+
+          if (res.status === 200 && body.token) {
+            const role = body.user && body.user.role;
+            if (role === 'buyer') {
+              showHtml(
+                roleError,
+                '<p class="font-medium">This account is a buyer account.</p>' +
+                '<p class="mt-2"><a href="/buyer/login.html" class="text-blue-700 font-semibold underline hover:text-blue-800">Sign in to your buyer account →</a></p>'
+              );
+              return;
+            }
+            try {
+              localStorage.setItem('carfox_token', body.token);
+              localStorage.setItem('carfox_user', JSON.stringify(body.user));
+            } catch (_) {}
+            let dest = '/';
+            if (role === 'admin') dest = '/admin/applications.html';
+            else if (role === 'dealer') dest = '/dealer/dashboard.html';
+            const returnTo = new URLSearchParams(window.location.search).get('returnTo');
+            if (returnTo && returnTo.startsWith('/dealer/')) dest = returnTo;
+            window.location.href = dest;
+            return;
+          }
+          if (res.status === 401) {
+            showText(alertError, 'Invalid email or password');
+            return;
+          }
+          if (res.status === 403) {
+            showText(alertInfo, body.error || 'Access denied.');
+            return;
+          }
+          showText(alertError, 'Something went wrong. Please try again.');
+        } catch (err) {
+          showText(alertError, 'Something went wrong. Please try again.');
+        } finally {
+          btn.disabled = false;
+          btn.textContent = originalText;
+          btn.classList.remove('opacity-70', 'cursor-not-allowed');
+        }
+      });
+
+      document.querySelectorAll('.password-toggle').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var wrap = btn.parentElement;
+          var input = wrap.querySelector('input');
+          var eye = btn.querySelector('.password-toggle-eye');
+          var eyeOff = btn.querySelector('.password-toggle-eye-off');
+          var show = input.type === 'password';
+          input.type = show ? 'text' : 'password';
+          eye.classList.toggle('hidden', show);
+          eyeOff.classList.toggle('hidden', !show);
+          btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+        });
+      });
+    </script>
+  </body>
+</html>

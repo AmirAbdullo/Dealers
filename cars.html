@@ -1,0 +1,1206 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CarFox — Browse Cars</title>
+    <meta name="description" content="Browse verified vehicle listings from licensed dealerships on CarFox." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] }
+          }
+        }
+      };
+    </script>
+    <style>
+      #filterPanel { transition: transform 250ms ease-out; }
+      #filterPanel.filter-panel-open { transform: translateY(0); }
+      @media (min-width: 768px) {
+        #filterPanel { transform: none !important; }
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 text-gray-900 font-sans pb-28 md:pb-0">
+    <header class="sticky top-0 z-40 bg-white border-b border-gray-200">
+      <nav class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <a href="/" class="text-xl font-extrabold tracking-tight">
+          <span class="text-blue-700">Car</span><span class="text-orange-500">Fox</span>
+        </a>
+        <div class="hidden md:flex items-center gap-6 text-sm font-medium">
+          <a href="/cars.html" class="text-gray-700 hover:text-gray-900">Browse Cars</a>
+          <a href="#" class="text-gray-700 hover:text-gray-900">How It Works</a>
+          <a href="#" class="text-gray-700 hover:text-gray-900">For Dealers</a>
+        </div>
+        <div id="desktopAuth" class="hidden md:flex items-center gap-3">
+          <a href="/buyer/login.html" class="text-gray-700 hover:text-gray-900 text-sm font-semibold">Sign In</a>
+          <a href="/dealer/signup.html" class="inline-flex items-center rounded-lg bg-blue-700 px-4 py-2 text-white text-sm font-semibold hover:bg-blue-800">Become a Dealer</a>
+        </div>
+        <button id="mobileMenuBtn" class="md:hidden inline-flex items-center justify-center rounded-md p-2 text-gray-700 hover:bg-gray-100" aria-label="Open Menu" aria-expanded="false">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+        </button>
+      </nav>
+      <div id="mobileMenu" class="md:hidden hidden border-t border-gray-200 bg-white">
+        <div class="px-4 py-3 space-y-2">
+          <a href="/cars.html" class="block text-gray-700 hover:text-gray-900 py-1.5">Browse Cars</a>
+          <a href="#" class="block text-gray-700 hover:text-gray-900 py-1.5">How It Works</a>
+          <a href="#" class="block text-gray-700 hover:text-gray-900 py-1.5">For Dealers</a>
+          <div id="mobileAuth" class="pt-2 flex items-center gap-3">
+            <a href="/buyer/login.html" class="text-gray-700 hover:text-gray-900 font-semibold">Sign In</a>
+            <a href="/dealer/signup.html" class="inline-flex items-center rounded-lg bg-blue-700 px-4 py-2 text-white font-semibold hover:bg-blue-800">Become a Dealer</a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="bg-white px-4 py-3 border-b border-gray-200">
+      <div class="mx-auto max-w-7xl">
+        <form id="topSearchForm" class="relative" role="search">
+          <button type="submit" id="topSearchBtn" aria-label="Search"
+                  class="absolute left-0 top-0 h-full flex items-center pl-4 pr-2 text-gray-400 hover:text-gray-600 focus:outline-none">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+          </button>
+          <input id="topSearchInput" type="search" enterkeyhint="search" autocomplete="off"
+                 placeholder="Search make, model, keyword..."
+                 aria-label="Search make, model, keyword"
+                 class="w-full rounded-full border border-gray-300 bg-white py-2.5 pl-11 pr-11 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+          <button type="button" id="topSearchClear" aria-label="Clear search"
+                  class="hidden absolute right-0 top-0 h-full flex items-center pr-4 pl-2 text-gray-400 hover:text-gray-600 focus:outline-none">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div class="bg-white py-6 px-4">
+      <div class="mx-auto max-w-7xl">
+        <h1 class="text-2xl md:text-3xl font-bold text-gray-900">Browse Cars</h1>
+        <p id="listingsSubtitle" class="text-sm text-gray-600 mt-1">Loading listings…</p>
+      </div>
+    </div>
+
+    <div class="sticky top-16 z-30 bg-white border-b border-gray-200 py-3 px-4">
+      <div class="mx-auto max-w-7xl flex justify-between items-center gap-3">
+        <button type="button" id="openFiltersBtn"
+                class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 4h18M7 8h10M10 12h4M12 16h0"/>
+          </svg>
+          Filters
+          <span id="filtersBtnBadge" class="hidden ml-1 rounded-full bg-blue-700 text-white text-xs px-1.5 py-0.5"></span>
+        </button>
+        <label class="flex items-center gap-2 text-sm text-gray-700">
+          <span class="hidden sm:inline text-gray-500">Sort</span>
+          <select id="sortSelect" class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none">
+            <option value="newest">Newest first</option>
+            <option value="price_asc">Price: Low to High</option>
+            <option value="price_desc">Price: High to Low</option>
+            <option value="mileage_asc">Mileage: Low to High</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <div id="filterChipsWrap" class="hidden px-4 pt-3 bg-white border-b border-gray-100">
+      <div class="mx-auto max-w-7xl flex gap-2 overflow-x-auto pb-3 items-center" id="filterChips"></div>
+    </div>
+
+    <div class="md:flex md:max-w-7xl md:mx-auto md:items-start">
+      <!-- Filter backdrop (mobile) -->
+      <div id="filterBackdrop" class="fixed inset-0 bg-black/50 z-40 hidden md:hidden" aria-hidden="true"></div>
+
+      <!-- Filter panel -->
+      <div id="filterPanel"
+           class="fixed bottom-0 left-0 right-0 z-50 max-h-[90vh] flex flex-col bg-white rounded-t-2xl translate-y-full md:static md:z-auto md:max-h-[calc(100vh-5rem)] md:w-80 md:shrink-0 md:translate-y-0 md:rounded-none md:border-r md:border-gray-200 md:hidden">
+        <div class="px-4 py-3 border-b flex items-center justify-between sticky top-0 bg-white rounded-t-2xl md:rounded-none z-10">
+          <button type="button" id="sheetClearAll" class="text-sm text-blue-700 font-medium hidden">Clear all</button>
+          <h2 class="font-bold text-lg flex-1 text-center">Filters</h2>
+          <button type="button" id="closeFiltersBtn" class="p-2 text-gray-500 hover:text-gray-900 md:hidden" aria-label="Close filters">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+          <span class="hidden md:block w-16"></span>
+        </div>
+
+        <div id="filterSheetBody" class="flex-1 overflow-y-auto px-4 py-4 space-y-6">
+          <section>
+            <h3 class="text-sm font-semibold text-gray-900 mb-3">Make</h3>
+            <div id="makeCheckboxes" class="grid grid-cols-2 gap-2"></div>
+            <button type="button" id="showAllMakesBtn" class="mt-2 text-sm text-blue-700 font-medium hidden">Show all</button>
+          </section>
+
+          <section id="modelSection" class="hidden">
+            <h3 class="text-sm font-semibold text-gray-900 mb-3">Model</h3>
+            <div id="modelCheckboxes" class="grid grid-cols-2 gap-2"></div>
+          </section>
+
+          <section>
+            <h3 class="text-sm font-semibold text-gray-900 mb-3">Price (EGP)</h3>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="text-xs text-gray-500">Min</label>
+                <input id="minPriceInput" type="text" inputmode="numeric" placeholder="0"
+                       class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label class="text-xs text-gray-500">Max</label>
+                <input id="maxPriceInput" type="text" inputmode="numeric" placeholder="Any"
+                       class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+              </div>
+            </div>
+            <p id="priceHelper" class="mt-2 text-xs text-gray-500"></p>
+          </section>
+
+          <section>
+            <h3 class="text-sm font-semibold text-gray-900 mb-3">Year</h3>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="text-xs text-gray-500">From</label>
+                <select id="minYearSelect" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white">
+                  <option value="">Any</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500">To</label>
+                <select id="maxYearSelect" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white">
+                  <option value="">Any</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <h3 class="text-sm font-semibold text-gray-900 mb-3">Mileage</h3>
+            <label class="text-xs text-gray-500">Maximum mileage (km)</label>
+            <input id="maxMileageInput" type="text" inputmode="numeric" placeholder=""
+                   class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+            <p class="mt-1 text-xs text-gray-500">e.g. 100,000</p>
+          </section>
+
+          <section>
+            <h3 class="text-sm font-semibold text-gray-900 mb-3">Body Type</h3>
+            <div id="bodyTypeCheckboxes" class="grid grid-cols-2 gap-2"></div>
+          </section>
+
+          <section>
+            <h3 class="text-sm font-semibold text-gray-900 mb-3">Transmission</h3>
+            <div id="transmissionRadios" class="space-y-2"></div>
+          </section>
+
+          <section>
+            <h3 class="text-sm font-semibold text-gray-900 mb-3">Fuel Type</h3>
+            <div id="fuelTypeCheckboxes" class="grid grid-cols-2 gap-2"></div>
+          </section>
+
+          <section>
+            <h3 class="text-sm font-semibold text-gray-900 mb-3">Governorate (المحافظة)</h3>
+            <div id="cityCheckboxes" class="grid grid-cols-2 gap-2"></div>
+            <button type="button" id="showAllCitiesBtn" class="mt-2 text-sm text-blue-700 font-medium hidden">Show all</button>
+          </section>
+        </div>
+
+        <div class="sticky bottom-0 border-t p-4 bg-white">
+          <button type="button" id="applyFiltersBtn"
+                  class="w-full bg-blue-700 text-white py-3 rounded-lg font-semibold hover:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed">
+            Show cars
+          </button>
+        </div>
+      </div>
+
+      <main id="browseMain" class="flex-1 min-w-0 px-4 py-4 w-full">
+        <div id="vehicleGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 hidden"></div>
+        <div id="emptyState" class="hidden text-center py-16">
+          <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-16 w-16 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8 17h8M6 11h12l-1-4H7l-1 4zM5 11l1.5-6h11L19 11"/>
+            <circle cx="7.5" cy="17.5" r="1.5" fill="currentColor" stroke="none"/>
+            <circle cx="16.5" cy="17.5" r="1.5" fill="currentColor" stroke="none"/>
+          </svg>
+          <p id="emptyTitle" class="mt-4 text-lg font-semibold text-gray-900">No listings yet</p>
+          <p id="emptySub" class="mt-2 text-sm text-gray-600">Check back soon — dealers are adding inventory daily.</p>
+        </div>
+        <div id="loadMoreWrap" class="hidden mt-6 text-center">
+          <button type="button" id="loadMoreBtn" class="border border-gray-300 text-blue-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-50">Load More</button>
+        </div>
+      </main>
+    </div>
+
+    <nav class="fixed bottom-0 left-0 right-0 z-[100] md:hidden border-t border-gray-200 bg-white h-16" style="padding-bottom: env(safe-area-inset-bottom);">
+      <div class="mx-auto max-w-7xl grid grid-cols-4 h-full">
+        <a href="/index.html" class="flex flex-col items-center justify-center text-gray-600 hover:text-gray-900">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.172 2.25 10.5V21h6.75v-6h6v6h6V10.5L12 3.172z"/></svg>
+          <span class="text-[11px] leading-tight mt-1">Home</span>
+        </a>
+        <a href="/cars.html" class="flex flex-col items-center justify-center text-blue-700">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M10.5 3a7.5 7.5 0 0 1 5.3 12.8l4.2 4.2-1.4 1.4-4.2-4.2A7.5 7.5 0 1 1 10.5 3zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11z"/></svg>
+          <span class="text-[11px] leading-tight mt-1">Browse</span>
+        </a>
+        <a href="/buyer/inbox.html" class="relative flex flex-col items-center justify-center text-gray-600 hover:text-gray-900">
+          <span class="relative inline-flex">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 0 1-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+            </svg>
+            <span data-messages-unread-dot class="hidden absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-red-500" aria-hidden="true"></span>
+          </span>
+          <span class="text-[11px] leading-tight mt-1">Messages</span>
+        </a>
+        <a href="/buyer/login.html" data-nav="account" class="flex flex-col items-center justify-center text-gray-600 hover:text-gray-900">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5zm0 2c-4.4 0-8 2.2-8 5v3h16v-3c0-2.8-3.6-5-8-5z"/></svg>
+          <span class="text-[11px] leading-tight mt-1">Account</span>
+        </a>
+      </div>
+    </nav>
+
+    <script src="/js/carfox-auth.js"></script>
+    <script src="/js/carfox-buyer-nav.js"></script>
+    <script>
+      if (window.CarfoxBuyerNav) CarfoxBuyerNav.initMessagesUnreadBadge();
+      (function () {
+        const PAGE_LIMIT = 24;
+        const DEBOUNCE_MS = 300;
+        const TRANSMISSION_OPTIONS = ['Any', 'Automatic', 'Manual', 'CVT', 'Semi-Automatic'];
+
+        const vehicleGrid = document.getElementById('vehicleGrid');
+        const emptyState = document.getElementById('emptyState');
+        const emptyTitle = document.getElementById('emptyTitle');
+        const emptySub = document.getElementById('emptySub');
+        const listingsSubtitle = document.getElementById('listingsSubtitle');
+        const sortSelect = document.getElementById('sortSelect');
+        const loadMoreWrap = document.getElementById('loadMoreWrap');
+        const loadMoreBtn = document.getElementById('loadMoreBtn');
+        const filterPanel = document.getElementById('filterPanel');
+        const filterBackdrop = document.getElementById('filterBackdrop');
+        const openFiltersBtn = document.getElementById('openFiltersBtn');
+        const closeFiltersBtn = document.getElementById('closeFiltersBtn');
+        const applyFiltersBtn = document.getElementById('applyFiltersBtn');
+        const sheetClearAll = document.getElementById('sheetClearAll');
+        const filterChipsWrap = document.getElementById('filterChipsWrap');
+        const filterChips = document.getElementById('filterChips');
+        const filtersBtnBadge = document.getElementById('filtersBtnBadge');
+
+        if (window.CarfoxAuth) CarfoxAuth.initBuyerNav();
+
+        const minPriceInput = document.getElementById('minPriceInput');
+        const maxPriceInput = document.getElementById('maxPriceInput');
+        const priceHelper = document.getElementById('priceHelper');
+        const minYearSelect = document.getElementById('minYearSelect');
+        const maxYearSelect = document.getElementById('maxYearSelect');
+        const maxMileageInput = document.getElementById('maxMileageInput');
+
+        let filterOptions = null;
+        let modelsForMake = [];
+        let showAllMakes = false;
+        let showAllCities = false;
+
+        let total = 0;
+        let previewCount = 0;
+        let offset = 0;
+        let loading = false;
+        let countLoading = false;
+        let sort = 'newest';
+        let debounceTimer = null;
+        let countAbort = null;
+        let savedIds = new Set();
+        let buyerToken = null;
+
+        const filters = {
+          make: [],
+          model: '',
+          body_type: [],
+          city: [],
+          fuel_type: [],
+          transmission: '',
+          min_price: null,
+          max_price: null,
+          min_year: null,
+          max_year: null,
+          max_mileage: null,
+          q: ''
+        };
+
+        function emptyFilters() {
+          return {
+            make: [],
+            model: '',
+            body_type: [],
+            city: [],
+            fuel_type: [],
+            transmission: '',
+            min_price: null,
+            max_price: null,
+            min_year: null,
+            max_year: null,
+            max_mileage: null,
+            q: ''
+          };
+        }
+
+        function hasActiveFilters() {
+          return (
+            filters.make.length > 0 ||
+            filters.model ||
+            filters.body_type.length > 0 ||
+            filters.city.length > 0 ||
+            filters.fuel_type.length > 0 ||
+            filters.transmission ||
+            filters.min_price != null ||
+            filters.max_price != null ||
+            filters.min_year != null ||
+            filters.max_year != null ||
+            filters.max_mileage != null ||
+            !!filters.q
+          );
+        }
+
+        function activeFilterCount() {
+          let n = 0;
+          if (filters.make.length) n += filters.make.length;
+          if (filters.model) n += 1;
+          if (filters.body_type.length) n += filters.body_type.length;
+          if (filters.city.length) n += filters.city.length;
+          if (filters.fuel_type.length) n += filters.fuel_type.length;
+          if (filters.transmission) n += 1;
+          if (filters.min_price != null) n += 1;
+          if (filters.max_price != null) n += 1;
+          if (filters.min_year != null) n += 1;
+          if (filters.max_year != null) n += 1;
+          if (filters.max_mileage != null) n += 1;
+          return n;
+        }
+
+        function escapeHtml(str) {
+          return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+        }
+
+        function digitsOnlyString(s) {
+          return String(s).replace(/[^\d]/g, '');
+        }
+
+        function parseDollarInput(el) {
+          const raw = el.value.replace(/,/g, '').trim();
+          if (!raw) return null;
+          const n = parseInt(raw, 10);
+          return isNaN(n) ? null : n;
+        }
+
+        function setFormattedNumberInput(inputEl, plainNumber) {
+          if (plainNumber == null || plainNumber === '') {
+            inputEl.value = '';
+            return;
+          }
+          inputEl.value = Number(plainNumber).toLocaleString('en-EG');
+        }
+
+        function attachFormattedNumberInput(inputEl, onChange) {
+          inputEl.addEventListener('focus', function () {
+            inputEl.value = inputEl.value.replace(/,/g, '');
+          });
+          inputEl.addEventListener('input', function () {
+            const next = digitsOnlyString(inputEl.value);
+            if (inputEl.value !== next) inputEl.value = next;
+            if (onChange) onChange();
+          });
+          inputEl.addEventListener('blur', function () {
+            const raw = inputEl.value.replace(/,/g, '').trim();
+            if (raw) setFormattedNumberInput(inputEl, parseInt(raw, 10));
+            if (onChange) onChange();
+          });
+        }
+
+        function centsToDollars(cents) {
+          return Math.floor(Number(cents) / 100);
+        }
+
+        function filtersToParams(forCountOnly, listOffset) {
+          const p = new URLSearchParams();
+          if (!forCountOnly) {
+            p.set('limit', String(PAGE_LIMIT));
+            p.set('offset', String(listOffset != null ? listOffset : offset));
+            p.set('sort', sort);
+          }
+          if (filters.make.length) p.set('make', filters.make.join(','));
+          if (filters.model && filters.make.length === 1) p.set('model', filters.model);
+          if (filters.body_type.length) p.set('body_type', filters.body_type.join(','));
+          if (filters.city.length) p.set('city', filters.city.join(','));
+          if (filters.fuel_type.length) p.set('fuel_type', filters.fuel_type.join(','));
+          if (filters.transmission) p.set('transmission', filters.transmission);
+          if (filters.min_price != null) p.set('min_price', String(filters.min_price));
+          if (filters.max_price != null) p.set('max_price', String(filters.max_price));
+          if (filters.min_year != null) p.set('min_year', String(filters.min_year));
+          if (filters.max_year != null) p.set('max_year', String(filters.max_year));
+          if (filters.max_mileage != null) p.set('max_mileage', String(filters.max_mileage));
+          if (filters.q) p.set('q', filters.q);
+          return p;
+        }
+
+        function syncUrlFromFilters() {
+          const p = filtersToParams(true);
+          p.set('sort', sort);
+          const qs = p.toString();
+          const path = window.location.pathname;
+          history.replaceState(null, '', qs ? path + '?' + qs : path);
+        }
+
+        function parseFiltersFromUrl() {
+          const p = new URLSearchParams(window.location.search);
+          const next = emptyFilters();
+          if (p.has('make')) next.make = p.get('make').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+          if (p.has('model')) next.model = p.get('model').trim();
+          if (p.has('body_type')) next.body_type = p.get('body_type').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+          if (p.has('city')) next.city = p.get('city').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+          if (p.has('fuel_type')) next.fuel_type = p.get('fuel_type').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+          if (p.has('transmission')) next.transmission = p.get('transmission').trim();
+          if (p.has('min_price')) next.min_price = parseInt(p.get('min_price'), 10);
+          if (p.has('max_price')) next.max_price = parseInt(p.get('max_price'), 10);
+          if (p.has('min_year')) next.min_year = parseInt(p.get('min_year'), 10);
+          if (p.has('max_year')) next.max_year = parseInt(p.get('max_year'), 10);
+          if (p.has('max_mileage')) next.max_mileage = parseInt(p.get('max_mileage'), 10);
+          if (p.has('q')) next.q = p.get('q').trim();
+          if (p.has('sort')) sort = p.get('sort');
+          Object.assign(filters, next);
+          if (filters.make.length !== 1) filters.model = '';
+          sortSelect.value = PUBLIC_CARS_SORT_SAFE();
+        }
+
+        function PUBLIC_CARS_SORT_SAFE() {
+          const allowed = { newest: 1, price_asc: 1, price_desc: 1, mileage_asc: 1 };
+          return allowed[sort] ? sort : 'newest';
+        }
+
+        function readFiltersFromForm() {
+          filters.min_price = parseDollarInput(minPriceInput);
+          filters.max_price = parseDollarInput(maxPriceInput);
+          filters.min_year = minYearSelect.value ? parseInt(minYearSelect.value, 10) : null;
+          filters.max_year = maxYearSelect.value ? parseInt(maxYearSelect.value, 10) : null;
+          const mileageRaw = maxMileageInput.value.replace(/,/g, '').trim();
+          filters.max_mileage = mileageRaw ? parseInt(mileageRaw, 10) : null;
+          if (isNaN(filters.max_mileage)) filters.max_mileage = null;
+        }
+
+        function syncFormFromFilters() {
+          document.querySelectorAll('input[data-filter-make]').forEach(function (el) {
+            el.checked = filters.make.indexOf(el.value) !== -1;
+          });
+          document.querySelectorAll('input[data-filter-model]').forEach(function (el) {
+            el.checked = filters.model === el.value;
+          });
+          document.querySelectorAll('input[data-filter-body]').forEach(function (el) {
+            el.checked = filters.body_type.indexOf(el.value) !== -1;
+          });
+          document.querySelectorAll('input[data-filter-city]').forEach(function (el) {
+            el.checked = filters.city.indexOf(el.value) !== -1;
+          });
+          document.querySelectorAll('input[data-filter-fuel]').forEach(function (el) {
+            el.checked = filters.fuel_type.indexOf(el.value) !== -1;
+          });
+          document.querySelectorAll('input[data-filter-trans]').forEach(function (el) {
+            el.checked = (filters.transmission || '') === el.value;
+          });
+          if (filters.min_price != null) setFormattedNumberInput(minPriceInput, filters.min_price);
+          else minPriceInput.value = '';
+          if (filters.max_price != null) setFormattedNumberInput(maxPriceInput, filters.max_price);
+          else maxPriceInput.value = '';
+          minYearSelect.value = filters.min_year != null ? String(filters.min_year) : '';
+          maxYearSelect.value = filters.max_year != null ? String(filters.max_year) : '';
+          if (filters.max_mileage != null) setFormattedNumberInput(maxMileageInput, filters.max_mileage);
+          else maxMileageInput.value = '';
+          updateModelSection();
+          updateSheetClearVisibility();
+        }
+
+        function scheduleFilterSideEffects() {
+          clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(function () {
+            readFiltersFromForm();
+            if (filters.make.length !== 1) {
+              filters.model = '';
+            }
+            syncUrlFromFilters();
+            fetchPreviewCount();
+            renderFilterChips();
+            updateSheetClearVisibility();
+          }, DEBOUNCE_MS);
+        }
+
+        function onFilterChange() {
+          scheduleFilterSideEffects();
+        }
+
+        async function fetchModelsForMake(make) {
+          if (!make) {
+            modelsForMake = [];
+            updateModelSection();
+            return;
+          }
+          try {
+            const res = await fetch('/api/cars/filter-options?make=' + encodeURIComponent(make));
+            const data = await res.json();
+            modelsForMake = data.models || [];
+          } catch (e) {
+            modelsForMake = [];
+          }
+          updateModelSection();
+        }
+
+        function updateModelSection() {
+          const section = document.getElementById('modelSection');
+          const container = document.getElementById('modelCheckboxes');
+          if (filters.make.length !== 1) {
+            section.classList.add('hidden');
+            filters.model = '';
+            return;
+          }
+          section.classList.remove('hidden');
+          container.innerHTML = '';
+          modelsForMake.forEach(function (item) {
+            const id = 'model-' + item.name.replace(/\W/g, '_');
+            const label = document.createElement('label');
+            label.className = 'flex items-center gap-2 text-sm text-gray-700';
+            label.innerHTML =
+              '<input type="radio" name="filter_model" data-filter-model class="rounded-full border-gray-300 text-blue-700" id="' + escapeHtml(id) + '" value="' + escapeHtml(item.name) + '" />' +
+              '<span>' + escapeHtml(item.name) + ' (' + item.count + ')</span>';
+            container.appendChild(label);
+            const input = label.querySelector('input');
+            input.checked = filters.model === item.name;
+            input.addEventListener('change', function () {
+              if (input.checked) filters.model = item.name;
+              else filters.model = '';
+              onFilterChange();
+            });
+          });
+          const clearLabel = document.createElement('label');
+          clearLabel.className = 'flex items-center gap-2 text-sm text-gray-700 col-span-2';
+          clearLabel.innerHTML =
+            '<input type="radio" name="filter_model" data-filter-model class="rounded-full border-gray-300 text-blue-700" value="" />' +
+            '<span>Any model</span>';
+          container.appendChild(clearLabel);
+          const anyInput = clearLabel.querySelector('input');
+          anyInput.checked = !filters.model;
+          anyInput.addEventListener('change', function () {
+            filters.model = '';
+            onFilterChange();
+          });
+        }
+
+        function renderCheckboxGrid(containerId, items, dataAttr, selected, showAllBtnId) {
+          const container = document.getElementById(containerId);
+          const showAllBtn = showAllBtnId ? document.getElementById(showAllBtnId) : null;
+          const expanded = containerId === 'makeCheckboxes' ? showAllMakes : showAllCities;
+          const defaultLimit = containerId === 'makeCheckboxes' ? 6 : (items.length > 12 ? 8 : items.length);
+          const visible = expanded || !showAllBtn ? items : items.slice(0, defaultLimit);
+
+          container.innerHTML = '';
+          visible.forEach(function (item) {
+            const id = dataAttr + '-' + item.name.replace(/\W/g, '_');
+            const label = document.createElement('label');
+            label.className = 'flex items-center gap-2 text-sm text-gray-700';
+            label.innerHTML =
+              '<input type="checkbox" ' + dataAttr + ' class="rounded border-gray-300 text-blue-700" id="' + escapeHtml(id) + '" value="' + escapeHtml(item.name) + '" />' +
+              '<span class="truncate">' + escapeHtml(item.name) + ' (' + item.count + ')</span>';
+            const input = label.querySelector('input');
+            input.checked = selected.indexOf(item.name) !== -1;
+            input.addEventListener('change', function () {
+              const arrKey = dataAttr === 'data-filter-make' ? 'make'
+                : dataAttr === 'data-filter-body' ? 'body_type'
+                : dataAttr === 'data-filter-city' ? 'city' : 'fuel_type';
+              if (input.checked) {
+                if (filters[arrKey].indexOf(item.name) === -1) filters[arrKey].push(item.name);
+              } else {
+                filters[arrKey] = filters[arrKey].filter(function (v) { return v !== item.name; });
+              }
+              if (arrKey === 'make') {
+                if (filters.make.length !== 1) filters.model = '';
+                fetchModelsForMake(filters.make.length === 1 ? filters.make[0] : null);
+              }
+              onFilterChange();
+            });
+            container.appendChild(label);
+          });
+
+          if (showAllBtn && items.length > defaultLimit) {
+            showAllBtn.classList.remove('hidden');
+            showAllBtn.textContent = expanded ? 'Show less' : 'Show all';
+          } else if (showAllBtn) {
+            showAllBtn.classList.add('hidden');
+          }
+        }
+
+        function renderTransmissionRadios() {
+          const container = document.getElementById('transmissionRadios');
+          container.innerHTML = '';
+          TRANSMISSION_OPTIONS.forEach(function (opt) {
+            const val = opt === 'Any' ? '' : opt;
+            const label = document.createElement('label');
+            label.className = 'flex items-center gap-2 text-sm text-gray-700';
+            label.innerHTML =
+              '<input type="radio" name="filter_trans" data-filter-trans class="border-gray-300 text-blue-700" value="' + escapeHtml(val) + '" />' +
+              '<span>' + escapeHtml(opt) + '</span>';
+            const input = label.querySelector('input');
+            input.checked = (filters.transmission || '') === val;
+            input.addEventListener('change', function () {
+              if (input.checked) filters.transmission = val;
+              onFilterChange();
+            });
+            container.appendChild(label);
+          });
+        }
+
+        function populateYearSelects() {
+          if (!filterOptions) return;
+          const minY = filterOptions.year_range.min;
+          const maxY = filterOptions.year_range.max;
+          [minYearSelect, maxYearSelect].forEach(function (sel) {
+            const keep = sel.value;
+            sel.innerHTML = '<option value="">Any</option>';
+            for (let y = maxY; y >= minY; y--) {
+              const opt = document.createElement('option');
+              opt.value = String(y);
+              opt.textContent = String(y);
+              sel.appendChild(opt);
+            }
+            sel.value = keep;
+          });
+        }
+
+        function buildFilterOptionsUi() {
+          if (!filterOptions) return;
+          const pr = filterOptions.price_range;
+          const minD = centsToDollars(pr.min);
+          const maxD = centsToDollars(pr.max);
+          priceHelper.textContent =
+            'Listings from ' +
+            minD.toLocaleString('en-EG') +
+            ' to ' +
+            maxD.toLocaleString('en-EG') +
+            ' EGP';
+
+          renderCheckboxGrid('makeCheckboxes', filterOptions.makes, 'data-filter-make', filters.make, 'showAllMakesBtn');
+          renderCheckboxGrid('bodyTypeCheckboxes', filterOptions.body_types, 'data-filter-body', filters.body_type, null);
+          renderCheckboxGrid('fuelTypeCheckboxes', filterOptions.fuel_types, 'data-filter-fuel', filters.fuel_type, null);
+          renderCheckboxGrid('cityCheckboxes', filterOptions.cities, 'data-filter-city', filters.city, 'showAllCitiesBtn');
+          renderTransmissionRadios();
+          populateYearSelects();
+          if (filters.make.length === 1) fetchModelsForMake(filters.make[0]);
+        }
+
+        async function loadFilterOptions() {
+          const res = await fetch('/api/cars/filter-options');
+          filterOptions = await res.json();
+          buildFilterOptionsUi();
+          syncFormFromFilters();
+        }
+
+        function updateApplyButton() {
+          if (countLoading) {
+            applyFiltersBtn.disabled = true;
+            applyFiltersBtn.textContent = 'Loading...';
+            return;
+          }
+          if (previewCount === 0) {
+            applyFiltersBtn.disabled = true;
+            applyFiltersBtn.textContent = 'No cars match';
+            return;
+          }
+          applyFiltersBtn.disabled = false;
+          applyFiltersBtn.textContent = 'Show ' + previewCount.toLocaleString('en-US') + ' car' + (previewCount === 1 ? '' : 's');
+        }
+
+        async function fetchPreviewCount() {
+          if (countAbort) countAbort.abort();
+          countAbort = new AbortController();
+          const signal = countAbort.signal;
+          countLoading = true;
+          updateApplyButton();
+          readFiltersFromForm();
+          const p = filtersToParams(true);
+          try {
+            const res = await fetch('/api/cars/count?' + p.toString(), { signal: signal });
+            const data = await res.json();
+            previewCount = data.total != null ? Number(data.total) : 0;
+          } catch (e) {
+            if (e.name !== 'AbortError') previewCount = 0;
+          } finally {
+            countLoading = false;
+            updateApplyButton();
+          }
+        }
+
+        function updateSheetClearVisibility() {
+          if (hasActiveFilters()) sheetClearAll.classList.remove('hidden');
+          else sheetClearAll.classList.add('hidden');
+          if (activeFilterCount() > 0) {
+            filtersBtnBadge.textContent = String(activeFilterCount());
+            filtersBtnBadge.classList.remove('hidden');
+          } else {
+            filtersBtnBadge.classList.add('hidden');
+          }
+        }
+
+        function chip(label, removeFn) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'shrink-0 inline-flex items-center gap-1 rounded-full bg-gray-100 border border-gray-200 px-3 py-1 text-xs font-medium text-gray-800 hover:bg-gray-200';
+          btn.innerHTML = escapeHtml(label) + ' <span class="text-gray-500">✕</span>';
+          btn.addEventListener('click', removeFn);
+          return btn;
+        }
+
+        function renderFilterChips() {
+          filterChips.innerHTML = '';
+          if (!hasActiveFilters()) {
+            filterChipsWrap.classList.add('hidden');
+            return;
+          }
+          filterChipsWrap.classList.remove('hidden');
+
+          filters.make.forEach(function (m) {
+            filterChips.appendChild(chip(m, function () {
+              filters.make = filters.make.filter(function (x) { return x !== m; });
+              if (filters.make.length !== 1) filters.model = '';
+              fetchModelsForMake(filters.make.length === 1 ? filters.make[0] : null);
+              syncFormFromFilters();
+              resetAndFetch();
+              scheduleFilterSideEffects();
+            }));
+          });
+          if (filters.model) {
+            filterChips.appendChild(chip(filters.model, function () {
+              filters.model = '';
+              syncFormFromFilters();
+              resetAndFetch();
+              scheduleFilterSideEffects();
+            }));
+          }
+          filters.body_type.forEach(function (v) {
+            filterChips.appendChild(chip(v, function () {
+              filters.body_type = filters.body_type.filter(function (x) { return x !== v; });
+              syncFormFromFilters();
+              resetAndFetch();
+              scheduleFilterSideEffects();
+            }));
+          });
+          filters.city.forEach(function (v) {
+            filterChips.appendChild(chip(v, function () {
+              filters.city = filters.city.filter(function (x) { return x !== v; });
+              syncFormFromFilters();
+              resetAndFetch();
+              scheduleFilterSideEffects();
+            }));
+          });
+          filters.fuel_type.forEach(function (v) {
+            filterChips.appendChild(chip(v, function () {
+              filters.fuel_type = filters.fuel_type.filter(function (x) { return x !== v; });
+              syncFormFromFilters();
+              resetAndFetch();
+              scheduleFilterSideEffects();
+            }));
+          });
+          if (filters.transmission) {
+            filterChips.appendChild(chip(filters.transmission, function () {
+              filters.transmission = '';
+              syncFormFromFilters();
+              resetAndFetch();
+              scheduleFilterSideEffects();
+            }));
+          }
+          if (filters.min_price != null) {
+            filterChips.appendChild(chip(filters.min_price.toLocaleString('en-EG') + '+ EGP', function () {
+              filters.min_price = null;
+              syncFormFromFilters();
+              resetAndFetch();
+              scheduleFilterSideEffects();
+            }));
+          }
+          if (filters.max_price != null) {
+            filterChips.appendChild(chip('Under ' + filters.max_price.toLocaleString('en-EG') + ' EGP', function () {
+              filters.max_price = null;
+              syncFormFromFilters();
+              resetAndFetch();
+              scheduleFilterSideEffects();
+            }));
+          }
+          if (filters.min_year != null) {
+            filterChips.appendChild(chip(filters.min_year + '+', function () {
+              filters.min_year = null;
+              syncFormFromFilters();
+              resetAndFetch();
+              scheduleFilterSideEffects();
+            }));
+          }
+          if (filters.max_year != null) {
+            filterChips.appendChild(chip('Up to ' + filters.max_year, function () {
+              filters.max_year = null;
+              syncFormFromFilters();
+              resetAndFetch();
+              scheduleFilterSideEffects();
+            }));
+          }
+          if (filters.max_mileage != null) {
+            filterChips.appendChild(chip('Under ' + filters.max_mileage.toLocaleString('en-US') + ' km', function () {
+              filters.max_mileage = null;
+              syncFormFromFilters();
+              resetAndFetch();
+              scheduleFilterSideEffects();
+            }));
+          }
+
+          const clearAll = document.createElement('button');
+          clearAll.type = 'button';
+          clearAll.className = 'shrink-0 text-xs font-semibold text-blue-700 px-2 py-1';
+          clearAll.textContent = 'Clear all';
+          clearAll.addEventListener('click', function () {
+            clearAllFilters(false);
+            resetAndFetch();
+          });
+          filterChips.appendChild(clearAll);
+        }
+
+        function clearAllFilters(keepSheetOpen) {
+          Object.assign(filters, emptyFilters());
+          showAllMakes = false;
+          showAllCities = false;
+          modelsForMake = [];
+          syncFormFromFilters();
+          buildFilterOptionsUi();
+          syncUrlFromFilters();
+          fetchPreviewCount();
+          renderFilterChips();
+          updateSheetClearVisibility();
+        }
+
+        function openFilterSheet() {
+          filterBackdrop.classList.remove('hidden');
+          filterPanel.classList.remove('md:hidden', 'translate-y-full');
+          filterPanel.classList.add('filter-panel-open');
+          document.body.classList.add('overflow-hidden', 'md:overflow-auto');
+          fetchPreviewCount();
+        }
+
+        function closeFilterSheet() {
+          filterBackdrop.classList.add('hidden');
+          filterPanel.classList.remove('filter-panel-open');
+          filterPanel.classList.add('md:hidden');
+          if (!window.matchMedia('(min-width: 768px)').matches) {
+            filterPanel.classList.add('translate-y-full');
+          }
+          document.body.classList.remove('overflow-hidden');
+        }
+
+        function carIconSvg(className) {
+          return '<svg xmlns="http://www.w3.org/2000/svg" class="' + className + '" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8 17h8M6 11h12l-1-4H7l-1 4zM5 11l1.5-6h11L19 11"/><circle cx="7.5" cy="17.5" r="1.5" fill="currentColor" stroke="none"/><circle cx="16.5" cy="17.5" r="1.5" fill="currentColor" stroke="none"/></svg>';
+        }
+
+        function formatPrice(cents) {
+          if (!cents || cents <= 0) return 'Price on request';
+          return Math.round(cents / 100).toLocaleString('en-EG') + ' EGP';
+        }
+
+        function formatMileage(mileage) {
+          if (mileage == null || mileage === '' || Number(mileage) <= 0) return '—';
+          return Number(mileage).toLocaleString('en-US') + ' km';
+        }
+
+        function heartSvg(saved) {
+          if (saved) {
+            return '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="#ef4444" xmlns="http://www.w3.org/2000/svg">' +
+              '<path d="M12 21s-6.7-4.9-9.3-7.6C.7 11.4.5 8.5 2.2 6.8 3.3 5.7 4.8 5.3 6.2 5.6c.9.2 1.8.8 2.5 1.5.7-.7 1.6-1.3 2.5-1.5 1.4-.3 2.9.1 4 1.2 1.7 1.7 1.5 4.6-.5 6.6C18.7 16.1 12 21 12 21z"/></svg>';
+          }
+          return '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" xmlns="http://www.w3.org/2000/svg">' +
+            '<path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>';
+        }
+
+        function refreshAllHearts() {
+          document.querySelectorAll('.save-btn[data-id]').forEach(function (btn) {
+            var id = parseInt(btn.getAttribute('data-id'), 10);
+            var saved = savedIds.has(id);
+            btn.innerHTML = heartSvg(saved);
+            btn.setAttribute('aria-label', saved ? 'Remove from saved' : 'Save car');
+          });
+        }
+
+        function toggleSave(carId, btn) {
+          if (!buyerToken) {
+            window.location.href = '/buyer/login.html?returnTo=' + encodeURIComponent(window.location.href);
+            return;
+          }
+          var isSaved = savedIds.has(carId);
+          if (isSaved) { savedIds.delete(carId); } else { savedIds.add(carId); }
+          btn.innerHTML = heartSvg(!isSaved);
+          btn.setAttribute('aria-label', !isSaved ? 'Remove from saved' : 'Save car');
+          fetch('/api/saved-cars/' + carId, {
+            method: isSaved ? 'DELETE' : 'POST',
+            headers: { Authorization: 'Bearer ' + buyerToken }
+          }).catch(function () {
+            if (isSaved) { savedIds.add(carId); } else { savedIds.delete(carId); }
+            refreshAllHearts();
+          });
+        }
+
+        function initSavedState() {
+          try {
+            buyerToken = localStorage.getItem('carfox_token') || null;
+            if (!buyerToken) return;
+            var raw = localStorage.getItem('carfox_user');
+            if (!raw) { buyerToken = null; return; }
+            var u = JSON.parse(raw);
+            if (!u || u.role !== 'buyer') { buyerToken = null; return; }
+          } catch (_) { buyerToken = null; return; }
+          fetch('/api/saved-cars', { headers: { Authorization: 'Bearer ' + buyerToken } })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (data) {
+              if (data && Array.isArray(data.saved)) {
+                savedIds = new Set(data.saved);
+                refreshAllHearts();
+              }
+            })
+            .catch(function () {});
+        }
+
+        function updateSubtitle() {
+          listingsSubtitle.textContent = total.toLocaleString('en-US') + ' verified listing' + (total === 1 ? '' : 's') + ' from licensed dealerships';
+        }
+
+        function updateLoadMore() {
+          const loaded = vehicleGrid.querySelectorAll('[data-car-id]').length;
+          if (total > 0 && loaded < total) {
+            loadMoreWrap.classList.remove('hidden');
+            loadMoreBtn.disabled = loading;
+            loadMoreBtn.textContent = loading ? 'Loading...' : 'Load More';
+          } else {
+            loadMoreWrap.classList.add('hidden');
+          }
+        }
+
+        function renderCard(car) {
+          const title = [car.year, car.make, car.model].filter(Boolean).join(' ');
+          const subtitle = (car.trim && String(car.trim).trim()) || car.body_type || '';
+          const city = (car.dealer && car.dealer.city) ? car.dealer.city : '';
+          const dealerId = car.dealer && car.dealer.id;
+          const dealerName = car.dealer && car.dealer.business_name;
+          let photoHtml;
+          if (car.primary_photo_url) {
+            photoHtml =
+              '<div class="aspect-[4/3] overflow-hidden bg-gray-100">' +
+              '<img src="' + escapeHtml(car.primary_photo_url) + '" alt="" class="w-full h-full object-cover" loading="lazy" />' +
+              '</div>';
+          } else {
+            photoHtml =
+              '<div class="aspect-[4/3] bg-gray-100 flex items-center justify-center overflow-hidden">' +
+              carIconSvg('w-12 h-12 text-gray-400') +
+              '</div>';
+          }
+
+          const wrapper = document.createElement('div');
+          wrapper.className = 'relative mb-4 bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow';
+
+          const card = document.createElement('a');
+          card.href = '/cars/' + car.id;
+          card.setAttribute('data-car-id', String(car.id));
+          card.className = 'block';
+          card.innerHTML = photoHtml +
+            '<div class="p-3">' +
+            '<h2 class="text-sm md:text-base font-semibold text-gray-900 truncate">' + escapeHtml(title) + '</h2>' +
+            (subtitle ? '<p class="text-xs text-gray-500 mt-0.5 truncate">' + escapeHtml(subtitle) + '</p>' : '') +
+            '<p class="text-lg font-bold text-blue-700 mt-2">' + escapeHtml(formatPrice(car.price)) + '</p>' +
+            '<div class="flex items-center justify-between text-xs text-gray-500 mt-2">' +
+            '<span>' + escapeHtml(formatMileage(car.mileage)) + '</span>' +
+            '<span class="truncate ml-2 text-right">' + escapeHtml(city) + '</span>' +
+            '</div></div>';
+          wrapper.appendChild(card);
+
+          if (dealerId && dealerName) {
+            const dealerLink = document.createElement('a');
+            dealerLink.href = '/dealer-profile.html?id=' + encodeURIComponent(dealerId);
+            dealerLink.className = 'flex items-center gap-1 px-3 pb-2.5 text-xs text-blue-600 hover:underline border-t border-gray-100 truncate';
+            dealerLink.title = dealerName;
+            dealerLink.innerHTML =
+              '<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 shrink-0 text-gray-400" viewBox="0 0 24 24" fill="currentColor">' +
+              '<path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5zm0 2c-4.4 0-8 2.2-8 5v3h16v-3c0-2.8-3.6-5-8-5z"/></svg>' +
+              '<span class="truncate">' + escapeHtml(dealerName) + '</span>';
+            wrapper.appendChild(dealerLink);
+          }
+
+          const isSaved = savedIds.has(car.id);
+          const heartBtn = document.createElement('button');
+          heartBtn.type = 'button';
+          heartBtn.className = 'save-btn absolute top-2 right-2 bg-white/90 rounded-full p-1.5 shadow';
+          heartBtn.setAttribute('data-id', String(car.id));
+          heartBtn.setAttribute('aria-label', isSaved ? 'Remove from saved' : 'Save car');
+          heartBtn.innerHTML = heartSvg(isSaved);
+          heartBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleSave(car.id, heartBtn);
+          });
+          wrapper.appendChild(heartBtn);
+          return wrapper;
+        }
+
+        async function fetchCars(append) {
+          if (loading) return;
+          loading = true;
+          readFiltersFromForm();
+          const p = filtersToParams(false, append ? offset : 0);
+
+          try {
+            const res = await fetch('/api/cars?' + p.toString());
+            const data = await res.json().catch(function () { return {}; });
+            if (!res.ok) throw new Error((data && data.error) || 'Failed to load listings');
+
+            total = data.total != null ? Number(data.total) : 0;
+            const cars = data.cars || [];
+
+            if (!append) {
+              vehicleGrid.innerHTML = '';
+              offset = 0;
+            }
+
+            updateSubtitle();
+            previewCount = total;
+
+            if (total === 0) {
+              vehicleGrid.classList.add('hidden');
+              emptyState.classList.remove('hidden');
+              if (hasActiveFilters()) {
+                emptyTitle.textContent = 'No cars match';
+                emptySub.textContent = 'Try adjusting your filters.';
+              } else {
+                emptyTitle.textContent = 'No listings yet';
+                emptySub.textContent = 'Check back soon — dealers are adding inventory daily.';
+              }
+              loadMoreWrap.classList.add('hidden');
+            } else {
+              emptyState.classList.add('hidden');
+              vehicleGrid.classList.remove('hidden');
+              cars.forEach(function (car) { vehicleGrid.appendChild(renderCard(car)); });
+              offset += cars.length;
+              updateLoadMore();
+            }
+            renderFilterChips();
+            updateSheetClearVisibility();
+          } catch (err) {
+            console.error(err);
+            listingsSubtitle.textContent = 'Could not load listings. Please try again.';
+          } finally {
+            loading = false;
+            updateLoadMore();
+          }
+        }
+
+        function resetAndFetch() {
+          offset = 0;
+          syncUrlFromFilters();
+          fetchCars(false);
+        }
+
+        function applyFilters() {
+          readFiltersFromForm();
+          closeFilterSheet();
+          resetAndFetch();
+          document.getElementById('browseMain').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        openFiltersBtn.addEventListener('click', openFilterSheet);
+        closeFiltersBtn.addEventListener('click', closeFilterSheet);
+        filterBackdrop.addEventListener('click', closeFilterSheet);
+        applyFiltersBtn.addEventListener('click', applyFilters);
+        sheetClearAll.addEventListener('click', function () { clearAllFilters(true); });
+        document.getElementById('showAllMakesBtn').addEventListener('click', function () {
+          showAllMakes = !showAllMakes;
+          renderCheckboxGrid('makeCheckboxes', filterOptions.makes, 'data-filter-make', filters.make, 'showAllMakesBtn');
+        });
+        document.getElementById('showAllCitiesBtn').addEventListener('click', function () {
+          showAllCities = !showAllCities;
+          renderCheckboxGrid('cityCheckboxes', filterOptions.cities, 'data-filter-city', filters.city, 'showAllCitiesBtn');
+        });
+
+        attachFormattedNumberInput(minPriceInput, onFilterChange);
+        attachFormattedNumberInput(maxPriceInput, onFilterChange);
+        attachFormattedNumberInput(maxMileageInput, onFilterChange);
+        minYearSelect.addEventListener('change', onFilterChange);
+        maxYearSelect.addEventListener('change', onFilterChange);
+        sortSelect.addEventListener('change', function () {
+          sort = sortSelect.value;
+          resetAndFetch();
+        });
+
+        loadMoreBtn.addEventListener('click', function () { fetchCars(true); });
+
+        document.getElementById('mobileMenuBtn').addEventListener('click', function () {
+          const menu = document.getElementById('mobileMenu');
+          const open = !menu.classList.contains('hidden');
+          menu.classList.toggle('hidden', open);
+          this.setAttribute('aria-expanded', String(!open));
+        });
+
+        try {
+          parseFiltersFromUrl();
+          sort = PUBLIC_CARS_SORT_SAFE();
+          sortSelect.value = sort;
+        } catch (err) {
+          console.error('Filter init from URL failed:', err);
+        }
+
+        if (window.CarfoxAuth) CarfoxAuth.initBuyerNav();
+
+        initSavedState();
+
+        (function initTopSearch() {
+          const topSearchForm = document.getElementById('topSearchForm');
+          const topSearchInput = document.getElementById('topSearchInput');
+          const topSearchClear = document.getElementById('topSearchClear');
+          if (!topSearchForm || !topSearchInput || !topSearchClear) return;
+
+          function updateClearVisibility() {
+            topSearchClear.classList.toggle('hidden', !topSearchInput.value);
+          }
+
+          topSearchInput.value = filters.q || '';
+          updateClearVisibility();
+
+          topSearchInput.addEventListener('input', updateClearVisibility);
+
+          topSearchForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            filters.q = topSearchInput.value.trim();
+            updateClearVisibility();
+            topSearchInput.blur();
+            resetAndFetch();
+          });
+
+          topSearchClear.addEventListener('click', function () {
+            topSearchInput.value = '';
+            updateClearVisibility();
+            if (filters.q) {
+              filters.q = '';
+              resetAndFetch();
+            }
+            topSearchInput.focus();
+          });
+        })();
+
+        loadFilterOptions().then(function () {
+          syncFormFromFilters();
+          renderFilterChips();
+          fetchPreviewCount();
+          fetchCars(false);
+        });
+      })();
+    </script>
+  </body>
+</html>

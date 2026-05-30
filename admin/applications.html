@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin • Dealer Applications • CarFox</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] }
+          }
+        }
+      }
+    </script>
+    <style>
+      .app-hidden { visibility: hidden; }
+      .badge {
+        @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold;
+      }
+    </style>
+  </head>
+  <body class="bg-white text-gray-900 font-sans">
+    <!-- Top bar -->
+    <header class="sticky top-0 z-40 bg-white border-b border-gray-200">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <a href="/" class="text-lg font-extrabold tracking-tight">
+            <span class="text-blue-700">Car</span><span class="text-orange-500">Fox</span>
+          </a>
+          <span class="text-sm text-gray-500">Admin</span>
+        </div>
+        <div class="flex items-center gap-3 text-sm">
+          <span id="adminEmail" class="text-gray-700">—</span>
+          <button id="signOutBtn" class="text-gray-600 hover:text-gray-900 font-semibold">Sign Out</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Toasts -->
+    <div id="toast" class="fixed top-3 inset-x-0 mx-auto max-w-md px-4 hidden z-50">
+      <div id="toastInner" class="rounded-lg border p-3 text-sm shadow-md"></div>
+    </div>
+
+    <!-- Header -->
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
+      <h1 class="text-2xl font-bold text-gray-900">Dealer Applications</h1>
+      <p id="subtext" class="mt-1 text-sm text-gray-600">Loading…</p>
+      <div class="mt-4 flex gap-2 overflow-x-auto">
+        <button data-status="pending" class="tab-btn rounded-full px-4 py-2 text-sm font-semibold bg-blue-700 text-white">Pending</button>
+        <button data-status="approved" class="tab-btn rounded-full px-4 py-2 text-sm font-semibold bg-gray-100 text-gray-700">Approved</button>
+        <button data-status="rejected" class="tab-btn rounded-full px-4 py-2 text-sm font-semibold bg-gray-100 text-gray-700">Rejected</button>
+        <button data-status="all" class="tab-btn rounded-full px-4 py-2 text-sm font-semibold bg-gray-100 text-gray-700">All</button>
+      </div>
+    </div>
+
+    <!-- List -->
+    <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-10">
+      <div id="list"></div>
+      <div id="empty" class="hidden rounded-lg border border-gray-200 bg-gray-50 p-8 text-center text-gray-600">
+        No applications in this category.
+      </div>
+    </main>
+
+    <!-- Reject modal -->
+    <div id="rejectModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+      <div class="absolute inset-0 bg-black/40" data-close-modal></div>
+      <div class="relative bg-white rounded-xl border border-gray-200 w-[92%] max-w-md p-5">
+        <h2 class="text-lg font-semibold text-gray-900">Reject application</h2>
+        <p id="rejectModalTitle" class="mt-1 text-sm text-gray-600"></p>
+        <textarea id="rejectReason" rows="4" class="mt-3 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Optional reason"></textarea>
+        <div class="mt-4 flex gap-2 justify-end">
+          <button class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700" data-close-modal>Cancel</button>
+          <button id="confirmReject" class="px-4 py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700">Reject</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const TOKEN_KEY = 'carfox_token';
+      const USER_KEY = 'carfox_user';
+      let currentStatus = 'pending';
+      let rejectTarget = null;
+
+      function setToast(kind, message) {
+        const host = document.getElementById('toast');
+        const inner = document.getElementById('toastInner');
+        const base = 'rounded-lg border p-3 text-sm shadow-md';
+        let styles = 'bg-green-50 border-green-200 text-green-800';
+        if (kind === 'error') styles = 'bg-red-50 border-red-200 text-red-800';
+        inner.className = base + ' ' + styles;
+        inner.textContent = message;
+        host.classList.remove('hidden');
+        setTimeout(() => host.classList.add('hidden'), 1800);
+      }
+
+      function fmtAgo(iso) {
+        if (!iso) return '—';
+        const then = new Date(iso);
+        const now = new Date();
+        const days = Math.max(0, Math.floor((now - then) / (1000 * 60 * 60 * 24)));
+        return days === 0 ? 'today' : (days === 1 ? '1 day ago' : days + ' days ago');
+      }
+
+      function statusBadge(status) {
+        const map = {
+          pending: 'bg-yellow-50 border-yellow-200 text-yellow-800',
+          approved: 'bg-green-50 border-green-200 text-green-800',
+          rejected: 'bg-red-50 border-red-200 text-red-800'
+        };
+        return map[status] || 'bg-gray-50 border-gray-200 text-gray-700';
+      }
+
+      function renderList(apps) {
+        const list = document.getElementById('list');
+        const empty = document.getElementById('empty');
+        list.innerHTML = '';
+        if (!apps || apps.length === 0) {
+          empty.classList.remove('hidden');
+          document.getElementById('subtext').textContent = '0 pending applications';
+          return;
+        }
+        empty.classList.add('hidden');
+        if (currentStatus === 'pending') {
+          document.getElementById('subtext').textContent = apps.length + ' pending applications';
+        } else {
+          document.getElementById('subtext').textContent = '';
+        }
+        for (const a of apps) {
+          const card = document.createElement('div');
+          card.className = 'bg-white border border-gray-200 rounded-lg p-4 mb-3';
+          card.innerHTML = `
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <div class="text-lg font-semibold text-gray-900 truncate">${a.business_name || '—'}</div>
+                <div class="mt-1 text-sm text-gray-600">${a.license_number || '—'} · ${a.phone || '—'}</div>
+                <div class="mt-1 text-sm text-gray-600">${a.address || ''} ${a.city || ''} ${a.state || ''} ${a.zip || ''}</div>
+                <div class="mt-1 text-sm text-gray-600">Contact: ${a.user?.full_name || '—'} · ${a.user?.email || '—'}</div>
+                <div class="mt-1 text-xs text-gray-500">Applied ${fmtAgo(a.user_created_at)}</div>
+              </div>
+              <span class="badge ${statusBadge(a.status)}">${a.status}</span>
+            </div>
+            <div class="mt-3" data-actions></div>
+          `;
+          const actions = card.querySelector('[data-actions]');
+          if (a.status === 'pending') {
+            const row = document.createElement('div');
+            row.className = 'flex gap-2';
+            row.innerHTML = `
+              <button class="inline-flex items-center justify-center rounded-lg bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2">Approve</button>
+              <button class="inline-flex items-center justify-center rounded-lg border border-red-600 text-red-600 hover:bg-red-50 font-semibold px-4 py-2">Reject</button>
+            `;
+            const [approveBtn, rejectBtn] = row.children;
+            approveBtn.addEventListener('click', async () => {
+              if (!confirm("Approve " + (a.business_name || "this dealership") + "? They'll be able to log in immediately.")) return;
+              try {
+                const res = await fetch('/api/admin/applications/' + a.dealership_id + '/approve', {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem(TOKEN_KEY) }
+                });
+                if (res.ok) {
+                  setToast('ok', 'Approved');
+                  card.remove();
+                } else {
+                  const body = await res.json().catch(() => ({}));
+                  setToast('error', body && body.error ? body.error : 'Failed to approve');
+                }
+              } catch (_) {
+                setToast('error', 'Failed to approve');
+              }
+            });
+            rejectBtn.addEventListener('click', () => {
+              rejectTarget = a;
+              document.getElementById('rejectModalTitle').textContent = 'Why are you rejecting ' + (a.business_name || 'this dealership') + '?';
+              document.getElementById('rejectReason').value = '';
+              document.getElementById('rejectModal').classList.remove('hidden');
+            });
+            actions.appendChild(row);
+          } else if (a.status === 'approved') {
+            const d = document.createElement('div');
+            d.className = 'text-sm text-gray-600';
+            d.textContent = 'Approved on ' + (a.approved_at ? new Date(a.approved_at).toLocaleString() : '—');
+            actions.appendChild(d);
+          } else if (a.status === 'rejected') {
+            const d = document.createElement('div');
+            d.className = 'text-sm text-red-700';
+            d.textContent = 'Rejected' + (a.rejection_reason ? (': ' + a.rejection_reason) : '');
+            actions.appendChild(d);
+          }
+          list.appendChild(card);
+        }
+      }
+
+      async function fetchApps(status) {
+        currentStatus = status;
+        for (const btn of document.querySelectorAll('.tab-btn')) {
+          const isActive = btn.dataset.status === status;
+          btn.className = 'tab-btn rounded-full px-4 py-2 text-sm font-semibold ' + (isActive ? 'bg-blue-700 text-white' : 'bg-gray-100 text-gray-700');
+        }
+        const token = localStorage.getItem(TOKEN_KEY);
+        const res = await fetch('/api/admin/applications?status=' + encodeURIComponent(status), {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (!res.ok) {
+          setToast('error', 'Failed to load applications');
+          return;
+        }
+        const data = await res.json();
+        renderList(data.applications || []);
+      }
+
+      async function init() {
+        const token = localStorage.getItem(TOKEN_KEY);
+        if (!token) {
+          window.location.replace('/admin/login.html');
+          return;
+        }
+        try {
+          const me = await fetch('/api/auth/me', { headers: { 'Authorization': 'Bearer ' + token } });
+          if (me.status === 401) {
+            localStorage.removeItem(TOKEN_KEY);
+            localStorage.removeItem(USER_KEY);
+            window.location.replace('/admin/login.html');
+            return;
+          }
+          const meData = await me.json();
+          if (!meData || !meData.user || meData.user.role !== 'admin') {
+            window.location.replace('/');
+            return;
+          }
+          document.getElementById('adminEmail').textContent = meData.user.email || 'admin';
+          await fetchApps('pending');
+        } catch (e) {
+          window.location.replace('/admin/login.html');
+          return;
+        }
+      }
+
+      // Tabs
+      document.addEventListener('click', (e) => {
+        const t = e.target.closest('.tab-btn');
+        if (t) {
+          fetchApps(t.dataset.status);
+        }
+        if (e.target && e.target.hasAttribute('data-close-modal')) {
+          document.getElementById('rejectModal').classList.add('hidden');
+        }
+      });
+      document.getElementById('confirmReject').addEventListener('click', async () => {
+        if (!rejectTarget) return;
+        const reason = document.getElementById('rejectReason').value.trim();
+        try {
+          const res = await fetch('/api/admin/applications/' + rejectTarget.dealership_id + '/reject', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem(TOKEN_KEY) },
+            body: JSON.stringify({ reason })
+          });
+          if (res.ok) {
+            setToast('ok', 'Rejected');
+            document.getElementById('rejectModal').classList.add('hidden');
+            // Remove card or refetch
+            fetchApps(currentStatus);
+          } else {
+            const body = await res.json().catch(() => ({}));
+            setToast('error', body && body.error ? body.error : 'Failed to reject');
+          }
+        } catch (_) {
+          setToast('error', 'Failed to reject');
+        }
+      });
+
+      // Sign out
+      document.getElementById('signOutBtn').addEventListener('click', () => {
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
+        window.location.replace('/');
+      });
+
+      init();
+    </script>
+  </body>
+  </html>
+

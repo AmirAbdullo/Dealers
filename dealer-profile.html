@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CarFox — Dealer Profile</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] }
+          }
+        }
+      };
+    </script>
+  </head>
+  <body class="bg-gray-50 text-gray-900 font-sans min-h-screen pb-28">
+
+    <header class="sticky top-0 z-40 bg-white border-b border-gray-200 h-16">
+      <div class="mx-auto max-w-3xl px-4 h-full flex items-center justify-between">
+        <a id="backLink" href="/cars.html" class="p-2 -ml-2 text-gray-700 hover:text-gray-900" aria-label="Back">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+          </svg>
+        </a>
+        <span class="text-sm font-semibold text-gray-700">Dealer Profile</span>
+        <span class="w-10" aria-hidden="true"></span>
+      </div>
+    </header>
+
+    <div id="pageLoading" class="px-4 py-16 text-center text-sm text-gray-600">Loading dealer profile…</div>
+
+    <div id="pageError" class="hidden px-4 py-16 text-center">
+      <p class="text-lg font-semibold text-gray-900">Dealer not found.</p>
+      <a href="/cars.html" class="inline-block mt-6 rounded-lg bg-blue-700 hover:bg-blue-800 text-white font-semibold px-6 py-3">Back to browse</a>
+    </div>
+
+    <main id="pageContent" class="hidden max-w-3xl mx-auto px-4 py-4">
+
+      <!-- Dealer info card -->
+      <div class="bg-white border border-gray-200 rounded-xl p-5 mb-6 shadow-sm">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <h1 id="dealerName" class="text-xl font-bold text-gray-900 leading-tight"></h1>
+              <span class="inline-flex items-center gap-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold px-2.5 py-1 border border-blue-200 shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>
+                Verified
+              </span>
+            </div>
+            <p id="dealerLocation" class="text-sm text-gray-600 mt-1"></p>
+            <p id="dealerMemberSince" class="text-xs text-gray-500 mt-0.5"></p>
+          </div>
+          <div class="shrink-0">
+            <span id="listingsBadge" class="inline-flex items-center gap-1 bg-blue-700 text-white text-sm font-semibold px-3 py-1.5 rounded-full">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
+              </svg>
+              <span id="listingsCount">0</span>
+            </span>
+          </div>
+        </div>
+
+        <div id="phoneRow" class="hidden mt-4 pt-4 border-t border-gray-100">
+          <a id="phoneLink" href="#" class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2.5 rounded-lg text-sm transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/>
+            </svg>
+            <span id="phoneText"></span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Listings grid -->
+      <div id="listingsHeader" class="hidden mb-3">
+        <h2 class="text-lg font-bold text-gray-900">Active Listings</h2>
+      </div>
+
+      <div id="emptyState" class="hidden py-12 text-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-14 w-14 text-gray-300 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+        </svg>
+        <p class="mt-4 text-base font-semibold text-gray-700">No active listings</p>
+        <p class="mt-1 text-sm text-gray-500">This dealer has no cars listed right now.</p>
+      </div>
+
+      <div id="vehicleGrid" class="grid grid-cols-2 gap-3"></div>
+
+    </main>
+
+    <nav class="fixed bottom-0 left-0 right-0 z-[100] md:hidden border-t border-gray-200 bg-white h-16" style="padding-bottom: env(safe-area-inset-bottom);">
+      <div class="mx-auto max-w-7xl grid grid-cols-4 h-full">
+        <a href="/index.html" class="flex flex-col items-center justify-center text-gray-600 hover:text-gray-900">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.172 2.25 10.5V21h6.75v-6h6v6h6V10.5L12 3.172z"/></svg>
+          <span class="text-[11px] leading-tight mt-1">Home</span>
+        </a>
+        <a href="/cars.html" class="flex flex-col items-center justify-center text-gray-600 hover:text-gray-900">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M10.5 3a7.5 7.5 0 0 1 5.3 12.8l4.2 4.2-1.4 1.4-4.2-4.2A7.5 7.5 0 1 1 10.5 3zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11z"/></svg>
+          <span class="text-[11px] leading-tight mt-1">Browse</span>
+        </a>
+        <a href="/buyer/inbox.html" class="relative flex flex-col items-center justify-center text-gray-600 hover:text-gray-900">
+          <span class="relative inline-flex">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 0 1-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+            </svg>
+            <span data-messages-unread-dot class="hidden absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-red-500" aria-hidden="true"></span>
+          </span>
+          <span class="text-[11px] leading-tight mt-1">Messages</span>
+        </a>
+        <a href="/buyer/login.html" data-nav="account" class="flex flex-col items-center justify-center text-gray-600 hover:text-gray-900">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5zm0 2c-4.4 0-8 2.2-8 5v3h16v-3c0-2.8-3.6-5-8-5z"/></svg>
+          <span class="text-[11px] leading-tight mt-1">Account</span>
+        </a>
+      </div>
+    </nav>
+
+    <script src="/js/carfox-auth.js"></script>
+    <script src="/js/carfox-buyer-nav.js"></script>
+    <script>
+      (function () {
+        var esc = CarfoxBuyerNav.escapeHtml;
+        var fmtPrice = CarfoxBuyerNav.formatPriceCents;
+        var vehTitle = CarfoxBuyerNav.vehicleTitle;
+
+        function formatMileage(km) {
+          if (km == null || km === '' || Number(km) <= 0) return '';
+          return Number(km).toLocaleString('en-US') + ' km';
+        }
+
+        function carIconSvg() {
+          return '<svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">' +
+            '<path stroke-linecap="round" stroke-linejoin="round" d="M8 17h8M6 11h12l-1-4H7l-1 4zM5 11l1.5-6h11L19 11"/>' +
+            '<circle cx="7.5" cy="17.5" r="1.5" fill="currentColor" stroke="none"/>' +
+            '<circle cx="16.5" cy="17.5" r="1.5" fill="currentColor" stroke="none"/></svg>';
+        }
+
+        function renderCard(car) {
+          var title = vehTitle(car);
+          var subtitle = (car.trim && String(car.trim).trim()) || car.body_type || '';
+          var mileage = formatMileage(car.mileage);
+
+          var photoHtml;
+          if (car.primary_photo_url) {
+            photoHtml =
+              '<div class="aspect-[4/3] overflow-hidden bg-gray-100">' +
+              '<img src="' + esc(car.primary_photo_url) + '" alt="" class="w-full h-full object-cover" loading="lazy" />' +
+              '</div>';
+          } else {
+            photoHtml =
+              '<div class="aspect-[4/3] bg-gray-100 flex items-center justify-center overflow-hidden">' +
+              carIconSvg() +
+              '</div>';
+          }
+
+          var card = document.createElement('a');
+          card.href = '/cars-detail.html?id=' + car.id;
+          card.className = 'block bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow';
+          card.innerHTML =
+            photoHtml +
+            '<div class="p-3">' +
+            '<h3 class="text-sm font-semibold text-gray-900 truncate">' + esc(title) + '</h3>' +
+            (subtitle ? '<p class="text-xs text-gray-500 mt-0.5 truncate">' + esc(subtitle) + '</p>' : '') +
+            '<p class="text-base font-bold text-blue-700 mt-2">' + esc(fmtPrice(car.price)) + '</p>' +
+            (mileage ? '<p class="text-xs text-gray-500 mt-1">' + esc(mileage) + '</p>' : '') +
+            '</div>';
+          return card;
+        }
+
+        function renderDealer(data) {
+          var dealer = data.dealer;
+          var vehicles = data.vehicles || [];
+
+          document.title = 'CarFox — ' + (dealer.business_name || 'Dealer Profile');
+          document.getElementById('dealerName').textContent = dealer.business_name || 'Dealer';
+
+          var location = [dealer.city, dealer.state].filter(Boolean).join(', ');
+          var locationEl = document.getElementById('dealerLocation');
+          locationEl.textContent = location || '';
+          if (!location) locationEl.classList.add('hidden');
+
+          var memberEl = document.getElementById('dealerMemberSince');
+          memberEl.textContent = dealer.member_since ? 'Member since ' + dealer.member_since : '';
+          if (!dealer.member_since) memberEl.classList.add('hidden');
+
+          var count = dealer.total_listings || 0;
+          document.getElementById('listingsCount').textContent = count + (count === 1 ? ' car' : ' cars');
+
+          if (dealer.phone) {
+            var phoneRow = document.getElementById('phoneRow');
+            var phoneLink = document.getElementById('phoneLink');
+            var phoneText = document.getElementById('phoneText');
+            phoneText.textContent = dealer.phone;
+            phoneLink.href = 'tel:' + dealer.phone.replace(/\s+/g, '');
+            phoneRow.classList.remove('hidden');
+          }
+
+          var grid = document.getElementById('vehicleGrid');
+          var emptyState = document.getElementById('emptyState');
+
+          if (!vehicles.length) {
+            emptyState.classList.remove('hidden');
+          } else {
+            document.getElementById('listingsHeader').classList.remove('hidden');
+            vehicles.forEach(function (car) { grid.appendChild(renderCard(car)); });
+          }
+
+          document.getElementById('pageLoading').classList.add('hidden');
+          document.getElementById('pageContent').classList.remove('hidden');
+        }
+
+        // Parse ?id= from URL
+        var sp = new URLSearchParams(window.location.search);
+        var dealerId = parseInt(sp.get('id'), 10);
+        if (!dealerId || isNaN(dealerId)) {
+          document.getElementById('pageLoading').classList.add('hidden');
+          document.getElementById('pageError').classList.remove('hidden');
+          return;
+        }
+
+        // Back button
+        document.getElementById('backLink').addEventListener('click', function (e) {
+          if (window.history.length > 1) {
+            e.preventDefault();
+            window.history.back();
+          }
+        });
+
+        if (window.CarfoxAuth) CarfoxAuth.applyAccountNavRouting();
+        if (window.CarfoxBuyerNav) CarfoxBuyerNav.initMessagesUnreadBadge();
+
+        fetch('/api/dealers/' + dealerId + '/profile')
+          .then(function (res) {
+            if (res.status === 404) return null;
+            if (!res.ok) throw new Error('load failed');
+            return res.json();
+          })
+          .then(function (data) {
+            if (!data || !data.dealer) {
+              document.getElementById('pageLoading').classList.add('hidden');
+              document.getElementById('pageError').classList.remove('hidden');
+              return;
+            }
+            renderDealer(data);
+          })
+          .catch(function () {
+            document.getElementById('pageLoading').textContent = 'Could not load dealer profile. Please refresh.';
+          });
+      })();
+    </script>
+  </body>
+</html>

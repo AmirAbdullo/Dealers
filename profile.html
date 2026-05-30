@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CarFox - Profile</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --surface: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --line: #d9e2ec;
+      --primary: #ea580c;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, sans-serif; background: var(--bg); color: var(--text); }
+    .wrap { width: min(960px, 92%); margin: 0 auto; }
+    header { background: #fff; border-bottom: 1px solid var(--line); }
+    .top { min-height: 64px; display: flex; align-items: center; justify-content: space-between; }
+    .logo { font-size: 1.4rem; font-weight: 800; text-decoration: none; color: var(--text); }
+    .logo span { color: var(--primary); }
+    .btn-link { color: var(--muted); text-decoration: none; font-weight: 600; }
+
+    .page { padding: 20px 0 96px; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 0;
+      margin-bottom: 14px;
+      overflow: hidden;
+    }
+    .card h2 { margin: 0; font-size: 1.1rem; }
+    .muted { color: var(--muted); margin: 0 0 12px; }
+    .section-toggle {
+      width: 100%;
+      border: 0;
+      background: #fff;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font: inherit;
+      cursor: pointer;
+      text-align: left;
+    }
+    .section-toggle::-webkit-details-marker { display: none; }
+    .section-toggle::marker { display: none; content: ""; }
+    .section-toggle:hover { background: #f8fafc; }
+    .section-title {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .chevron {
+      width: 18px;
+      height: 18px;
+      border-right: 2px solid #64748b;
+      border-bottom: 2px solid #64748b;
+      transform: rotate(45deg);
+      transition: transform 0.2s ease;
+      margin-left: 10px;
+      flex: 0 0 auto;
+    }
+    .card[open] .chevron { transform: rotate(-135deg); }
+    .section-content {
+      display: none;
+      padding: 0 16px 16px;
+      border-top: 1px solid var(--line);
+    }
+    .card[open] .section-content { display: block; }
+
+    label { display: block; font-weight: 600; margin: 10px 0 6px; }
+    input[type="text"], input[type="email"] {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 10px;
+      font: inherit;
+    }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .primary { background: var(--primary); color: #fff; }
+    .secondary { background: #e2e8f0; color: #0f172a; }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      padding: 10px 0;
+      border-top: 1px solid var(--line);
+    }
+    .row:first-of-type { border-top: 0; }
+    .switch {
+      appearance: none;
+      width: 48px;
+      height: 28px;
+      border-radius: 999px;
+      background: #cbd5e1;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .switch::after {
+      content: "";
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #fff;
+      transition: transform 0.2s;
+    }
+    .switch:checked { background: #22c55e; }
+    .switch:checked::after { transform: translateX(20px); }
+
+    .msg {
+      margin-top: 10px;
+      padding: 9px 10px;
+      border-radius: 8px;
+      display: none;
+      font-size: 0.9rem;
+      background: #dcfce7;
+      color: #166534;
+      border: 1px solid #bbf7d0;
+    }
+
+    .mobile-tabbar {
+      position: fixed;
+      left: 50%;
+      bottom: 14px;
+      transform: translateX(-50%);
+      width: min(380px, calc(100% - 24px));
+      background: rgba(255, 255, 255, 0.96);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.14);
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      padding: 8px;
+      z-index: 50;
+      backdrop-filter: blur(8px);
+    }
+    .tab-btn {
+      height: 48px;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #64748b;
+      text-decoration: none;
+    }
+    .tab-btn.active { background: #fff5eb; color: #ea580c; border: 1px solid #fed7aa; }
+    .tab-btn svg { width: 23px; height: 23px; fill: currentColor; display: block; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap top">
+      <a class="logo" href="index.html">Car<span>Fox</span></a>
+      <a class="btn-link" href="login.html" id="auth-link">Sign In</a>
+    </div>
+  </header>
+
+  <main class="wrap page">
+    <details class="card" data-section="account">
+      <summary class="section-toggle">
+        <h2 class="section-title">Account</h2>
+        <span class="chevron" aria-hidden="true"></span>
+      </summary>
+      <div class="section-content" id="section-account">
+        <p class="muted">Update your display name for now. We can add more profile fields later.</p>
+        <label for="fullName">Full name</label>
+        <input id="fullName" type="text" placeholder="Your full name" />
+        <label for="email">Email</label>
+        <input id="email" type="email" disabled />
+        <div class="actions">
+          <button id="save-account" class="primary" type="button">Save changes</button>
+          <button id="logout-btn" class="secondary" type="button">Log out</button>
+        </div>
+        <div id="account-msg" class="msg">Saved.</div>
+      </div>
+    </details>
+
+    <details class="card" data-section="notifications">
+      <summary class="section-toggle">
+        <h2 class="section-title">Notification Settings</h2>
+        <span class="chevron" aria-hidden="true"></span>
+      </summary>
+      <div class="section-content" id="section-notifications">
+        <p class="muted">Turn notifications on or off whenever you like.</p>
+        <div class="row">
+          <div>
+            <strong>Price alerts</strong>
+            <p class="muted">Get alerts when tracked car prices change.</p>
+          </div>
+          <input id="notif-price" class="switch" type="checkbox" />
+        </div>
+        <div class="row">
+          <div>
+            <strong>Message notifications</strong>
+            <p class="muted">Get notified when buyers or sellers message you.</p>
+          </div>
+          <input id="notif-messages" class="switch" type="checkbox" />
+        </div>
+        <div class="row">
+          <div>
+            <strong>Marketing updates</strong>
+            <p class="muted">Receive new features and promo announcements.</p>
+          </div>
+          <input id="notif-marketing" class="switch" type="checkbox" />
+        </div>
+        <div id="notif-msg" class="msg">Notification settings saved.</div>
+      </div>
+    </details>
+  </main>
+
+  <nav class="mobile-tabbar" aria-label="Bottom navigation">
+    <a class="tab-btn" href="index.html" aria-label="Home">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.4 3 10.2V21h6.5v-6h5V21H21V10.2L12 3.4zm0 2.5 7 5.3V19h-2.5v-6h-9v6H5v-7.8l7-5.3z"/></svg>
+    </a>
+    <a class="tab-btn" href="check-car.html" aria-label="Search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 3a7.5 7.5 0 0 1 5.94 12.07l4.24 4.24-1.41 1.41-4.24-4.24A7.5 7.5 0 1 1 10.5 3zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11z"/></svg>
+    </a>
+    <a class="tab-btn active" href="profile.html" aria-label="Profile">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm0 9c4.42 0 8 2.24 8 5v2H4v-2c0-2.76 3.58-5 8-5zm0 2c-3.31 0-6 1.57-6 3v0h12v0c0-1.43-2.69-3-6-3z"/></svg>
+    </a>
+  </nav>
+
+  <script>
+    (function () {
+      var USERS_KEY = 'carfox_users';
+      var CURRENT_USER_KEY = 'carfox_current_user';
+      var TOKEN_KEY = 'carfox_token';
+      var SETTINGS_KEY = 'carfox_notification_settings';
+      var currentUser = null;
+
+      var fullNameEl = document.getElementById('fullName');
+      var emailEl = document.getElementById('email');
+      var authLink = document.getElementById('auth-link');
+      var accountMsg = document.getElementById('account-msg');
+      var notifMsg = document.getElementById('notif-msg');
+
+      function parse(value, fallback) {
+        try { return JSON.parse(value); } catch (_) { return fallback; }
+      }
+
+      function getCurrentUser() {
+        return parse(localStorage.getItem(CURRENT_USER_KEY), null);
+      }
+
+      function normEmail(value) {
+        return String(value || '').trim().toLowerCase();
+      }
+
+      function getUsers() {
+        var backupKey = USERS_KEY + '_backup';
+        function parseUsers(raw) {
+          if (!raw) return [];
+          try {
+            var p = JSON.parse(raw);
+            return Array.isArray(p) ? p : [];
+          } catch (_) {
+            return [];
+          }
+        }
+        var users = parseUsers(localStorage.getItem(USERS_KEY));
+        if (users.length === 0) {
+          var bak = localStorage.getItem(backupKey);
+          var restored = parseUsers(bak);
+          if (restored.length > 0) {
+            try {
+              localStorage.setItem(USERS_KEY, bak);
+            } catch (_) {}
+            users = restored;
+          }
+        }
+        return users;
+      }
+
+      function saveUsers(users) {
+        var json = JSON.stringify(users);
+        localStorage.setItem(USERS_KEY, json);
+        try {
+          localStorage.setItem(USERS_KEY + '_backup', json);
+        } catch (_) {}
+      }
+
+      function showMsg(el, text) {
+        el.textContent = text;
+        el.style.display = 'block';
+        setTimeout(function () { el.style.display = 'none'; }, 1800);
+      }
+
+      function applyUserToForm(user) {
+        currentUser = user;
+        localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+        fullNameEl.value = user.fullName || '';
+        emailEl.value = user.email || '';
+        authLink.textContent = user.fullName || 'My account';
+        authLink.href = '#';
+      }
+
+      function attachRest() {
+        document.getElementById('save-account').addEventListener('click', function () {
+          var newName = fullNameEl.value.trim();
+          if (!newName) return;
+          var token = localStorage.getItem(TOKEN_KEY);
+          if (token) {
+            fetch('/api/me', {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: 'Bearer ' + token
+              },
+              body: JSON.stringify({ fullName: newName })
+            })
+              .then(function (res) {
+                return res.json().then(function (data) {
+                  return { ok: res.ok, data: data };
+                });
+              })
+              .then(function (result) {
+                if (result.ok && result.data && result.data.user) {
+                  applyUserToForm(result.data.user);
+                  showMsg(accountMsg, 'Account updated.');
+                  return;
+                }
+                showMsg(accountMsg, (result.data && result.data.error) || 'Update failed.');
+              })
+              .catch(function () {
+                var users = getUsers();
+                users = users.map(function (u) {
+                  if (normEmail(u.email) === normEmail(currentUser.email)) {
+                    u.fullName = newName;
+                  }
+                  return u;
+                });
+                saveUsers(users);
+                currentUser.fullName = newName;
+                localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(currentUser));
+                authLink.textContent = newName;
+                showMsg(accountMsg, 'Account updated (saved locally only).');
+              });
+            return;
+          }
+          var users = getUsers();
+          users = users.map(function (u) {
+            if (normEmail(u.email) === normEmail(currentUser.email)) {
+              u.fullName = newName;
+            }
+            return u;
+          });
+          saveUsers(users);
+          currentUser.fullName = newName;
+          localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(currentUser));
+          authLink.textContent = newName;
+          showMsg(accountMsg, 'Account updated.');
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', function () {
+          localStorage.removeItem(CURRENT_USER_KEY);
+          localStorage.removeItem(TOKEN_KEY);
+          window.location.href = 'login.html';
+        });
+
+        wireNotifications();
+      }
+
+      function wireNotifications() {
+        var notifPrice = document.getElementById('notif-price');
+        var notifMessages = document.getElementById('notif-messages');
+        var notifMarketing = document.getElementById('notif-marketing');
+
+        var savedSettings = parse(localStorage.getItem(SETTINGS_KEY), {
+          price: true,
+          messages: true,
+          marketing: false
+        });
+
+        notifPrice.checked = !!savedSettings.price;
+        notifMessages.checked = !!savedSettings.messages;
+        notifMarketing.checked = !!savedSettings.marketing;
+
+        function saveNotifSettings() {
+          var nextSettings = {
+            price: notifPrice.checked,
+            messages: notifMessages.checked,
+            marketing: notifMarketing.checked
+          };
+          localStorage.setItem(SETTINGS_KEY, JSON.stringify(nextSettings));
+          showMsg(notifMsg, 'Notification settings saved.');
+        }
+
+        notifPrice.addEventListener('change', saveNotifSettings);
+        notifMessages.addEventListener('change', saveNotifSettings);
+        notifMarketing.addEventListener('change', saveNotifSettings);
+      }
+
+      currentUser = getCurrentUser();
+      var token = localStorage.getItem(TOKEN_KEY);
+
+      if (token) {
+        fetch('/api/me', { headers: { Authorization: 'Bearer ' + token } })
+          .then(function (res) {
+            return res.json().then(function (data) {
+              return { ok: res.ok, data: data };
+            });
+          })
+          .then(function (result) {
+            if (result.ok && result.data && result.data.user) {
+              applyUserToForm(result.data.user);
+              attachRest();
+              return;
+            }
+            localStorage.removeItem(TOKEN_KEY);
+            window.location.href = 'login.html';
+          })
+          .catch(function () {
+            if (!currentUser || !currentUser.email) {
+              window.location.href = 'login.html';
+              return;
+            }
+            applyUserToForm(currentUser);
+            attachRest();
+          });
+      } else {
+        if (!currentUser || !currentUser.email) {
+          window.location.href = 'login.html';
+        } else {
+          applyUserToForm(currentUser);
+          attachRest();
+        }
+      }
+    })();
+  </script>
+</body>
+</html>

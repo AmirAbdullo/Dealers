@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CarFox — Messages</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] }
+          }
+        }
+      };
+    </script>
+  </head>
+  <body class="bg-gray-50 text-gray-900 font-sans min-h-screen pb-20">
+    <header class="sticky top-0 z-40 bg-white border-b border-gray-200 h-16">
+      <div class="mx-auto max-w-lg px-4 h-full grid grid-cols-3 items-center">
+        <a href="/" class="text-lg font-extrabold tracking-tight justify-self-start">
+          <span class="text-blue-700">Car</span><span class="text-orange-500">Fox</span>
+        </a>
+        <h1 class="text-base font-bold text-gray-900 text-center justify-self-center">Messages</h1>
+        <span class="justify-self-end w-8" aria-hidden="true"></span>
+      </div>
+    </header>
+
+    <div id="pageLoading" class="px-4 py-16 text-center text-sm text-gray-600">Loading messages…</div>
+
+    <main id="pageContent" class="hidden">
+      <div class="px-4 py-4">
+        <h2 class="text-2xl font-bold text-gray-900">Your messages</h2>
+        <p id="convSubtitle" class="text-sm text-gray-600 mt-1">0 active conversations</p>
+      </div>
+
+      <div id="emptyState" class="hidden px-4 py-16 text-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-300 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 0 1-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+        </svg>
+        <p class="mt-4 text-lg font-semibold text-gray-900">No messages yet</p>
+        <p class="mt-2 text-sm text-gray-600 max-w-xs mx-auto">Browse cars and contact dealers to start a conversation</p>
+        <a href="/cars.html" class="inline-block mt-6 rounded-lg bg-blue-700 hover:bg-blue-800 text-white font-semibold px-6 py-3">Browse cars</a>
+      </div>
+
+      <div id="convList" class="px-2"></div>
+    </main>
+
+    <nav class="fixed bottom-0 left-0 right-0 z-[100] md:hidden border-t border-gray-200 bg-white h-16" style="padding-bottom: env(safe-area-inset-bottom);">
+      <div class="mx-auto max-w-7xl grid grid-cols-4 h-full">
+        <a href="/index.html" class="flex flex-col items-center justify-center text-gray-600 hover:text-gray-900">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.172 2.25 10.5V21h6.75v-6h6v6h6V10.5L12 3.172z"/></svg>
+          <span class="text-[11px] leading-tight mt-1">Home</span>
+        </a>
+        <a href="/cars.html" class="flex flex-col items-center justify-center text-gray-600 hover:text-gray-900">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M10.5 3a7.5 7.5 0 0 1 5.3 12.8l4.2 4.2-1.4 1.4-4.2-4.2A7.5 7.5 0 1 1 10.5 3zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11z"/></svg>
+          <span class="text-[11px] leading-tight mt-1">Browse</span>
+        </a>
+        <a href="/buyer/inbox.html" class="relative flex flex-col items-center justify-center text-blue-700">
+          <span class="relative inline-flex">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 0 1-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+            </svg>
+            <span data-messages-unread-dot class="hidden absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-red-500" aria-hidden="true"></span>
+          </span>
+          <span class="text-[11px] leading-tight mt-1 font-medium">Messages</span>
+        </a>
+        <a href="/buyer/account.html" data-nav="account" class="flex flex-col items-center justify-center text-gray-600 hover:text-gray-900">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5zm0 2c-4.4 0-8 2.2-8 5v3h16v-3c0-2.8-3.6-5-8-5z"/></svg>
+          <span class="text-[11px] leading-tight mt-1">Account</span>
+        </a>
+      </div>
+    </nav>
+
+    <script src="/js/carfox-auth.js"></script>
+    <script src="/js/carfox-buyer-nav.js"></script>
+    <script>
+      (function () {
+        const esc = CarfoxBuyerNav.escapeHtml;
+        const relTime = CarfoxBuyerNav.formatRelativeTime;
+        const vehTitle = CarfoxBuyerNav.vehicleTitle;
+
+        function carIcon() {
+          return '<svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8 17h8M6 11h12l-1-4H7l-1 4z"/></svg>';
+        }
+
+        function chatIcon() {
+          return '<svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 0 1-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>';
+        }
+
+        function thumbHtml(conv) {
+          const v = conv.vehicle;
+          if (v && v.primary_photo_url) {
+            return (
+              '<img src="' +
+              esc(v.primary_photo_url) +
+              '" alt="" class="w-16 h-16 rounded-lg object-cover bg-gray-100 shrink-0" />'
+            );
+          }
+          if (conv.vehicle_id) {
+            return (
+              '<div class="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">' +
+              carIcon() +
+              '</div>'
+            );
+          }
+          return (
+            '<div class="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">' +
+            chatIcon() +
+            '</div>'
+          );
+        }
+
+        function renderCard(conv) {
+          const dealer = conv.other_party || {};
+          const v = conv.vehicle;
+          let vehicleLine = '';
+          if (conv.vehicle_id && v) {
+            const title = vehTitle(v);
+            const soldBadge =
+              v.status === 'sold'
+                ? ' <span class="inline-flex text-[10px] font-semibold text-red-700 bg-red-50 border border-red-200 rounded px-1.5 py-0.5 ml-1 align-middle">Sold</span>'
+                : '';
+            vehicleLine =
+              '<p class="text-sm text-gray-600 truncate">' + esc(title) + soldBadge + '</p>';
+          } else if (!conv.vehicle_id) {
+            vehicleLine = '<p class="text-sm text-gray-600 truncate italic">General inquiry</p>';
+          }
+
+          const preview = conv.last_message_preview
+            ? esc(conv.last_message_preview)
+            : '<span class="italic">No messages yet</span>';
+          const time = relTime(conv.last_message_at);
+          const unread =
+            conv.unread_count > 0
+              ? '<span class="inline-flex bg-blue-700 text-white text-xs px-2 py-0.5 rounded-full mt-1">' +
+                esc(String(conv.unread_count)) +
+                '</span>'
+              : '';
+
+          return (
+            '<a href="/buyer/chat.html?conversation=' +
+            encodeURIComponent(conv.id) +
+            '" class="flex items-start gap-3 px-3 py-4 rounded-lg hover:bg-gray-50 border-b border-gray-100 cursor-pointer">' +
+            thumbHtml(conv) +
+            '<div class="flex-1 min-w-0">' +
+            '<p class="font-semibold text-gray-900 truncate">' +
+            esc(dealer.name || 'Dealer') +
+            '</p>' +
+            vehicleLine +
+            '<p class="text-sm text-gray-500 truncate mt-1">' +
+            preview +
+            '</p>' +
+            '</div>' +
+            '<div class="shrink-0 text-right flex flex-col items-end">' +
+            '<span class="text-xs text-gray-500">' +
+            esc(time) +
+            '</span>' +
+            unread +
+            '</div>' +
+            '</a>'
+          );
+        }
+
+        function renderList(conversations, total) {
+          document.getElementById('convSubtitle').textContent =
+            total + ' active conversation' + (total === 1 ? '' : 's');
+          const list = document.getElementById('convList');
+          const empty = document.getElementById('emptyState');
+          if (!conversations.length) {
+            list.innerHTML = '';
+            empty.classList.remove('hidden');
+            return;
+          }
+          empty.classList.add('hidden');
+          list.innerHTML = conversations.map(renderCard).join('');
+        }
+
+        CarfoxBuyerNav.requireBuyerPageAuth('/buyer/inbox.html').then(function (session) {
+          if (!session) return;
+          if (window.CarfoxAuth) CarfoxAuth.applyAccountNavRouting();
+          CarfoxBuyerNav.initMessagesUnreadBadge();
+
+          return fetch('/api/conversations?limit=20&offset=0', {
+            headers: { Authorization: 'Bearer ' + session.token }
+          });
+        }).then(function (res) {
+          if (!res) return;
+          if (!res.ok) throw new Error('load failed');
+          return res.json();
+        }).then(function (data) {
+          if (!data) return;
+          document.getElementById('pageLoading').classList.add('hidden');
+          document.getElementById('pageContent').classList.remove('hidden');
+          renderList(data.conversations || [], data.total != null ? data.total : 0);
+        }).catch(function () {
+          document.getElementById('pageLoading').textContent =
+            'Could not load messages. Please refresh.';
+        });
+      })();
+    </script>
+  </body>
+</html>
