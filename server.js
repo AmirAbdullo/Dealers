@@ -189,6 +189,7 @@ function ensureUsersBuyerRole() {
       phone TEXT,
       google_id TEXT UNIQUE,
       auth_provider TEXT NOT NULL DEFAULT 'email',
+      avatar_url TEXT,
       created_at TEXT NOT NULL
     );
   `);
