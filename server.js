@@ -113,8 +113,9 @@ function ensureVehiclesArchivedStatus() {
   });
   const insertCols = colNames.join(', ');
   db.pragma('foreign_keys = OFF');
+  db.exec('DROP TABLE IF EXISTS vehicles_new');
   db.exec(`
-    CREATE TABLE vehicles_new (
+    CREATE TABLE IF NOT EXISTS vehicles_new (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       dealership_id INTEGER NOT NULL,
       vin TEXT NOT NULL,
@@ -176,8 +177,9 @@ function ensureUsersBuyerRole() {
     );
 
   db.pragma('foreign_keys = OFF');
+  db.exec('DROP TABLE IF EXISTS users_new');
   db.exec(`
-    CREATE TABLE users_new (
+    CREATE TABLE IF NOT EXISTS users_new (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       email TEXT NOT NULL UNIQUE,
       password_hash TEXT NOT NULL,
