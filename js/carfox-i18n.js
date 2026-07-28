@@ -1,5 +1,10 @@
 /**
- * CarFox — Arabic / English UI strings (localStorage: carfox_lang).
+ * CarFox — language switching with automatic translation (LibreTranslate).
+ * Default 'en' (localStorage: carfox_lang). Switching to 'ar' auto-translates
+ * the page via LibreTranslate, caching results in localStorage. A small manual
+ * dictionary serves as instant/offline fallback and powers t() for JS strings.
+ *
+ * Rule: numbers / prices are never translated (see shouldTranslate).
  */
 (function (global) {
   'use strict';
@@ -164,29 +169,195 @@
     });
   }
 
+  // ---- Translatability rule -------------------------------------------------
+  // Never translate numbers, prices, mileage, or phone numbers.
+  function shouldTranslate(text) {
+    if (!text) return false;
+    // Skip pure numbers, prices, phone numbers
+    if (/^[\d,.\s]+$/.test(text.trim())) return false;
+    if (/EGP|km|\+\d/.test(text)) return false;
+    return true;
+  }
+
+  // ---- Automatic translation (LibreTranslate) -------------------------------
+  // Endpoint and optional API key are overridable via globals so a self-hosted
+  // instance / key can be used (the public host often requires api_key + CORS).
+  var ENDPOINT = global.CARFOX_LT_ENDPOINT || 'https://libretranslate.com/translate';
+  var API_KEY = global.CARFOX_LT_API_KEY || '';
+  var CACHE_KEY = 'carfox_i18n_cache_v1';
+
+  // Reverse map (English source text -> translation) built from the manual
+  // strings. Used as an instant, offline fallback when the API is unavailable.
+  var TEXT_FALLBACK = (function () {
+    var out = {};
+    Object.keys(TRANSLATIONS).forEach(function (lang) {
+      if (lang === 'en') return;
+      out[lang] = {};
+      Object.keys(TRANSLATIONS[lang]).forEach(function (key) {
+        var en = TRANSLATIONS.en[key];
+        if (en != null) out[lang][en] = TRANSLATIONS[lang][key];
+      });
+    });
+    return out;
+  })();
+
+  function loadCache() {
+    try {
+      return JSON.parse(localStorage.getItem(CACHE_KEY)) || {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function saveCache(cache) {
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+    } catch (_) {}
+  }
+
+  function shouldSkip(parent) {
+    if (!parent || parent.nodeType !== 1) return true;
+    var tag = parent.nodeName;
+    if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'NOSCRIPT' || tag === 'CODE' || tag === 'PRE') {
+      return true;
+    }
+    if (parent.closest && parent.closest('[translate="no"], .notranslate, [data-i18n-skip]')) {
+      return true;
+    }
+    return false;
+  }
+
+  // Collect translatable text nodes; stores the original English on each node.
+  function collectTextNodes() {
+    var result = [];
+    if (!document.body || typeof document.createTreeWalker !== 'function') return result;
+    var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+      acceptNode: function (node) {
+        var val = node.__cfOrig != null ? node.__cfOrig : node.nodeValue;
+        if (!val || !val.trim()) return NodeFilter.FILTER_REJECT;
+        if (!/[A-Za-z]/.test(val)) return NodeFilter.FILTER_REJECT; // skip pure numbers/symbols
+        if (!shouldTranslate(val)) return NodeFilter.FILTER_REJECT; // skip numbers/prices
+        if (shouldSkip(node.parentNode)) return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    });
+    var n;
+    while ((n = walker.nextNode())) {
+      if (n.__cfOrig == null) n.__cfOrig = n.nodeValue;
+      result.push({ node: n, orig: n.__cfOrig, source: n.__cfOrig.trim() });
+    }
+    return result;
+  }
+
+  function collectPlaceholders() {
+    var result = [];
+    document.querySelectorAll('[placeholder]').forEach(function (el) {
+      if (shouldSkip(el)) return;
+      if (el.__cfPhOrig == null) el.__cfPhOrig = el.getAttribute('placeholder') || '';
+      var orig = el.__cfPhOrig;
+      if (orig && /[A-Za-z]/.test(orig) && shouldTranslate(orig)) {
+        result.push({ el: el, orig: orig, source: orig.trim() });
+      }
+    });
+    return result;
+  }
+
+  function setNodeText(entry, translated) {
+    var lead = entry.orig.match(/^\s*/)[0];
+    var trail = entry.orig.match(/\s*$/)[0];
+    entry.node.nodeValue = lead + translated + trail;
+  }
+
+  function restoreEnglish(nodes, placeholders) {
+    nodes.forEach(function (e) { e.node.nodeValue = e.orig; });
+    placeholders.forEach(function (e) { e.el.setAttribute('placeholder', e.orig); });
+  }
+
+  function translatePage(lang) {
+    var nodes = collectTextNodes();
+    var placeholders = collectPlaceholders();
+
+    if (lang === 'en') {
+      restoreEnglish(nodes, placeholders);
+      return;
+    }
+
+    var cache = loadCache();
+    cache[lang] = cache[lang] || {};
+    var fallback = TEXT_FALLBACK[lang] || {};
+
+    function resolved(source) {
+      return cache[lang][source] != null ? cache[lang][source] : fallback[source];
+    }
+
+    function applyAll() {
+      nodes.forEach(function (e) {
+        var tr = resolved(e.source);
+        if (tr != null) setNodeText(e, tr);
+      });
+      placeholders.forEach(function (e) {
+        var tr = resolved(e.source);
+        if (tr != null) e.el.setAttribute('placeholder', tr);
+      });
+    }
+
+    // Figure out which unique strings still need fetching.
+    var seen = {};
+    var need = [];
+    function consider(source) {
+      if (!source || seen[source]) return;
+      seen[source] = true;
+      if (!shouldTranslate(source)) return; // never send numbers/prices
+      if (cache[lang][source] == null) need.push(source);
+    }
+    nodes.forEach(function (e) { consider(e.source); });
+    placeholders.forEach(function (e) { consider(e.source); });
+
+    applyAll(); // show whatever we already have (cache/fallback) immediately
+
+    if (!need.length) return;
+
+    var body = { q: need, source: 'en', target: lang, format: 'text' };
+    if (API_KEY) body.api_key = API_KEY;
+
+    fetch(ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    })
+      .then(function (res) {
+        if (!res.ok) throw new Error('translate http ' + res.status);
+        return res.json();
+      })
+      .then(function (data) {
+        var out = data && data.translatedText;
+        if (Array.isArray(out)) {
+          need.forEach(function (src, i) {
+            if (out[i] != null) cache[lang][src] = out[i];
+          });
+        } else if (typeof out === 'string' && need.length === 1) {
+          cache[lang][need[0]] = out;
+        } else {
+          return; // unexpected shape; keep fallback
+        }
+        saveCache(cache);
+        if (getLang() === lang) applyAll();
+      })
+      .catch(function (err) {
+        // API unavailable / CORS / rate limited: fallback strings already applied.
+        console.warn('[CarfoxI18n] auto-translate unavailable, using fallback strings:', err.message);
+      });
+  }
+
   function apply() {
     var lang = getLang();
-    var table = TRANSLATIONS[lang] || TRANSLATIONS.en;
-
-    document.querySelectorAll('[data-i18n]').forEach(function (el) {
-      var key = el.getAttribute('data-i18n');
-      if (!key) return;
-      var text = (table && table[key]) || (TRANSLATIONS.en && TRANSLATIONS.en[key]) || key;
-      el.textContent = text;
-    });
-
-    document.querySelectorAll('[data-i18n-placeholder]').forEach(function (el) {
-      var key = el.getAttribute('data-i18n-placeholder');
-      if (!key) return;
-      var text = (table && table[key]) || (TRANSLATIONS.en && TRANSLATIONS.en[key]) || '';
-      el.setAttribute('placeholder', text);
-    });
 
     document.querySelectorAll('[data-i18n-dir]').forEach(function (el) {
       el.style.textAlign = lang === 'ar' ? 'right' : 'left';
     });
 
     applyBodyFont(lang);
+    translatePage(lang);
   }
 
   function setLang(lang) {
@@ -204,6 +375,7 @@
     setLang: setLang,
     apply: apply,
     applyDir: applyDir,
+    shouldTranslate: shouldTranslate,
     t: t
   };
 })(typeof window !== 'undefined' ? window : this);

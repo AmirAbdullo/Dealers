@@ -43,6 +43,19 @@
         </div>
         <div id="formError" class="hidden mt-4 rounded-lg border border-red-200 bg-red-50 text-red-800 text-sm p-3"></div>
         <div id="roleError" class="hidden mt-4 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 text-sm p-4"></div>
+        <div id="verifyBanner" class="hidden mt-4 rounded-lg border border-amber-300 bg-amber-50 text-amber-900 text-sm p-4">
+          <div class="flex items-start gap-2">
+            <span class="text-lg leading-none">📧</span>
+            <div class="flex-1">
+              <p id="verifyBannerMsg" class="font-medium"></p>
+              <button type="button" id="resendVerifyLink"
+                class="mt-2 font-semibold text-amber-900 underline hover:text-amber-700">
+                Resend verification email
+              </button>
+              <p id="verifyResendStatus" class="hidden mt-2"></p>
+            </div>
+          </div>
+        </div>
 
         <button type="button" disabled
           class="mt-6 w-full inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-semibold text-gray-500 opacity-50 cursor-not-allowed">
@@ -120,13 +133,52 @@
       const submitBtn = document.getElementById('submitBtn');
       const formError = document.getElementById('formError');
       const roleError = document.getElementById('roleError');
+      const verifyBanner = document.getElementById('verifyBanner');
 
       function hideAlerts() {
         formError.classList.add('hidden');
         formError.textContent = '';
         roleError.classList.add('hidden');
         roleError.innerHTML = '';
+        verifyBanner.classList.add('hidden');
       }
+
+      function showVerifyBanner(message) {
+        document.getElementById('verifyBannerMsg').textContent =
+          message || 'Please verify your email before logging in.';
+        const status = document.getElementById('verifyResendStatus');
+        status.classList.add('hidden');
+        status.textContent = '';
+        verifyBanner.classList.remove('hidden');
+      }
+
+      async function resendVerification() {
+        const status = document.getElementById('verifyResendStatus');
+        const email = prompt('Enter your email to resend the verification link:', form.email.value.trim());
+        if (!email) return;
+        const link = document.getElementById('resendVerifyLink');
+        link.disabled = true;
+        const orig = link.textContent;
+        link.textContent = 'Sending...';
+        try {
+          await fetch('/api/auth/resend-verification', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email })
+          });
+          status.textContent = 'If that email is unverified, a new link was sent. Check your inbox.';
+          status.className = 'mt-2 text-green-700';
+        } catch (err) {
+          status.textContent = 'Could not resend right now. Please try again later.';
+          status.className = 'mt-2 text-red-700';
+        } finally {
+          link.disabled = false;
+          link.textContent = orig;
+          status.classList.remove('hidden');
+        }
+      }
+
+      document.getElementById('resendVerifyLink').addEventListener('click', resendVerification);
 
       form.addEventListener('submit', async function (e) {
         e.preventDefault();
@@ -169,8 +221,13 @@
             return;
           }
           if (res.status === 403) {
-            formError.textContent = body.error || 'Access denied.';
-            formError.classList.remove('hidden');
+            const msg = body.error || 'Access denied.';
+            if (/verify your email/i.test(msg)) {
+              showVerifyBanner(msg);
+            } else {
+              formError.textContent = msg;
+              formError.classList.remove('hidden');
+            }
             return;
           }
           formError.textContent = body.error || 'Something went wrong. Please try again.';

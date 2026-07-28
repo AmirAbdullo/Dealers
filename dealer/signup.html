@@ -163,19 +163,30 @@
           </form>
         </section>
 
-        <!-- Success card (hidden by default, shown after successful submission) -->
-        <section id="successCard" class="hidden bg-white border border-green-200 rounded-xl shadow-sm p-5 sm:p-6">
-          <div class="flex items-start gap-3">
-            <div class="mt-0.5 h-5 w-5 rounded-full bg-green-100 text-green-700 flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414L9 14.414 5.293 10.707a1 1 0 011.414-1.414L9 11.586l6.293-6.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-              </svg>
-            </div>
-            <div>
-              <h2 class="text-base font-semibold text-gray-900">Application submitted</h2>
-              <p class="mt-1 text-sm text-gray-600">Your application is under review. We’ll email you once it’s approved.</p>
-            </div>
-          </div>
+        <!-- Verification card (hidden by default, shown after successful submission) -->
+        <section id="successCard" class="hidden bg-white border border-green-200 rounded-xl shadow-sm p-5 sm:p-6 text-center">
+          <div class="text-5xl mb-4">📧</div>
+          <h2 class="text-xl font-bold text-gray-900 mb-2">Enter your code</h2>
+          <p class="text-gray-600 mb-4">
+            We sent a 6-digit code to
+            <span id="verifyEmailTarget" class="font-semibold text-gray-900"></span>.
+          </p>
+          <input id="otpInput" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code"
+            placeholder="------"
+            class="block w-full text-center text-3xl tracking-[0.5em] font-bold rounded-lg border border-gray-300 px-3 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <p id="otpError" class="hidden mt-2 text-sm text-red-600"></p>
+          <button id="verifyBtn" type="button"
+            class="mt-4 w-full rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-semibold px-4 py-3 transition">
+            Verify
+          </button>
+          <button id="resendBtn" type="button"
+            class="mt-3 text-sm font-semibold text-blue-700 hover:underline">
+            Resend code
+          </button>
+          <p id="resendStatus" class="hidden mt-3 text-sm text-green-600"></p>
+          <p class="mt-4 text-xs text-gray-500">
+            After you verify, your dealer application goes under review and we’ll email you once it’s approved.
+          </p>
         </section>
 
         <p class="mt-6 text-xs text-gray-500">
@@ -268,10 +279,10 @@
           const body = await res.json().catch(() => ({}));
 
           if (res.ok && res.status === 201) {
-            // Hide the form section and show success card
+            // Hide the form section and show the verification notice
+            document.getElementById('verifyEmailTarget').textContent = data.email;
             formSection.classList.add('hidden');
             successCard.classList.remove('hidden');
-            // Optionally clear the form (not visible anymore)
             form.reset();
           } else {
             setAlert('error', body && body.error ? body.error : 'Submission failed. Please try again.');
@@ -283,6 +294,71 @@
           pwValidation.updateSubmitState();
         }
       });
+
+      const verifyBtn = document.getElementById('verifyBtn');
+      if (verifyBtn) {
+        verifyBtn.addEventListener('click', async function () {
+          const otpError = document.getElementById('otpError');
+          otpError.classList.add('hidden');
+          const code = document.getElementById('otpInput').value.trim();
+          const target = document.getElementById('verifyEmailTarget').textContent;
+          if (code.length !== 6) {
+            otpError.textContent = 'Please enter the 6-digit code.';
+            otpError.classList.remove('hidden');
+            return;
+          }
+          verifyBtn.disabled = true;
+          const orig = verifyBtn.textContent;
+          verifyBtn.textContent = 'Verifying...';
+          try {
+            const res = await fetch('/api/auth/verify-otp', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: target, code: code })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok && data.token) {
+              localStorage.setItem('carfox_token', data.token);
+              window.location.href = data.role === 'dealer' ? '/dealer/dashboard.html' : '/';
+              return;
+            }
+            otpError.textContent = data.error || 'Invalid code. Please try again.';
+            otpError.classList.remove('hidden');
+          } catch (err) {
+            otpError.textContent = 'Network error. Please try again.';
+            otpError.classList.remove('hidden');
+          } finally {
+            verifyBtn.disabled = false;
+            verifyBtn.textContent = orig;
+          }
+        });
+      }
+
+      const resendBtn = document.getElementById('resendBtn');
+      if (resendBtn) {
+        resendBtn.addEventListener('click', async function () {
+          const status = document.getElementById('resendStatus');
+          const target = document.getElementById('verifyEmailTarget').textContent;
+          resendBtn.disabled = true;
+          const orig = resendBtn.textContent;
+          resendBtn.textContent = 'Sending...';
+          try {
+            await fetch('/api/auth/resend-verification', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: target })
+            });
+            status.textContent = 'New code sent. Check your inbox.';
+            status.className = 'mt-3 text-sm text-green-600';
+          } catch (err) {
+            status.textContent = 'Could not resend right now. Please try again later.';
+            status.className = 'mt-3 text-sm text-red-600';
+          } finally {
+            resendBtn.disabled = false;
+            resendBtn.textContent = orig;
+          }
+        });
+      }
 
       document.querySelectorAll('.password-toggle').forEach(function (btn) {
         btn.addEventListener('click', function () {

@@ -6,7 +6,11 @@ const path = require('path');
 const http = require('http');
 const express = require('express');
 const fs = require('fs');
-const Database = require('better-sqlite3');
+// libsql is a drop-in replacement for better-sqlite3 that can sync with Turso.
+// Locally (no TURSO_URL set) it behaves exactly like better-sqlite3 with carfox.db.
+// In production (TURSO_URL set) it keeps a local replica synced with Turso cloud,
+// so data survives redeploys.
+const Database = require('libsql');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
@@ -15,6 +19,9 @@ const sharp = require('sharp');
 const { WebSocketServer } = require('ws');
 const { PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const { r2, bucket: r2Bucket, publicUrl: r2PublicUrl } = require('./lib/r2');
+const { Resend } = require('resend');
+const crypto = require('crypto');
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const photoUpload = multer({
   storage: multer.memoryStorage(),
@@ -30,20 +37,50 @@ const photoUpload = multer({
 
 const PORT = Number(process.env.PORT) || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'carfox-dev-secret-change-me';
-const dbPath = path.join(__dirname, 'carfox.db');
+const TURSO_URL = process.env.TURSO_URL || '';
+const TURSO_AUTH_TOKEN = process.env.TURSO_AUTH_TOKEN || '';
+// When syncing with Turso we use a separate replica file so local dev
+// (carfox.db) is never touched by production data.
+const dbPath = TURSO_URL
+  ? path.join(__dirname, 'turso-replica.db')
+  : path.join(__dirname, 'carfox.db');
 
 const app = express();
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '100kb' }));
 
-const db = new Database(dbPath);
+const db = TURSO_URL
+  ? new Database(dbPath, { syncUrl: TURSO_URL, authToken: TURSO_AUTH_TOKEN })
+  : new Database(dbPath);
+
+if (TURSO_URL) {
+  try {
+    db.sync();
+    console.log('Turso: initial sync complete');
+  } catch (err) {
+    console.error('Turso: initial sync failed:', err);
+  }
+  // Re-sync every 60 seconds so the local replica stays fresh
+  setInterval(function () {
+    try {
+      db.sync();
+    } catch (err) {
+      console.error('Turso: periodic sync failed:', err);
+    }
+  }, 60 * 1000);
+}
 const requireAdmin = require('./middleware/requireAdmin')(db, JWT_SECRET);
 const requireDealer = require('./middleware/requireDealer')(db, JWT_SECRET);
 const requireBuyer = require('./middleware/requireBuyer')(db, JWT_SECRET);
 const requireMessagingAuth = require('./middleware/requireMessagingAuth')(db, JWT_SECRET);
 const createConversationsLib = require('./lib/conversations');
 const conversationsLib = createConversationsLib(db);
-db.pragma('journal_mode = WAL');
+try {
+  db.pragma('journal_mode = WAL');
+} catch (err) {
+  // Turso replicas manage their own journal mode; safe to ignore
+  console.warn('WAL pragma skipped:', err.message);
+}
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -95,6 +132,17 @@ if (!hasDbColumn('dealerships', 'governorate')) {
 if (!hasDbColumn('dealerships', 'whatsapp')) {
   db.exec('ALTER TABLE dealerships ADD COLUMN whatsapp TEXT;');
 }
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS email_verification_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    token TEXT NOT NULL UNIQUE,
+    expires_at TEXT NOT NULL,
+    used INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+  )
+`);
 
 function touchVehicleUpdatedAt(vehicleId) {
   db.prepare('UPDATE vehicles SET updated_at = ? WHERE id = ?').run(new Date().toISOString(), vehicleId);
@@ -208,6 +256,23 @@ function ensureUsersBuyerRole() {
 
 ensureUsersBuyerRole();
 
+// Grandfather in everyone who signed up before email verification existed.
+// Runs only ONCE (guarded by app_meta) so it doesn't auto-verify future
+// pending signups on later restarts. Only NEW signups need to verify.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS app_meta (
+    key TEXT PRIMARY KEY,
+    value TEXT
+  )
+`);
+(function grandfatherEmailVerification() {
+  const done = db.prepare("SELECT value FROM app_meta WHERE key = 'email_verification_grandfathered'").get();
+  if (done) return;
+  db.exec(`UPDATE users SET email_verified = 1 WHERE email_verified IS NULL OR email_verified = 0`);
+  db.prepare("INSERT INTO app_meta (key, value) VALUES ('email_verification_grandfathered', ?)").run(new Date().toISOString());
+  console.log('Grandfathered existing users as email-verified');
+})();
+
 function ensureMessagingTables() {
   try {
     const { runMessagingMigration } = require('./db/migrate-add-messaging');
@@ -222,6 +287,50 @@ function ensureMessagingTables() {
 
 ensureMessagingTables();
 
+// ─── Seed test accounts ───────────────────────────────────────────────────────
+// These accounts are created automatically on every startup so you never need
+// to re-register after a redeploy. Passwords are fixed and memorable.
+//
+//  Admin  : admin@carfox.com    / Admin1234!
+//  Dealer : dealer@carfox.com   / Dealer1234!   (approved, ready to list cars)
+//  Buyer  : buyer@carfox.com    / Buyer1234!
+// ─────────────────────────────────────────────────────────────────────────────
+(function seedTestAccounts() {
+  const now = new Date().toISOString();
+
+  // Admin
+  const adminEmail = 'admin@carfox.com';
+  if (!db.prepare('SELECT id FROM users WHERE email = ?').get(adminEmail)) {
+    db.prepare(
+      "INSERT INTO users (email, password_hash, full_name, role, email_verified, auth_provider, created_at) VALUES (?, ?, ?, 'admin', 1, 'email', ?)"
+    ).run(adminEmail, bcrypt.hashSync('Admin1234!', 10), 'CarFox Admin', now);
+    console.log('Seeded admin account:', adminEmail);
+  }
+
+  // Dealer
+  const dealerEmail = 'dealer@carfox.com';
+  if (!db.prepare('SELECT id FROM users WHERE email = ?').get(dealerEmail)) {
+    db.prepare(
+      "INSERT INTO users (email, password_hash, full_name, role, email_verified, auth_provider, created_at) VALUES (?, ?, ?, 'dealer', 1, 'email', ?)"
+    ).run(dealerEmail, bcrypt.hashSync('Dealer1234!', 10), 'Test Dealer', now);
+    const dealerUser = db.prepare('SELECT id FROM users WHERE email = ?').get(dealerEmail);
+    db.prepare(
+      "INSERT INTO dealerships (user_id, business_name, license_number, address, city, state, zip, phone, status, governorate, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?)"
+    ).run(dealerUser.id, 'Test Dealership', 'LIC-001', '123 Test St', 'Cairo', 'Cairo', '11511', '01000000000', 'Cairo', now);
+    console.log('Seeded dealer account:', dealerEmail);
+  }
+
+  // Buyer
+  const buyerEmail = 'buyer@carfox.com';
+  if (!db.prepare('SELECT id FROM users WHERE email = ?').get(buyerEmail)) {
+    db.prepare(
+      "INSERT INTO users (email, password_hash, full_name, role, email_verified, auth_provider, created_at) VALUES (?, ?, ?, 'buyer', 1, 'email', ?)"
+    ).run(buyerEmail, bcrypt.hashSync('Buyer1234!', 10), 'Test Buyer', now);
+    console.log('Seeded buyer account:', buyerEmail);
+  }
+})();
+// ─────────────────────────────────────────────────────────────────────────────
+
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
 }
@@ -232,6 +341,33 @@ function signToken(userRow) {
     JWT_SECRET,
     { expiresIn: '30d' }
   );
+}
+
+async function sendVerificationEmail(user) {
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
+  db.prepare(
+    'INSERT INTO email_verification_tokens (user_id, token, expires_at, created_at) VALUES (?, ?, ?, ?)'
+  ).run(user.id, code, expiresAt, new Date().toISOString());
+
+  await resend.emails.send({
+    from: 'CarFox <onboarding@resend.dev>',
+    to: user.email,
+    subject: 'Verify your CarFox account',
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:auto;padding:32px">
+        <h2 style="color:#f97316">Verify your CarFox account</h2>
+        <p>Hi ${user.full_name || user.fullName || 'there'},</p>
+        <p>Enter this code in the app to verify your email:</p>
+        <div style="font-size:42px;font-weight:bold;letter-spacing:12px;color:#0f1f3d;background:#f3f4f6;padding:24px;border-radius:12px;text-align:center;margin:16px 0">
+          ${code}
+        </div>
+        <p style="color:#999;font-size:13px">This code expires in 24 hours. If you didn't sign up for CarFox, ignore this email.</p>
+      </div>
+    `
+  });
+
+  return code;
 }
 
 function authMiddleware(req, res, next) {
@@ -296,11 +432,15 @@ app.post('/api/login', function (req, res) {
   }
 
   var row = db.prepare(
-    'SELECT id, email, full_name, password_hash, role FROM users WHERE email = ?'
+    'SELECT id, email, full_name, password_hash, role, email_verified FROM users WHERE email = ?'
   ).get(email);
 
   if (!row || !bcrypt.compareSync(String(password), row.password_hash)) {
     return res.status(401).json({ error: 'Invalid email or password.' });
+  }
+
+  if (!row.email_verified) {
+    return res.status(403).json({ error: 'Please verify your email before logging in. Check your inbox for the verification link.' });
   }
 
   // Dealers need approved dealership; buyers and admins do not
@@ -363,6 +503,10 @@ app.post('/api/auth/buyer-signup', function (req, res) {
   const row = db
     .prepare('SELECT id, email, full_name, role FROM users WHERE email = ?')
     .get(email);
+
+  // Send verification email (non-blocking — don't fail signup if email fails)
+  sendVerificationEmail(row).catch(err => console.error('Failed to send verification email:', err));
+
   const token = signToken(row);
   return res.status(201).json({
     token: token,
@@ -451,6 +595,10 @@ app.post('/api/auth/dealer-signup', function (req, res) {
 
   try {
     var result = createDealerTx();
+
+    // Send verification email (non-blocking — don't fail signup if email fails)
+    sendVerificationEmail(result.userRow).catch(err => console.error('Failed to send verification email:', err));
+
     return res.status(201).json({
       message: 'Application submitted. Pending approval.',
       user: { id: result.userRow.id, email: result.userRow.email, role: 'dealer' },
@@ -464,6 +612,61 @@ app.post('/api/auth/dealer-signup', function (req, res) {
     console.error(err);
     return res.status(500).json({ error: 'Could not create dealer account.' });
   }
+});
+
+app.get('/api/auth/verify-email', function (req, res) {
+  const token = String(req.query.token || '').trim();
+  if (!token) return res.status(400).json({ error: 'Missing token' });
+
+  const record = db.prepare(
+    'SELECT * FROM email_verification_tokens WHERE token = ? AND used = 0'
+  ).get(token);
+
+  if (!record) return res.status(400).json({ error: 'Invalid or already used link.' });
+  if (new Date(record.expires_at) < new Date()) {
+    return res.status(400).json({ error: 'This link has expired. Please request a new one.' });
+  }
+
+  db.prepare('UPDATE users SET email_verified = 1 WHERE id = ?').run(record.user_id);
+  db.prepare('UPDATE email_verification_tokens SET used = 1 WHERE id = ?').run(record.id);
+
+  const user = db.prepare('SELECT id, email, full_name, role FROM users WHERE id = ?').get(record.user_id);
+  const jwtToken = signToken(user);
+  return res.json({ success: true, token: jwtToken, role: user.role });
+});
+
+app.post('/api/auth/resend-verification', function (req, res) {
+  const email = normalizeEmail(req.body.email);
+  if (!email) return res.status(400).json({ error: 'Email required' });
+
+  const user = db.prepare('SELECT id, email, full_name, email_verified FROM users WHERE email = ?').get(email);
+  if (!user) return res.status(200).json({ message: 'If that email exists, a code was sent.' }); // don't leak
+  if (user.email_verified) return res.status(200).json({ message: 'Email already verified.' });
+
+  sendVerificationEmail(user).catch(err => console.error(err));
+  return res.status(200).json({ message: 'Verification email sent.' });
+});
+
+app.post('/api/auth/verify-otp', function (req, res) {
+  const email = normalizeEmail(req.body.email);
+  const code = String(req.body.code || '').trim();
+  if (!email || !code) return res.status(400).json({ error: 'Email and code are required.' });
+
+  const user = db.prepare('SELECT id, email, full_name, role FROM users WHERE email = ?').get(email);
+  if (!user) return res.status(400).json({ error: 'Invalid code.' });
+
+  const record = db.prepare(
+    'SELECT * FROM email_verification_tokens WHERE user_id = ? AND token = ? AND used = 0 ORDER BY id DESC LIMIT 1'
+  ).get(user.id, code);
+
+  if (!record) return res.status(400).json({ error: 'Invalid or expired code.' });
+  if (new Date(record.expires_at) < new Date()) return res.status(400).json({ error: 'Code has expired. Please request a new one.' });
+
+  db.prepare('UPDATE users SET email_verified = 1 WHERE id = ?').run(user.id);
+  db.prepare('UPDATE email_verification_tokens SET used = 1 WHERE id = ?').run(record.id);
+
+  const token = signToken(user);
+  return res.json({ success: true, token, role: user.role });
 });
 
 // Admin: list dealer applications (pending by default)
@@ -641,7 +844,12 @@ app.patch('/api/dealer/profile', function (req, res) {
   if (whatsapp !== null) { updates.push('whatsapp = ?'); params.push(whatsapp || null); }
   if (phone !== null) { updates.push('phone = ?'); params.push(phone || null); }
   if (address !== null) { updates.push('address = ?'); params.push(address || null); }
-  if (governorate !== null) { updates.push('city = ?'); params.push(governorate || null); }
+  if (governorate !== null) {
+    updates.push('city = ?');
+    updates.push('governorate = ?');
+    params.push(governorate || null);
+    params.push(governorate || null);
+  }
 
   if (!updates.length) return res.status(400).json({ error: 'Nothing to update' });
 
@@ -833,6 +1041,16 @@ function buildPublicCarsFilter(query) {
   if (cities.length) {
     whereParts.push('d.city IN (' + cities.map(function () { return '?'; }).join(', ') + ')');
     params.push.apply(params, cities);
+  }
+
+  // governorate is treated as an alias for city: a chosen governorate may live in
+  // either d.governorate or d.city depending on how the dealer signed up.
+  const governorates = parseCsvQueryParam(query.governorate);
+  if (governorates.length) {
+    const placeholders = governorates.map(function () { return '?'; }).join(', ');
+    whereParts.push('(d.governorate IN (' + placeholders + ') OR d.city IN (' + placeholders + '))');
+    params.push.apply(params, governorates);
+    params.push.apply(params, governorates);
   }
 
   if (fuelTypes.length) {

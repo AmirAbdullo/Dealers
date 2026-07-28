@@ -130,6 +130,28 @@
           </button>
         </form>
 
+        <div id="verifyNotice" class="hidden text-center">
+          <div class="text-5xl mb-4">📧</div>
+          <h2 class="text-xl font-bold text-gray-900 mb-2">Enter your code</h2>
+          <p class="text-gray-600 mb-4">
+            We sent a 6-digit code to
+            <span id="verifyEmailTarget" class="font-semibold text-gray-900"></span>.
+          </p>
+          <input id="otpInput" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code"
+            placeholder="------"
+            class="block w-full text-center text-3xl tracking-[0.5em] font-bold rounded-lg border border-gray-300 px-3 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <p id="otpError" class="hidden mt-2 text-sm text-red-600"></p>
+          <button id="verifyBtn" type="button"
+            class="mt-4 w-full rounded-lg bg-blue-700 hover:bg-blue-800 text-white font-semibold px-4 py-3 transition">
+            Verify
+          </button>
+          <button id="resendBtn" type="button"
+            class="mt-3 text-sm font-semibold text-blue-700 hover:underline">
+            Resend code
+          </button>
+          <p id="resendStatus" class="hidden mt-3 text-sm text-green-600"></p>
+        </div>
+
         <p class="mt-6 text-center text-sm text-gray-600">
           Already have an account?
           <a href="/buyer/login.html" class="text-blue-700 font-semibold hover:underline">Sign in</a>
@@ -215,10 +237,10 @@
           });
           const body = await res.json().catch(function () { return {}; });
 
-          if (res.status === 201 && body.token) {
-            localStorage.setItem(TOKEN_KEY, body.token);
-            localStorage.setItem(USER_KEY, JSON.stringify(body.user));
-            window.location.href = postSignupRedirect();
+          if (res.status === 201) {
+            document.getElementById('verifyEmailTarget').textContent = payload.email;
+            form.classList.add('hidden');
+            document.getElementById('verifyNotice').classList.remove('hidden');
             return;
           }
           if (res.status === 409) {
@@ -238,6 +260,71 @@
           pwValidation.updateSubmitState();
         }
       });
+
+      const verifyBtn = document.getElementById('verifyBtn');
+      if (verifyBtn) {
+        verifyBtn.addEventListener('click', async function () {
+          const otpError = document.getElementById('otpError');
+          otpError.classList.add('hidden');
+          const code = document.getElementById('otpInput').value.trim();
+          const target = document.getElementById('verifyEmailTarget').textContent;
+          if (code.length !== 6) {
+            otpError.textContent = 'Please enter the 6-digit code.';
+            otpError.classList.remove('hidden');
+            return;
+          }
+          verifyBtn.disabled = true;
+          const orig = verifyBtn.textContent;
+          verifyBtn.textContent = 'Verifying...';
+          try {
+            const res = await fetch('/api/auth/verify-otp', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: target, code: code })
+            });
+            const data = await res.json().catch(function () { return {}; });
+            if (res.ok && data.token) {
+              localStorage.setItem(TOKEN_KEY, data.token);
+              window.location.href = data.role === 'dealer' ? '/dealer/dashboard.html' : postSignupRedirect();
+              return;
+            }
+            otpError.textContent = data.error || 'Invalid code. Please try again.';
+            otpError.classList.remove('hidden');
+          } catch (err) {
+            otpError.textContent = 'Network error. Please try again.';
+            otpError.classList.remove('hidden');
+          } finally {
+            verifyBtn.disabled = false;
+            verifyBtn.textContent = orig;
+          }
+        });
+      }
+
+      const resendBtn = document.getElementById('resendBtn');
+      if (resendBtn) {
+        resendBtn.addEventListener('click', async function () {
+          const status = document.getElementById('resendStatus');
+          const target = document.getElementById('verifyEmailTarget').textContent;
+          resendBtn.disabled = true;
+          const orig = resendBtn.textContent;
+          resendBtn.textContent = 'Sending...';
+          try {
+            await fetch('/api/auth/resend-verification', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: target })
+            });
+            status.textContent = 'New code sent. Check your inbox.';
+            status.className = 'mt-3 text-sm text-green-600';
+          } catch (err) {
+            status.textContent = 'Could not resend right now. Please try again later.';
+            status.className = 'mt-3 text-sm text-red-600';
+          } finally {
+            resendBtn.disabled = false;
+            resendBtn.textContent = orig;
+          }
+        });
+      }
 
       document.querySelectorAll('.password-toggle').forEach(function (btn) {
         btn.addEventListener('click', function () {

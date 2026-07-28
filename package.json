@@ -22,7 +22,9 @@
     "express": "^4.21.0",
     "google-auth-library": "^10.6.1",
     "jsonwebtoken": "^9.0.2",
+    "libsql": "^0.5.13",
     "multer": "^2.1.1",
+    "resend": "^6.12.4",
     "sharp": "^0.34.5",
     "ws": "^8.21.0"
   }
