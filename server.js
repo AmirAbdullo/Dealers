@@ -574,27 +574,34 @@ app.post('/api/auth/dealer-signup', function (req, res) {
   var createdAt = new Date().toISOString();
   var passwordHash = bcrypt.hashSync(password, 10);
 
-  // Wrap creation in a transaction for atomicity
-  var createDealerTx = db.transaction(function () {
+  // Sequential creation (Turso-compatible; no explicit transaction).
+  // If the dealership insert fails we clean up the user row manually.
+  function createDealer() {
     insertUser.run(email, passwordHash, fullName, createdAt);
     var userRow = selectUser.get(email);
-    insertDealership.run(
-      userRow.id,
-      businessName,
-      licenseNumber,
-      address,
-      governorate,  // stored in city column for filter compatibility
-      '',           // state not used for Egypt
-      '',           // zip not used
-      phone,
-      createdAt
-    );
+    try {
+      insertDealership.run(
+        userRow.id,
+        businessName,
+        licenseNumber,
+        address,
+        governorate,  // stored in city column for filter compatibility
+        '',           // state not used for Egypt
+        '',           // zip not used
+        phone,
+        createdAt
+      );
+    } catch (err) {
+      // Roll back the user row so a retry with the same email works
+      try { db.prepare('DELETE FROM users WHERE id = ?').run(userRow.id); } catch (_) {}
+      throw err;
+    }
     var dealerRow = selectDealership.get(userRow.id);
     return { userRow: userRow, dealerRow: dealerRow };
-  });
+  }
 
   try {
-    var result = createDealerTx();
+    var result = createDealer();
 
     // Send verification email (non-blocking — don't fail signup if email fails)
     sendVerificationEmail(result.userRow).catch(err => console.error('Failed to send verification email:', err));
@@ -2408,13 +2415,11 @@ app.patch('/api/vehicles/:vehicleId/photos/reorder', requireDealer, function (re
   const updateOrder = db.prepare(
     'UPDATE vehicle_photos SET display_order = ?, is_primary = ? WHERE id = ? AND vehicle_id = ?'
   );
-  const tx = db.transaction(function () {
-    db.prepare('UPDATE vehicle_photos SET is_primary = 0 WHERE vehicle_id = ?').run(vehicleId);
-    ids.forEach(function (id, index) {
-      updateOrder.run(index, index === 0 ? 1 : 0, id, vehicleId);
-    });
+  // Sequential updates (Turso-compatible; no explicit transaction)
+  db.prepare('UPDATE vehicle_photos SET is_primary = 0 WHERE vehicle_id = ?').run(vehicleId);
+  ids.forEach(function (id, index) {
+    updateOrder.run(index, index === 0 ? 1 : 0, id, vehicleId);
   });
-  tx();
 
   const photos = db
     .prepare(
