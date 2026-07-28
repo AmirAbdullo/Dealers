@@ -342,9 +342,12 @@
 
       document.addEventListener('click', function (e) {
         var dropdown = document.getElementById('profileDropdown');
-        if (dropdown && !dropdown.closest('div').contains(e.target)) {
-          dropdown.classList.add('hidden');
-        }
+        var dropdownBtn = document.getElementById('profileDropdownBtn');
+        if (!dropdown) return;
+        // Ignore clicks on the button itself (it has its own toggle handler)
+        // and clicks inside the open dropdown.
+        if ((dropdownBtn && dropdownBtn.contains(e.target)) || dropdown.contains(e.target)) return;
+        dropdown.classList.add('hidden');
       });
 
       const ALL_BRANDS = [
