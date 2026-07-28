@@ -49,9 +49,71 @@ const app = express();
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '100kb' }));
 
-const db = TURSO_URL
-  ? new Database(dbPath, { syncUrl: TURSO_URL, authToken: TURSO_AUTH_TOKEN })
-  : new Database(dbPath);
+function createRawDb() {
+  return TURSO_URL
+    ? new Database(dbPath, { syncUrl: TURSO_URL, authToken: TURSO_AUTH_TOKEN })
+    : new Database(dbPath);
+}
+
+let rawDb = createRawDb();
+
+// Turso's remote write stream can expire after idle periods ("stream not found").
+// When that happens we recreate the connection and retry the operation once.
+function isStreamError(err) {
+  const msg = String((err && err.message) || '');
+  return /stream not found|stream expired|status=404/i.test(msg);
+}
+
+function reconnectDb() {
+  console.warn('Turso: connection stale, reconnecting...');
+  try { rawDb.close(); } catch (_) {}
+  rawDb = createRawDb();
+  try {
+    rawDb.sync();
+    console.log('Turso: reconnected and synced');
+  } catch (err) {
+    console.error('Turso: sync after reconnect failed:', err);
+  }
+}
+
+function withReconnect(fn) {
+  try {
+    return fn();
+  } catch (err) {
+    if (TURSO_URL && isStreamError(err)) {
+      reconnectDb();
+      return fn();
+    }
+    throw err;
+  }
+}
+
+// db facade with the same API the rest of the code expects (prepare/exec/pragma).
+// Statements are prepared lazily on each call so a reconnect is always picked up.
+const db = {
+  prepare: function (sql) {
+    function call(method, args) {
+      return withReconnect(function () {
+        const stmt = rawDb.prepare(sql);
+        return stmt[method].apply(stmt, args);
+      });
+    }
+    return {
+      run: function () { return call('run', Array.prototype.slice.call(arguments)); },
+      get: function () { return call('get', Array.prototype.slice.call(arguments)); },
+      all: function () { return call('all', Array.prototype.slice.call(arguments)); },
+    };
+  },
+  exec: function (sql) {
+    return withReconnect(function () { return rawDb.exec(sql); });
+  },
+  pragma: function (p, opts) {
+    return withReconnect(function () { return rawDb.pragma(p, opts); });
+  },
+  sync: function () {
+    return rawDb.sync();
+  },
+};
 
 if (TURSO_URL) {
   try {
@@ -60,12 +122,17 @@ if (TURSO_URL) {
   } catch (err) {
     console.error('Turso: initial sync failed:', err);
   }
-  // Re-sync every 60 seconds so the local replica stays fresh
+  // Re-sync every 60 seconds so the local replica stays fresh and the
+  // connection is kept warm (helps prevent stream expiry).
   setInterval(function () {
     try {
       db.sync();
     } catch (err) {
-      console.error('Turso: periodic sync failed:', err);
+      if (isStreamError(err)) {
+        reconnectDb();
+      } else {
+        console.error('Turso: periodic sync failed:', err);
+      }
     }
   }, 60 * 1000);
 }
