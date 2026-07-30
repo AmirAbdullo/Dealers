@@ -418,7 +418,7 @@ async function sendVerificationEmail(user) {
   ).run(user.id, code, expiresAt, new Date().toISOString());
 
   await resend.emails.send({
-    from: 'CarFox <onboarding@resend.dev>',
+    from: 'CarFox <noreply@mawtiq.online>',
     to: user.email,
     subject: 'Verify your CarFox account',
     html: `
