@@ -295,6 +295,87 @@
     initInquiriesUnreadBadge();
   }
 
+  /**
+   * Desktop-only dark header shared by all dealer pages.
+   * Injected at the top of <body>; hidden on mobile (bottom nav is used there).
+   */
+  function dealerDesktopHeaderHtml(activeTab, user) {
+    function linkClass(id) {
+      return id === activeTab
+        ? 'text-white font-semibold border-b-2 border-orange-500 pb-1'
+        : 'text-gray-300 hover:text-white pb-1 border-b-2 border-transparent';
+    }
+    const name = (user && (user.full_name || user.fullName || user.email)) || 'Account';
+    const firstName = String(name).split(' ')[0];
+    const initials = initialsFromName(name);
+
+    return (
+      '<header id="dealerDesktopHeader" class="hidden md:block sticky top-0 z-40 bg-[#0f1f3d]">' +
+      '<div class="mx-auto max-w-7xl px-4 h-16 flex items-center justify-between gap-6">' +
+      '<div class="flex items-center gap-8">' +
+      '<a href="/" class="text-xl font-extrabold tracking-tight">' +
+      '<span class="text-white">Car</span><span class="text-orange-500">Fox</span>' +
+      '</a>' +
+      '<nav class="flex items-center gap-6 text-sm">' +
+      '<a href="/dealer/dashboard.html" class="' + linkClass('dashboard') + '">Dashboard</a>' +
+      '<a href="/dealer/inventory.html" class="' + linkClass('inventory') + '">Inventory</a>' +
+      '<a href="/dealer/inquiries.html" class="relative ' + linkClass('inquiries') + '">Inquiries' +
+      '<span data-inquiries-unread-dot class="hidden absolute -top-1 -right-2 h-2 w-2 rounded-full bg-red-500" aria-hidden="true"></span>' +
+      '</a>' +
+      '<a href="/dealer/add-vehicle.html" class="' + linkClass('add') + '">+ Add Vehicle</a>' +
+      '</nav>' +
+      '</div>' +
+      '<div class="flex items-center gap-4">' +
+      '<a href="/" class="text-gray-300 hover:text-white text-sm">View Site</a>' +
+      '<div class="relative">' +
+      '<button type="button" id="dealerHeaderProfileBtn" class="flex items-center gap-2 text-gray-300 hover:text-white text-sm font-semibold">' +
+      '<span class="w-8 h-8 rounded-full bg-orange-500 text-white flex items-center justify-center text-xs font-bold">' + escapeHtml(initials) + '</span>' +
+      '<span>' + escapeHtml(firstName) + '</span>' +
+      '<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>' +
+      '</button>' +
+      '<div id="dealerHeaderProfileMenu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-50">' +
+      '<a href="/dealer/account.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">My Account</a>' +
+      '<a href="/dealer/chat.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Messages</a>' +
+      '<hr class="my-1"/>' +
+      '<button type="button" id="dealerHeaderSignOut" class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50">Sign Out</button>' +
+      '</div>' +
+      '</div>' +
+      '</div>' +
+      '</div>' +
+      '</header>'
+    );
+  }
+
+  function mountDealerDesktopHeader(activeTab) {
+    if (document.getElementById('dealerDesktopHeader')) return;
+    let user = null;
+    try {
+      user = JSON.parse(localStorage.getItem(USER_KEY) || 'null');
+    } catch (_) {}
+
+    document.body.insertAdjacentHTML('afterbegin', dealerDesktopHeaderHtml(activeTab, user));
+
+    const btn = document.getElementById('dealerHeaderProfileBtn');
+    const menu = document.getElementById('dealerHeaderProfileMenu');
+    if (btn && menu) {
+      btn.addEventListener('click', function () {
+        menu.classList.toggle('hidden');
+      });
+      document.addEventListener('click', function (e) {
+        if (btn.contains(e.target) || menu.contains(e.target)) return;
+        menu.classList.add('hidden');
+      });
+    }
+    const signOut = document.getElementById('dealerHeaderSignOut');
+    if (signOut) {
+      signOut.addEventListener('click', function () {
+        clearAuth();
+        window.location.href = '/';
+      });
+    }
+    initInquiriesUnreadBadge();
+  }
+
   global.CarfoxDealerNav = {
     escapeHtml: escapeHtml,
     formatPriceCents: formatPriceCents,
@@ -308,6 +389,8 @@
     renderInquiryCardHtml: renderInquiryCardHtml,
     dealerBottomNavHtml: dealerBottomNavHtml,
     mountDealerBottomNav: mountDealerBottomNav,
+    dealerDesktopHeaderHtml: dealerDesktopHeaderHtml,
+    mountDealerDesktopHeader: mountDealerDesktopHeader,
     clearAuth: clearAuth,
     TOKEN_KEY: TOKEN_KEY,
     USER_KEY: USER_KEY

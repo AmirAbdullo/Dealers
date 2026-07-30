@@ -24,7 +24,7 @@
     </script>
   </head>
   <body class="bg-gray-50 text-gray-900 font-sans">
-    <header class="sticky top-0 z-40 bg-white border-b border-gray-200">
+    <header class="md:hidden sticky top-0 z-40 bg-white border-b border-gray-200">
       <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         <a href="/dealer/dashboard.html" class="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -800,6 +800,7 @@
     <script src="/js/carfox-dealer-nav.js"></script>
     <script>
       CarfoxDealerNav.mountDealerBottomNav(document.getElementById('dealerBottomNav'), 'inventory');
+      CarfoxDealerNav.mountDealerDesktopHeader('add');
     </script>
   </body>
 </html>

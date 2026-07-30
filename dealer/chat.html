@@ -774,6 +774,7 @@
           if (!s) return;
           session = s;
           currentUserId = s.user.id;
+          CarfoxDealerNav.mountDealerDesktopHeader('inquiries');
 
           return loadConversationMeta()
             .then(function () { return fetchMessages(true); })

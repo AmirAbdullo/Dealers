@@ -26,7 +26,7 @@
     </script>
   </head>
   <body class="bg-gray-50 text-gray-900 font-sans pb-28">
-    <header class="sticky top-0 z-40 bg-white border-b border-gray-200">
+    <header class="md:hidden sticky top-0 z-40 bg-white border-b border-gray-200">
       <div class="mx-auto max-w-3xl px-4 h-16 flex items-center justify-between">
         <a id="backEdit" href="#" class="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
@@ -733,6 +733,7 @@
     <script src="/js/carfox-dealer-nav.js"></script>
     <script>
       CarfoxDealerNav.mountDealerBottomNav(document.getElementById('dealerBottomNav'), 'inventory');
+      CarfoxDealerNav.mountDealerDesktopHeader('inventory');
     </script>
   </body>
 </html>

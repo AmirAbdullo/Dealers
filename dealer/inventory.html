@@ -21,7 +21,7 @@
   <body class="bg-gray-50 text-gray-900 font-sans min-h-screen pb-24">
 
     <!-- Header -->
-    <header class="sticky top-0 z-40 bg-white border-b border-gray-200 h-16">
+    <header class="md:hidden sticky top-0 z-40 bg-white border-b border-gray-200 h-16">
       <div class="mx-auto max-w-lg px-4 h-full flex items-center justify-between">
         <a href="/" class="text-lg font-extrabold tracking-tight">
           <span class="text-blue-700">Car</span><span class="text-orange-500">Fox</span>
@@ -376,6 +376,7 @@
             // Mount dealer bottom nav and ensure it sits above content
             var navContainer = document.getElementById('dealerNavContainer');
             CarfoxDealerNav.mountDealerBottomNav(navContainer, 'inventory');
+            CarfoxDealerNav.mountDealerDesktopHeader('inventory');
             var navEl = navContainer.querySelector('nav');
             if (navEl) navEl.style.zIndex = '100';
 
