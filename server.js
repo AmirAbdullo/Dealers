@@ -1974,7 +1974,7 @@ app.get('/api/dealer/stats', requireDealer, function (req, res) {
     .get(dealershipId).c;
   const totalViews30d = db
     .prepare("SELECT COALESCE(SUM(views), 0) AS s FROM vehicles WHERE dealership_id = ? AND status != 'archived'")
-    .get(dealershipId).c;
+    .get(dealershipId).s;
   const newInquiries = db
     .prepare("SELECT COUNT(*) AS c FROM inquiries WHERE dealership_id = ? AND status = 'new'")
     .get(dealershipId).c;
