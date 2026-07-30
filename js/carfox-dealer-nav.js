@@ -313,7 +313,7 @@
       '<header id="dealerDesktopHeader" class="hidden md:block sticky top-0 z-40 bg-[#0f1f3d]">' +
       '<div class="mx-auto max-w-7xl px-4 h-16 flex items-center justify-between gap-6">' +
       '<div class="flex items-center gap-8">' +
-      '<a href="/" class="text-xl font-extrabold tracking-tight">' +
+      '<a href="/dealer/dashboard.html" class="text-xl font-extrabold tracking-tight">' +
       '<span class="text-white">Car</span><span class="text-orange-500">Fox</span>' +
       '</a>' +
       '<nav class="flex items-center gap-6 text-sm">' +
