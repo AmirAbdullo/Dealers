@@ -626,7 +626,9 @@
         }
         initDetailSave(vehicleId);
 
-        fetch('/api/cars/' + vehicleId)
+        var detailHeaders = {};
+        try { if (localStorage.getItem('carfox_token')) detailHeaders.Authorization = 'Bearer ' + localStorage.getItem('carfox_token'); } catch (_) {}
+        fetch('/api/cars/' + vehicleId, { headers: detailHeaders })
           .then(function (res) {
             if (res.status === 404) return null;
             if (!res.ok) throw new Error('load failed');

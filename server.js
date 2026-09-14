@@ -503,6 +503,10 @@ addColumnIfMissing('users', 'suspended_at', 'TEXT');
 // When a listing was marked sold (for days-to-sell insights). Older sold rows get their
 // last update time, which is when mark-sold happened.
 addColumnIfMissing('vehicles', 'sold_at', 'TEXT');
+// Admin moderation: a listing force-paused by an admin stays paused until an admin republishes it.
+addColumnIfMissing('vehicles', 'admin_paused', 'INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('vehicles', 'admin_pause_reason', 'TEXT');
+addColumnIfMissing('vehicles', 'admin_paused_at', 'TEXT');
 db.exec("UPDATE vehicles SET sold_at = COALESCE(updated_at, created_at) WHERE status = 'sold' AND sold_at IS NULL");
 
 // Grandfather in everyone who signed up before email verification existed.
@@ -700,6 +704,31 @@ async function sendSuspensionEmail(opts) {
       body +
       '<p style="color:#999;font-size:13px">CarFox &middot; Verified dealers only</p>' +
       '</div>'
+  });
+}
+
+async function sendListingModerationEmail(opts) {
+  if (!opts || !opts.email) return;
+  const base = appBaseUrl();
+  const link = base ? base + '/dealer/inventory.html' : '';
+  const title = escapeHtmlForEmail(opts.carTitle || 'your listing');
+  const subject = opts.unpublished
+    ? 'Your listing was paused by CarFox: ' + (opts.carTitle || 'listing')
+    : 'Your listing is live again: ' + (opts.carTitle || 'listing');
+  const body = opts.unpublished
+    ? '<p>Your listing <strong>' + title + '</strong> has been paused by the CarFox team and is no longer visible to buyers.</p>' +
+      (opts.reason ? '<p><strong>Reason:</strong> ' + escapeHtmlForEmail(opts.reason) + '</p>' : '') +
+      '<p>You can still edit the listing to fix the issue, but it can only be republished by CarFox. Reply to this email once it is ready for review, or if you believe this is a mistake.</p>'
+    : '<p>Your listing <strong>' + title + '</strong> has been reviewed and is visible to buyers again.</p>';
+  await resend.emails.send({
+    from: 'CarFox <noreply@mawtiq.online>',
+    to: opts.email,
+    subject: subject,
+    html: emailShell(
+      escapeHtmlForEmail(subject),
+      '<p>Hi ' + escapeHtmlForEmail(opts.dealerName || 'there') + ',</p>' + body +
+      (link ? '<p><a href="' + link + '" style="display:inline-block;background:#1d4ed8;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:bold">Open my inventory</a></p>' : '')
+    )
   });
 }
 
@@ -1749,6 +1778,118 @@ app.get('/admin', function (req, res) {
 // Admin dashboard: every number the overview page needs, in one request.
 // Timestamps in the DB are a mix of ISO strings and SQLite 'YYYY-MM-DD HH:MM:SS' defaults,
 // so comparisons go through datetime() which understands both.
+// Admin: paginated listing management (all statuses), with search and governorate filter.
+app.get('/api/admin/listings', requireAdmin, function (req, res) {
+  const status = String(req.query.status || 'all').toLowerCase();
+  const allowed = { all: true, active: true, paused: true, sold: true, draft: true, archived: true };
+  const q = String(req.query.q || '').trim().toLowerCase();
+  const governorate = String(req.query.governorate || '').trim();
+  let limit = Number(req.query.limit) || 25;
+  if (limit < 1) limit = 25;
+  if (limit > 100) limit = 100;
+  let page = Number(req.query.page) || 1;
+  if (page < 1) page = 1;
+
+  let where = ' WHERE 1 = 1';
+  const params = [];
+  if (allowed[status] && status !== 'all') { where += ' AND v.status = ?'; params.push(status); }
+  if (q) {
+    const like = '%' + q.replace(/[%_\\]/g, function (ch) { return '\\' + ch; }) + '%';
+    where += " AND (LOWER(COALESCE(v.year, '') || ' ' || COALESCE(v.make, '') || ' ' || COALESCE(v.model, '') || ' ' || COALESCE(v.trim, '')) LIKE ? ESCAPE '\\'" +
+      " OR LOWER(d.business_name) LIKE ? ESCAPE '\\')";
+    params.push(like, like);
+  }
+  if (governorate) { where += ' AND COALESCE(d.governorate, d.city) = ?'; params.push(governorate); }
+
+  const from = ' FROM vehicles v JOIN dealerships d ON d.id = v.dealership_id';
+  const total = db.prepare('SELECT COUNT(*) AS n' + from + where).get(...params).n;
+  const since30 = new Date(Date.now() - ENGAGEMENT_WINDOW_MS).toISOString();
+  const rows = db
+    .prepare(
+      'SELECT v.id, v.year, v.make, v.model, v.trim, v.price, v.status, COALESCE(v.views, 0) AS views,' +
+      ' v.created_at, v.published_at, v.updated_at, COALESCE(v.admin_paused, 0) AS admin_paused, v.admin_pause_reason, v.admin_paused_at,' +
+      ' d.id AS dealership_id, d.business_name AS dealer_name, COALESCE(d.governorate, d.city) AS governorate,' +
+      ' (SELECT p.url FROM vehicle_photos p WHERE p.vehicle_id = v.id ORDER BY p.is_primary DESC, p.display_order ASC LIMIT 1) AS photo_url,' +
+      ' (SELECT COUNT(*) FROM vehicle_photos p WHERE p.vehicle_id = v.id) AS photo_count,' +
+      ' (SELECT COUNT(*) FROM engagement_events e WHERE e.vehicle_id = v.id AND e.created_at >= ?) AS engagements_30d' +
+      from + where +
+      ' ORDER BY datetime(v.created_at) DESC, v.id DESC LIMIT ? OFFSET ?'
+    )
+    .all(since30, ...params, limit, (page - 1) * limit);
+
+  const counts = { all: 0 };
+  db.prepare('SELECT status, COUNT(*) AS n FROM vehicles GROUP BY status').all().forEach(function (r) {
+    counts[r.status] = Number(r.n); counts.all += Number(r.n);
+  });
+  const governorates = db
+    .prepare("SELECT DISTINCT COALESCE(d.governorate, d.city) AS g FROM vehicles v JOIN dealerships d ON d.id = v.dealership_id WHERE COALESCE(d.governorate, d.city) IS NOT NULL AND COALESCE(d.governorate, d.city) != '' ORDER BY g COLLATE NOCASE")
+    .all().map(function (r) { return r.g; });
+
+  res.set('Cache-Control', 'no-store');
+  return res.json({
+    listings: rows.map(function (r) { return Object.assign({}, r, { admin_paused: !!Number(r.admin_paused), title: vehicleTitle(r) }); }),
+    total: total, page: page, limit: limit, pages: Math.max(1, Math.ceil(total / limit)),
+    counts: counts, governorates: governorates
+  });
+});
+
+// Admin: force-pause a listing for a policy reason. The dealer cannot resume it.
+app.post('/api/admin/listings/:id/unpublish', requireAdmin, function (req, res) {
+  const id = Number(req.params.id);
+  const reason = String((req.body || {}).reason || '').trim();
+  if (!id) return res.status(400).json({ error: 'Invalid listing id' });
+  if (!reason) return res.status(400).json({ error: 'A reason is required' });
+  if (reason.length > 500) return res.status(400).json({ error: 'Reason is too long (max 500 characters)' });
+  const v = db.prepare('SELECT * FROM vehicles WHERE id = ?').get(id);
+  if (!v) return res.status(404).json({ error: 'Listing not found' });
+  if (v.status !== 'active' && v.status !== 'paused') {
+    return res.status(400).json({ error: 'Only active or paused listings can be unpublished' });
+  }
+  const now = new Date().toISOString();
+  db.prepare("UPDATE vehicles SET status = 'paused', admin_paused = 1, admin_pause_reason = ?, admin_paused_at = ?, updated_at = ? WHERE id = ?")
+    .run(reason, now, now, id);
+  const owner = db.prepare('SELECT u.email, u.full_name, d.business_name FROM dealerships d JOIN users u ON u.id = d.user_id WHERE d.id = ?').get(v.dealership_id);
+  if (owner) {
+    sendListingModerationEmail({ email: owner.email, dealerName: owner.full_name || owner.business_name, carTitle: vehicleTitle(v), reason: reason, unpublished: true })
+      .catch(function (err) { console.error('Failed to send listing unpublished email:', err); });
+  }
+  return res.json({ vehicle: db.prepare('SELECT * FROM vehicles WHERE id = ?').get(id) });
+});
+
+// Admin: undo an admin pause and put the listing back live.
+app.post('/api/admin/listings/:id/republish', requireAdmin, function (req, res) {
+  const id = Number(req.params.id);
+  if (!id) return res.status(400).json({ error: 'Invalid listing id' });
+  const v = db.prepare('SELECT * FROM vehicles WHERE id = ?').get(id);
+  if (!v) return res.status(404).json({ error: 'Listing not found' });
+  if (!Number(v.admin_paused)) return res.status(400).json({ error: 'This listing was not paused by an admin' });
+  const now = new Date().toISOString();
+  db.prepare("UPDATE vehicles SET status = 'active', admin_paused = 0, admin_pause_reason = NULL, admin_paused_at = NULL, updated_at = ? WHERE id = ?")
+    .run(now, id);
+  const owner = db.prepare('SELECT u.email, u.full_name, d.business_name FROM dealerships d JOIN users u ON u.id = d.user_id WHERE d.id = ?').get(v.dealership_id);
+  if (owner) {
+    sendListingModerationEmail({ email: owner.email, dealerName: owner.full_name || owner.business_name, carTitle: vehicleTitle(v), unpublished: false })
+      .catch(function (err) { console.error('Failed to send listing republished email:', err); });
+  }
+  return res.json({ vehicle: db.prepare('SELECT * FROM vehicles WHERE id = ?').get(id) });
+});
+
+// Admin: hard delete a listing (spam / scam), including its photos in R2.
+app.delete('/api/admin/listings/:id', requireAdmin, async function (req, res) {
+  const id = Number(req.params.id);
+  if (!id) return res.status(400).json({ error: 'Invalid listing id' });
+  const v = db.prepare('SELECT * FROM vehicles WHERE id = ?').get(id);
+  if (!v) return res.status(404).json({ error: 'Listing not found' });
+  try {
+    const result = await hardDeleteVehicle(id);
+    console.log('Admin', req.user.email, 'deleted listing', id, vehicleTitle(v), result);
+    return res.json({ deleted: true, id: id, photos: result.photos, photos_deleted_from_r2: result.photos_deleted_from_r2 });
+  } catch (e) {
+    console.error('Admin delete failed for listing', id, e);
+    return res.status(500).json({ error: 'Delete failed' });
+  }
+});
+
 app.get('/api/admin/dashboard', requireAdmin, function (req, res) {
   const DAY = 24 * 60 * 60 * 1000;
   const now = new Date();
@@ -2545,17 +2686,22 @@ app.get('/api/cars/:id', function (req, res) {
     return res.status(404).json({ error: 'Listing not found' });
   }
 
+  // Admins may preview any listing (paused, draft, archived, suspended dealer) from the admin panel.
+  const visibility = requestIsAdmin(req)
+    ? ''
+    : " AND d.status = 'approved' AND COALESCE(d.suspended, 0) = 0 AND v.status IN ('active', 'sold')";
   const row = db
     .prepare(
       `SELECT
         v.id, v.year, v.make, v.model, v.trim, v.mileage, v.price,
         v.body_type, v.transmission, v.fuel_type, v.exterior_color, v.interior_color,
         v.description, v.vin, v.status, v.published_at, COALESCE(v.views, 0) AS views,
+        COALESCE(v.admin_paused, 0) AS admin_paused, v.admin_pause_reason,
         d.id AS dealer_id, d.business_name AS dealer_business_name,
         d.city AS dealer_city, d.state AS dealer_state, d.phone AS dealer_phone,
         d.whatsapp AS dealer_whatsapp, d.governorate AS dealer_governorate, d.logo_url AS dealer_logo_url
       ${PUBLIC_CARS_FROM_SQL}
-      WHERE v.id = ? AND d.status = 'approved' AND COALESCE(d.suspended, 0) = 0 AND v.status IN ('active', 'sold')`
+      WHERE v.id = ?` + visibility
     )
     .get(vehicleId);
 
@@ -3045,6 +3191,7 @@ app.get('/api/dealer/vehicles', requireDealer, function (req, res) {
       v.id, v.year, v.make, v.model, v.trim, v.mileage, v.price, v.status,
       COALESCE(v.views, 0) AS views,
       v.published_at,
+      COALESCE(v.admin_paused, 0) AS admin_paused, v.admin_pause_reason,
       p.url AS primary_photo_url
     FROM vehicles v
     LEFT JOIN vehicle_photos p ON p.vehicle_id = v.id AND p.is_primary = 1
@@ -3161,6 +3308,8 @@ app.post('/api/vehicles/:id/publish', requireDealer, dealerSuspendedGuard, funct
       error: 'Cannot publish an archived listing. Restore it first.'
     });
   }
+  const pausedErr = adminPausedError(vehicle);
+  if (pausedErr) return res.status(403).json(pausedErr);
 
   const photoCount = db
     .prepare('SELECT COUNT(*) AS c FROM vehicle_photos WHERE vehicle_id = ?')
@@ -3227,6 +3376,8 @@ app.post('/api/vehicles/:id/resume', requireDealer, dealerSuspendedGuard, functi
   if (vehicle.status !== 'paused') {
     return res.status(400).json({ error: 'Only paused listings can be resumed' });
   }
+  const pausedErr = adminPausedError(vehicle);
+  if (pausedErr) return res.status(403).json(pausedErr);
   const now = new Date().toISOString();
   db.prepare("UPDATE vehicles SET status = 'active', updated_at = ? WHERE id = ?").run(now, vehicleId);
   const row = db.prepare('SELECT * FROM vehicles WHERE id = ?').get(vehicleId);
@@ -3246,6 +3397,8 @@ app.post('/api/vehicles/:id/mark-sold', requireDealer, dealerSuspendedGuard, fun
   if (vehicle.status !== 'active' && vehicle.status !== 'paused') {
     return res.status(400).json({ error: 'Only active or paused listings can be marked as sold' });
   }
+  const pausedErr = adminPausedError(vehicle);
+  if (pausedErr) return res.status(403).json(pausedErr);
   const now = new Date().toISOString();
   db.prepare("UPDATE vehicles SET status = 'sold', updated_at = ?, sold_at = ? WHERE id = ?").run(now, now, vehicleId);
   const row = db.prepare('SELECT * FROM vehicles WHERE id = ?').get(vehicleId);
@@ -3427,6 +3580,55 @@ app.post('/api/vehicles', requireDealer, dealerSuspendedGuard, function (req, re
     return res.status(500).json({ error: 'Could not create vehicle' });
   }
 });
+
+// 403 payload when a dealer tries to change the status of a listing an admin paused.
+function adminPausedError(vehicle) {
+  if (!vehicle || !Number(vehicle.admin_paused)) return null;
+  return {
+    error: 'This listing was paused by CarFox' + (vehicle.admin_pause_reason ? ': ' + vehicle.admin_pause_reason : '') +
+      '. Fix the issue and contact support to have it reviewed and republished.',
+    code: 'ADMIN_PAUSED',
+    reason: vehicle.admin_pause_reason || null
+  };
+}
+
+// True when the request carries a valid admin token (used to let admins preview hidden listings).
+function requestIsAdmin(req) {
+  const header = req.headers.authorization || '';
+  const parts = header.split(' ');
+  if (parts[0] !== 'Bearer' || !parts[1]) return false;
+  try {
+    const decoded = jwt.verify(parts[1], JWT_SECRET);
+    const user = db.prepare('SELECT role FROM users WHERE id = ?').get(decoded.sub);
+    return !!user && user.role === 'admin';
+  } catch (_) {
+    return false;
+  }
+}
+
+function vehicleTitle(v) {
+  return [v.year, v.make, v.model].filter(Boolean).join(' ') + (v.trim ? ' ' + v.trim : '');
+}
+
+// Hard-delete a vehicle: photos from R2, then every child row, then the vehicle. No transaction (Turso).
+async function hardDeleteVehicle(vehicleId) {
+  const photos = db.prepare('SELECT id, url FROM vehicle_photos WHERE vehicle_id = ?').all(vehicleId);
+  let photosDeleted = 0;
+  for (const p of photos) {
+    const key = publicUrlToKey(p.url);
+    if (r2Configured() && key) {
+      try { await r2.send(new DeleteObjectCommand({ Bucket: r2Bucket, Key: key })); photosDeleted++; }
+      catch (e) { console.error('R2 delete failed for', key, e && e.message); }
+    }
+  }
+  db.prepare('DELETE FROM vehicle_photos WHERE vehicle_id = ?').run(vehicleId);
+  db.prepare('DELETE FROM saved_cars WHERE vehicle_id = ?').run(vehicleId);
+  db.prepare('DELETE FROM inquiries WHERE vehicle_id = ?').run(vehicleId);
+  db.prepare('UPDATE engagement_events SET vehicle_id = NULL WHERE vehicle_id = ?').run(vehicleId);
+  db.prepare('UPDATE conversations SET vehicle_id = NULL WHERE vehicle_id = ?').run(vehicleId);
+  db.prepare('DELETE FROM vehicles WHERE id = ?').run(vehicleId);
+  return { photos: photos.length, photos_deleted_from_r2: photosDeleted };
+}
 
 function getDealerVehicle(vehicleId, dealershipId) {
   return db

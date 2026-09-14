@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin • Listings • CarFox</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] } } } };
+    </script>
+    <style>
+      .badge { display:inline-flex; align-items:center; padding:2px 8px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid; white-space:nowrap; }
+      .btn-xs { display:inline-flex; align-items:center; justify-content:center; border-radius:8px; padding:6px 10px; font-size:13px; font-weight:600; white-space:nowrap; }
+      .btn-xs:disabled { opacity:.5; cursor:not-allowed; }
+      .input-xs { border:1px solid #d1d5db; border-radius:8px; padding:6px 8px; font-size:13px; background:#fff; }
+      tr.admin-paused td:first-child { box-shadow: inset 4px 0 0 #dc2626; }
+      .tab-btn { border-radius:999px; padding:6px 12px; font-size:13px; font-weight:600; white-space:nowrap; }
+      .tab-btn .n { margin-left:4px; font-weight:500; opacity:.75; }
+    </style>
+  </head>
+  <body class="bg-white text-gray-900 font-sans">
+    <header class="sticky top-0 z-40 bg-white border-b border-gray-200">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <div class="flex items-center gap-3 sm:gap-4 min-w-0">
+          <a href="/" class="text-lg font-extrabold tracking-tight shrink-0">
+            <span class="text-blue-700">Car</span><span class="text-orange-500">Fox</span>
+          </a>
+          <span class="text-sm text-gray-500 hidden sm:inline">Admin</span>
+          <nav class="flex items-center gap-1 text-sm font-semibold min-w-0 overflow-x-auto whitespace-nowrap">
+            <a href="/admin/index.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Dashboard</a>
+            <a href="/admin/applications.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Applications</a>
+            <a href="/admin/dealers.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Dealers</a>
+            <a href="/admin/listings.html" class="rounded-lg px-3 py-1.5 bg-blue-50 text-blue-700" aria-current="page">Listings</a>
+          </nav>
+        </div>
+        <div class="flex items-center gap-3 text-sm shrink-0 pl-3">
+          <span id="adminEmail" class="text-gray-700 hidden sm:inline">—</span>
+          <button id="signOutBtn" class="text-gray-600 hover:text-gray-900 font-semibold">Sign Out</button>
+        </div>
+      </div>
+    </header>
+
+    <div id="toast" class="fixed top-3 inset-x-0 mx-auto max-w-md px-4 hidden z-50">
+      <div id="toastInner" class="rounded-lg border p-3 text-sm shadow-md"></div>
+    </div>
+
+    <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 pb-16">
+      <div class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 class="text-2xl font-bold text-gray-900">Listings</h1>
+          <p id="subtext" class="mt-1 text-sm text-gray-600">Loading…</p>
+        </div>
+        <form id="searchForm" class="flex flex-wrap items-center gap-2">
+          <input id="searchInput" type="search" placeholder="Search title or dealer" class="input-xs w-56 py-2" />
+          <select id="govSelect" class="input-xs py-2">
+            <option value="">All governorates</option>
+          </select>
+          <button type="submit" class="btn-xs bg-blue-700 text-white hover:bg-blue-800 py-2">Search</button>
+        </form>
+      </div>
+
+      <div id="statusTabs" class="mt-4 flex gap-1 overflow-x-auto pb-1 -mx-1 px-1">
+        <button data-status="all" class="tab-btn bg-blue-700 text-white">All<span class="n" data-count="all"></span></button>
+        <button data-status="active" class="tab-btn bg-gray-100 text-gray-700">Active<span class="n" data-count="active"></span></button>
+        <button data-status="paused" class="tab-btn bg-gray-100 text-gray-700">Paused<span class="n" data-count="paused"></span></button>
+        <button data-status="sold" class="tab-btn bg-gray-100 text-gray-700">Sold<span class="n" data-count="sold"></span></button>
+        <button data-status="draft" class="tab-btn bg-gray-100 text-gray-700">Draft<span class="n" data-count="draft"></span></button>
+        <button data-status="archived" class="tab-btn bg-gray-100 text-gray-700">Archived<span class="n" data-count="archived"></span></button>
+      </div>
+
+      <!-- Desktop table -->
+      <div class="mt-4 hidden md:block overflow-x-auto rounded-xl border border-gray-200">
+        <table class="min-w-full text-sm">
+          <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <tr>
+              <th class="px-4 py-3">Listing</th>
+              <th class="px-4 py-3">Dealer</th>
+              <th class="px-4 py-3 text-right">Price</th>
+              <th class="px-4 py-3">Status</th>
+              <th class="px-4 py-3 text-right">Views</th>
+              <th class="px-4 py-3 text-right">Engagements (30d)</th>
+              <th class="px-4 py-3">Created</th>
+              <th class="px-4 py-3">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody" class="divide-y divide-gray-100"></tbody>
+        </table>
+      </div>
+
+      <!-- Mobile cards -->
+      <div id="cardList" class="mt-4 md:hidden space-y-3"></div>
+
+      <div id="emptyState" class="hidden mt-6 rounded-xl border border-gray-200 bg-gray-50 p-10 text-center text-sm text-gray-600">No listings match these filters.</div>
+
+      <div id="pager" class="mt-4 flex items-center justify-between text-sm text-gray-600">
+        <span id="pageInfo"></span>
+        <div class="flex gap-2">
+          <button id="prevBtn" class="btn-xs border border-gray-300 bg-white text-gray-700 hover:bg-gray-50">← Previous</button>
+          <button id="nextBtn" class="btn-xs border border-gray-300 bg-white text-gray-700 hover:bg-gray-50">Next →</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- Unpublish modal -->
+    <div id="unpublishModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+      <div class="absolute inset-0 bg-black/40" data-close-unpublish></div>
+      <div class="relative bg-white rounded-xl shadow-xl w-[92%] max-w-md p-5">
+        <h3 class="text-lg font-semibold text-gray-900">Unpublish listing</h3>
+        <p id="unpublishTitle" class="mt-1 text-sm text-gray-600"></p>
+        <p class="mt-2 text-xs text-gray-500">The listing is hidden from buyers immediately. The dealer sees the reason on their inventory page and gets an email. Only an admin can republish it.</p>
+        <textarea id="unpublishReason" rows="3" maxlength="500" class="mt-3 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Reason (required, shown to the dealer)"></textarea>
+        <div class="mt-4 flex justify-end gap-2">
+          <button class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700" data-close-unpublish>Cancel</button>
+          <button id="confirmUnpublish" class="px-4 py-2 rounded-lg bg-amber-600 text-white font-semibold hover:bg-amber-700">Unpublish</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete modal -->
+    <div id="deleteModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+      <div class="absolute inset-0 bg-black/40" data-close-delete></div>
+      <div class="relative bg-white rounded-xl shadow-xl w-[92%] max-w-md p-5">
+        <h3 class="text-lg font-semibold text-red-700">Delete listing permanently</h3>
+        <p id="deleteTitle" class="mt-1 text-sm text-gray-600"></p>
+        <p class="mt-2 text-sm text-gray-700">This removes the listing, its photos from storage, saved-car entries and inquiries. It cannot be undone. Use it for spam or scam content only; for policy issues, unpublish instead.</p>
+        <label class="mt-3 block text-xs font-semibold text-gray-600">Type <span class="font-mono text-red-700">DELETE</span> to confirm</label>
+        <input id="deleteConfirmInput" type="text" autocomplete="off" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500" />
+        <div class="mt-4 flex justify-end gap-2">
+          <button class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700" data-close-delete>Cancel</button>
+          <button id="confirmDelete" disabled class="px-4 py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed">Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const TOKEN_KEY = 'carfox_token';
+      const USER_KEY = 'carfox_user';
+      const state = { status: 'all', q: '', governorate: '', page: 1, pages: 1, total: 0 };
+      let listings = [];
+      let modalTarget = null;
+      let busy = false;
+
+      const $ = (id) => document.getElementById(id);
+      const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      const authHeaders = () => ({ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem(TOKEN_KEY) });
+      const num = (n) => Number(n || 0).toLocaleString('en-EG');
+      const fmtPrice = (p) => (p > 0 ? Math.round(Number(p) / 100).toLocaleString('en-EG') + ' EGP' : '—');
+      function parseTs(t) {
+        if (!t) return null;
+        let s = String(t);
+        if (s.indexOf('T') === -1) s = s.replace(' ', 'T');
+        if (!/[zZ]|[+-]\d\d:\d\d$/.test(s)) s += 'Z';
+        const d = new Date(s);
+        return isNaN(d.getTime()) ? null : d;
+      }
+      const fmtDate = (t) => { const d = parseTs(t); return d ? d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '—'; };
+
+      function setToast(kind, message) {
+        const inner = $('toastInner');
+        inner.className = 'rounded-lg border p-3 text-sm shadow-md ' + (kind === 'error' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-green-50 border-green-200 text-green-800');
+        inner.textContent = message;
+        $('toast').classList.remove('hidden');
+        clearTimeout(setToast._t);
+        setToast._t = setTimeout(() => $('toast').classList.add('hidden'), 3500);
+      }
+
+      const STATUS_BADGE = {
+        active: 'bg-green-50 border-green-200 text-green-800',
+        paused: 'bg-amber-50 border-amber-200 text-amber-800',
+        sold: 'bg-gray-100 border-gray-300 text-gray-700',
+        draft: 'bg-orange-50 border-orange-200 text-orange-800',
+        archived: 'bg-gray-50 border-gray-200 text-gray-500'
+      };
+      function statusBadge(v) {
+        if (v.admin_paused) {
+          return '<span class="badge bg-red-50 border-red-200 text-red-800" title="' + esc(v.admin_pause_reason || '') + '">Paused by admin</span>';
+        }
+        return '<span class="badge ' + (STATUS_BADGE[v.status] || STATUS_BADGE.archived) + '">' + esc(v.status) + '</span>';
+      }
+      function actionButtons(v) {
+        let html = '<a href="/cars/' + v.id + '" target="_blank" rel="noopener" class="btn-xs border border-gray-300 text-gray-700 hover:bg-gray-50">View</a>';
+        if (v.admin_paused) {
+          html += '<button class="btn-xs bg-green-600 text-white hover:bg-green-700" data-republish="' + v.id + '">Republish</button>';
+        } else if (v.status === 'active' || v.status === 'paused') {
+          html += '<button class="btn-xs border border-amber-300 text-amber-800 hover:bg-amber-50" data-unpublish="' + v.id + '">Unpublish</button>';
+        }
+        html += '<button class="btn-xs border border-red-300 text-red-700 hover:bg-red-50" data-delete="' + v.id + '">Delete</button>';
+        return html;
+      }
+      function thumb(v, cls) {
+        return v.photo_url
+          ? '<img src="' + esc(v.photo_url) + '" alt="" loading="lazy" class="' + cls + ' rounded-lg object-cover bg-gray-100 shrink-0" />'
+          : '<span class="' + cls + ' rounded-lg bg-gray-100 shrink-0 flex items-center justify-center text-gray-400 text-[10px]">No photo</span>';
+      }
+      function dealerLink(v) {
+        return '<a href="/admin/dealers.html?q=' + encodeURIComponent(v.dealer_name) + '" class="font-semibold text-blue-700 hover:underline">' + esc(v.dealer_name) + '</a>';
+      }
+
+      function render() {
+        const tbody = $('tableBody'); tbody.innerHTML = '';
+        const cards = $('cardList'); cards.innerHTML = '';
+        $('emptyState').classList.toggle('hidden', listings.length > 0);
+        listings.forEach((v) => {
+          const tr = document.createElement('tr');
+          tr.className = v.admin_paused ? 'admin-paused' : '';
+          tr.innerHTML =
+            '<td class="px-4 py-3"><div class="flex items-center gap-3">' + thumb(v, 'w-16 h-12') +
+              '<div class="min-w-0"><a href="/cars/' + v.id + '" target="_blank" rel="noopener" class="font-semibold text-gray-900 hover:text-blue-700">' + esc(v.title || 'Untitled draft') + '</a>' +
+              '<div class="text-xs text-gray-500">#' + v.id + ' · ' + v.photo_count + ' ' + (v.photo_count === 1 ? 'photo' : 'photos') + '</div>' +
+              (v.admin_paused && v.admin_pause_reason ? '<div class="text-xs text-red-700 mt-0.5">Reason: ' + esc(v.admin_pause_reason) + '</div>' : '') +
+              '</div></div></td>' +
+            '<td class="px-4 py-3">' + dealerLink(v) + '<div class="text-xs text-gray-500">' + esc(v.governorate || '—') + '</div></td>' +
+            '<td class="px-4 py-3 text-right whitespace-nowrap">' + fmtPrice(v.price) + '</td>' +
+            '<td class="px-4 py-3">' + statusBadge(v) + '</td>' +
+            '<td class="px-4 py-3 text-right">' + num(v.views) + '</td>' +
+            '<td class="px-4 py-3 text-right">' + num(v.engagements_30d) + '</td>' +
+            '<td class="px-4 py-3 whitespace-nowrap text-gray-600">' + fmtDate(v.created_at) + '</td>' +
+            '<td class="px-4 py-3"><div class="flex flex-wrap gap-1.5">' + actionButtons(v) + '</div></td>';
+          tbody.appendChild(tr);
+
+          const card = document.createElement('div');
+          card.className = 'rounded-xl border p-3 ' + (v.admin_paused ? 'border-red-300 bg-red-50/40' : 'border-gray-200 bg-white');
+          card.innerHTML =
+            '<div class="flex items-start gap-3">' + thumb(v, 'w-20 h-16') +
+              '<div class="min-w-0 flex-1">' +
+                '<div class="flex items-start justify-between gap-2"><a href="/cars/' + v.id + '" target="_blank" rel="noopener" class="font-semibold text-gray-900 leading-snug">' + esc(v.title || 'Untitled draft') + '</a>' + statusBadge(v) + '</div>' +
+                '<div class="text-sm text-blue-700 font-bold mt-0.5">' + fmtPrice(v.price) + '</div>' +
+                '<div class="text-xs text-gray-500 mt-0.5">' + dealerLink(v) + ' · ' + esc(v.governorate || '—') + '</div>' +
+                '<div class="text-xs text-gray-500 mt-0.5">' + num(v.views) + ' views · ' + num(v.engagements_30d) + ' eng. (30d) · ' + fmtDate(v.created_at) + '</div>' +
+                (v.admin_paused && v.admin_pause_reason ? '<div class="text-xs text-red-700 mt-1">Reason: ' + esc(v.admin_pause_reason) + '</div>' : '') +
+              '</div></div>' +
+            '<div class="mt-3 flex flex-wrap gap-1.5">' + actionButtons(v) + '</div>';
+          cards.appendChild(card);
+        });
+        $('pageInfo').textContent = state.total
+          ? 'Showing ' + ((state.page - 1) * 25 + 1) + '–' + Math.min(state.page * 25, state.total) + ' of ' + num(state.total) + ' · page ' + state.page + ' of ' + state.pages
+          : 'No listings';
+        $('prevBtn').disabled = state.page <= 1;
+        $('nextBtn').disabled = state.page >= state.pages;
+        $('pager').classList.toggle('hidden', state.total === 0);
+      }
+
+      function renderCounts(counts) {
+        document.querySelectorAll('[data-count]').forEach((el) => {
+          const n = counts[el.dataset.count] || 0;
+          el.textContent = n ? '(' + num(n) + ')' : '';
+        });
+      }
+
+      async function load() {
+        $('subtext').textContent = 'Loading…';
+        try {
+          const params = new URLSearchParams({ status: state.status, page: String(state.page), limit: '25' });
+          if (state.q) params.set('q', state.q);
+          if (state.governorate) params.set('governorate', state.governorate);
+          const res = await fetch('/api/admin/listings?' + params.toString(), { headers: authHeaders() });
+          if (res.status === 401 || res.status === 403) { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY); window.location.replace('/dealer/login.html'); return; }
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const data = await res.json();
+          listings = data.listings;
+          state.total = data.total; state.pages = data.pages; state.page = data.page;
+          renderCounts(data.counts || {});
+          const sel = $('govSelect');
+          if (sel.options.length <= 1 && data.governorates) {
+            data.governorates.forEach((g) => { const o = document.createElement('option'); o.value = g; o.textContent = g; sel.appendChild(o); });
+            sel.value = state.governorate;
+          }
+          $('subtext').textContent = num(data.counts.all || 0) + ' listings in total · ' + num(data.counts.active || 0) + ' live';
+          render();
+        } catch (e) {
+          $('subtext').textContent = 'Could not load listings. Please refresh.';
+        }
+      }
+
+      async function act(method, url, body, okMsg) {
+        if (busy) return false;
+        busy = true;
+        try {
+          const res = await fetch(url, { method, headers: authHeaders(), body: body ? JSON.stringify(body) : undefined });
+          const data = await res.json().catch(() => null);
+          if (!res.ok) { setToast('error', data && data.error ? data.error : 'Action failed'); return false; }
+          setToast('ok', typeof okMsg === 'function' ? okMsg(data) : okMsg);
+          await load();
+          return true;
+        } catch (_) { setToast('error', 'Network error'); return false; }
+        finally { busy = false; }
+      }
+
+      document.addEventListener('click', (e) => {
+        const up = e.target.closest('[data-unpublish]');
+        if (up) {
+          modalTarget = listings.find((v) => v.id === Number(up.dataset.unpublish));
+          $('unpublishTitle').textContent = (modalTarget.title || 'Listing #' + modalTarget.id) + ' · ' + modalTarget.dealer_name;
+          $('unpublishReason').value = '';
+          $('unpublishModal').classList.remove('hidden');
+          $('unpublishReason').focus();
+          return;
+        }
+        const rp = e.target.closest('[data-republish]');
+        if (rp) { act('POST', '/api/admin/listings/' + rp.dataset.republish + '/republish', null, 'Listing is live again'); return; }
+        const del = e.target.closest('[data-delete]');
+        if (del) {
+          modalTarget = listings.find((v) => v.id === Number(del.dataset.delete));
+          $('deleteTitle').textContent = (modalTarget.title || 'Listing #' + modalTarget.id) + ' · ' + modalTarget.dealer_name + ' · ' + modalTarget.photo_count + ' photo(s)';
+          $('deleteConfirmInput').value = '';
+          $('confirmDelete').disabled = true;
+          $('deleteModal').classList.remove('hidden');
+          $('deleteConfirmInput').focus();
+        }
+      });
+      document.querySelectorAll('[data-close-unpublish]').forEach((el) => el.addEventListener('click', () => { $('unpublishModal').classList.add('hidden'); modalTarget = null; }));
+      document.querySelectorAll('[data-close-delete]').forEach((el) => el.addEventListener('click', () => { $('deleteModal').classList.add('hidden'); modalTarget = null; }));
+      $('confirmUnpublish').addEventListener('click', async () => {
+        if (!modalTarget) return;
+        const reason = $('unpublishReason').value.trim();
+        if (!reason) { setToast('error', 'Please give a reason'); return; }
+        const id = modalTarget.id; modalTarget = null;
+        $('unpublishModal').classList.add('hidden');
+        await act('POST', '/api/admin/listings/' + id + '/unpublish', { reason }, 'Listing unpublished; dealer notified');
+      });
+      $('deleteConfirmInput').addEventListener('input', () => { $('confirmDelete').disabled = $('deleteConfirmInput').value.trim() !== 'DELETE'; });
+      $('confirmDelete').addEventListener('click', async () => {
+        if (!modalTarget || $('deleteConfirmInput').value.trim() !== 'DELETE') return;
+        const id = modalTarget.id; modalTarget = null;
+        $('deleteModal').classList.add('hidden');
+        await act('DELETE', '/api/admin/listings/' + id, null, (d) => 'Listing deleted' + (d && d.photos ? ' (' + d.photos_deleted_from_r2 + '/' + d.photos + ' photos removed from storage)' : ''));
+      });
+
+      // ---------- filters ----------
+      $('statusTabs').addEventListener('click', (e) => {
+        const b = e.target.closest('.tab-btn'); if (!b) return;
+        state.status = b.dataset.status; state.page = 1;
+        document.querySelectorAll('.tab-btn').forEach((t) => { t.className = 'tab-btn ' + (t === b ? 'bg-blue-700 text-white' : 'bg-gray-100 text-gray-700'); });
+        syncUrl(); load();
+      });
+      $('searchForm').addEventListener('submit', (e) => { e.preventDefault(); state.q = $('searchInput').value.trim(); state.governorate = $('govSelect').value; state.page = 1; syncUrl(); load(); });
+      $('govSelect').addEventListener('change', () => { state.governorate = $('govSelect').value; state.page = 1; syncUrl(); load(); });
+      $('prevBtn').addEventListener('click', () => { if (state.page > 1) { state.page--; syncUrl(); load(); window.scrollTo(0, 0); } });
+      $('nextBtn').addEventListener('click', () => { if (state.page < state.pages) { state.page++; syncUrl(); load(); window.scrollTo(0, 0); } });
+      function syncUrl() {
+        const p = new URLSearchParams();
+        if (state.status !== 'all') p.set('status', state.status);
+        if (state.q) p.set('q', state.q);
+        if (state.governorate) p.set('governorate', state.governorate);
+        if (state.page > 1) p.set('page', String(state.page));
+        history.replaceState(null, '', location.pathname + (p.toString() ? '?' + p.toString() : ''));
+      }
+      (function initFromUrl() {
+        const p = new URLSearchParams(location.search);
+        if (p.get('status')) { state.status = p.get('status'); document.querySelectorAll('.tab-btn').forEach((t) => { t.className = 'tab-btn ' + (t.dataset.status === state.status ? 'bg-blue-700 text-white' : 'bg-gray-100 text-gray-700'); }); }
+        if (p.get('q')) { state.q = p.get('q'); $('searchInput').value = state.q; }
+        if (p.get('governorate')) state.governorate = p.get('governorate');
+        if (Number(p.get('page')) > 1) state.page = Number(p.get('page'));
+      })();
+      $('signOutBtn').addEventListener('click', () => { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY); window.location.replace('/'); });
+
+      // ---------- init ----------
+      (async function init() {
+        const token = localStorage.getItem(TOKEN_KEY);
+        if (!token) { window.location.replace('/dealer/login.html'); return; }
+        try {
+          const me = await fetch('/api/auth/me', { headers: authHeaders() });
+          if (me.status === 401) { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY); window.location.replace('/dealer/login.html'); return; }
+          const meData = await me.json();
+          if (!meData || !meData.user || meData.user.role !== 'admin') { window.location.replace('/'); return; }
+          $('adminEmail').textContent = meData.user.email || 'admin';
+          await load();
+        } catch (e) {
+          $('subtext').textContent = 'Could not load listings. Please refresh.';
+        }
+      })();
+    </script>
+  </body>
+</html>

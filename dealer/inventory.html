@@ -174,8 +174,9 @@
 
         function renderCard(v) {
           var title = [v.year, v.make, v.model].filter(Boolean).join(' ') || 'Untitled';
-          var badgeCls = statusBadgeCls(v.status);
-          var badgeLabel = v.status.charAt(0).toUpperCase() + v.status.slice(1);
+          var adminPaused = !!Number(v.admin_paused);
+          var badgeCls = adminPaused ? 'bg-red-100 text-red-700' : statusBadgeCls(v.status);
+          var badgeLabel = adminPaused ? 'Paused by admin' : v.status.charAt(0).toUpperCase() + v.status.slice(1);
 
           var card = document.createElement('div');
           card.className = 'bg-white rounded-xl border border-gray-200 overflow-hidden flex gap-3 p-3';
@@ -221,6 +222,14 @@
             '<span>' + esc(formatDaysAgo(v.published_at)) + '</span>';
           info.appendChild(metaEl);
 
+          if (adminPaused) {
+            var note = document.createElement('p');
+            note.className = 'mt-1.5 text-xs text-red-700 bg-red-50 border border-red-200 rounded-md px-2 py-1.5';
+            note.textContent = 'Paused by admin' + (v.admin_pause_reason ? ': ' + v.admin_pause_reason : '') +
+              '. Only CarFox can republish this listing. Fix the issue, then contact support for a review.';
+            info.appendChild(note);
+          }
+
           // Action buttons
           var actionsEl = document.createElement('div');
           actionsEl.className = 'flex flex-wrap gap-2 mt-2';
@@ -259,12 +268,21 @@
             });
           }
 
-          if (v.status === 'paused') {
+          if (v.status === 'paused' && !adminPaused) {
             addBtn(actionsEl, 'Resume', 'text-green-700 border-green-200 hover:bg-green-50', function (btn) {
               doAction('POST', '/api/vehicles/' + v.id + '/resume', btn).then(function (ok) {
                 if (ok) loadVehicleList(currentFilter);
               });
             });
+            addBtn(actionsEl, 'Delete', 'text-red-600 border-red-200 hover:bg-red-50', function (btn) {
+              if (!confirm('Delete this listing? This cannot be undone.')) return;
+              doAction('DELETE', '/api/vehicles/' + v.id, btn).then(function (ok) {
+                if (ok) { loadVehicleList(currentFilter); loadStats(); }
+              });
+            });
+          }
+
+          if (v.status === 'paused' && adminPaused) {
             addBtn(actionsEl, 'Delete', 'text-red-600 border-red-200 hover:bg-red-50', function (btn) {
               if (!confirm('Delete this listing? This cannot be undone.')) return;
               doAction('DELETE', '/api/vehicles/' + v.id, btn).then(function (ok) {
