@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin • Dashboard • CarFox</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] } } } };
+    </script>
+    <style>
+      .card { background:#fff; border:1px solid #e5e7eb; border-radius:14px; box-shadow:0 1px 2px rgba(15,23,42,.04); }
+      .stat-label { font-size:12px; font-weight:600; letter-spacing:.02em; text-transform:uppercase; color:#6b7280; }
+      .stat-value { font-size:26px; font-weight:800; line-height:1.1; color:#111827; }
+      .stat-sub { font-size:12px; color:#6b7280; margin-top:6px; }
+      .card.alert { background:#fffbeb; border-color:#fcd34d; }
+      .card.alert .stat-value { color:#b45309; }
+      .trend { display:inline-flex; align-items:center; gap:3px; border-radius:999px; padding:2px 8px; font-size:12px; font-weight:700; }
+      .trend.up { background:#ecfdf5; color:#047857; }
+      .trend.down { background:#fef2f2; color:#b91c1c; }
+      .trend.flat { background:#f3f4f6; color:#4b5563; }
+      .badge { display:inline-flex; align-items:center; padding:2px 8px; border-radius:6px; font-size:11px; font-weight:600; border:1px solid; white-space:nowrap; }
+      .btn-xs { display:inline-flex; align-items:center; justify-content:center; border-radius:8px; padding:6px 10px; font-size:13px; font-weight:600; white-space:nowrap; }
+      .chart { display:grid; grid-template-columns:repeat(8, minmax(0, 1fr)); gap:8px; height:150px; align-items:end; }
+      .vbar { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:6px; height:100%; }
+      .vbar > i { display:block; width:100%; max-width:44px; border-radius:8px 8px 4px 4px; background:#1d4ed8; transition:height .3s; }
+      .vbar.zero > i { background:#e5e7eb; }
+      .chart-labels { display:grid; grid-template-columns:repeat(8, minmax(0, 1fr)); gap:8px; font-size:10px; color:#6b7280; text-align:center; margin-top:8px; }
+      .skeleton { color:transparent !important; background:#f3f4f6; border-radius:6px; }
+      @media (max-width: 640px) { .stat-value { font-size:22px; } .chart-labels { font-size:9px; } }
+    </style>
+  </head>
+  <body class="bg-gray-50 text-gray-900 font-sans">
+    <header class="sticky top-0 z-40 bg-white border-b border-gray-200">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <div class="flex items-center gap-3 sm:gap-4 min-w-0">
+          <a href="/" class="text-lg font-extrabold tracking-tight shrink-0">
+            <span class="text-blue-700">Car</span><span class="text-orange-500">Fox</span>
+          </a>
+          <span class="text-sm text-gray-500 hidden sm:inline">Admin</span>
+          <nav class="flex items-center gap-1 text-sm font-semibold min-w-0 overflow-x-auto whitespace-nowrap">
+            <a href="/admin/index.html" class="rounded-lg px-3 py-1.5 bg-blue-50 text-blue-700" aria-current="page">Dashboard</a>
+            <a href="/admin/applications.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Applications</a>
+            <a href="/admin/dealers.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Dealers</a>
+          </nav>
+        </div>
+        <div class="flex items-center gap-3 text-sm shrink-0 pl-3">
+          <span id="adminEmail" class="text-gray-700 hidden sm:inline">—</span>
+          <button id="signOutBtn" class="text-gray-600 hover:text-gray-900 font-semibold">Sign Out</button>
+        </div>
+      </div>
+    </header>
+
+    <div id="toast" class="fixed top-3 inset-x-0 mx-auto max-w-md px-4 hidden z-50">
+      <div id="toastInner" class="rounded-lg border p-3 text-sm shadow-md"></div>
+    </div>
+
+    <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 pb-16">
+      <div class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
+          <p id="subtext" class="mt-1 text-sm text-gray-600">Loading…</p>
+        </div>
+        <button id="refreshBtn" class="btn-xs border border-gray-300 bg-white text-gray-700 hover:bg-gray-50">Refresh</button>
+      </div>
+
+      <div id="errorBox" class="hidden mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"></div>
+
+      <!-- Stat cards -->
+      <section class="mt-5 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3" aria-label="Totals">
+        <a href="/admin/dealers.html" class="card p-4 block hover:border-blue-300">
+          <div class="stat-label">Dealers</div>
+          <div id="statDealers" class="stat-value skeleton mt-1">0</div>
+          <div id="statDealersSub" class="stat-sub">—</div>
+        </a>
+        <div class="card p-4">
+          <div class="stat-label">Buyers</div>
+          <div id="statBuyers" class="stat-value skeleton mt-1">0</div>
+          <div id="statBuyersSub" class="stat-sub">—</div>
+        </div>
+        <a href="/cars.html" class="card p-4 block hover:border-blue-300">
+          <div class="stat-label">Active listings</div>
+          <div id="statActive" class="stat-value skeleton mt-1">0</div>
+          <div id="statActiveSub" class="stat-sub">—</div>
+        </a>
+        <div class="card p-4">
+          <div class="stat-label">Total listings</div>
+          <div id="statTotal" class="stat-value skeleton mt-1">0</div>
+          <div id="statTotalSub" class="stat-sub">—</div>
+        </div>
+        <div class="card p-4">
+          <div class="stat-label">Cars sold</div>
+          <div id="statSold" class="stat-value skeleton mt-1">0</div>
+          <div id="statSoldSub" class="stat-sub">—</div>
+        </div>
+        <a id="statPendingCard" href="/admin/applications.html" class="card p-4 block hover:border-blue-300">
+          <div class="stat-label">Pending applications</div>
+          <div id="statPending" class="stat-value skeleton mt-1">0</div>
+          <div id="statPendingSub" class="stat-sub">—</div>
+        </a>
+      </section>
+
+      <!-- Activity -->
+      <section class="mt-8" aria-label="Activity">
+        <div class="flex items-baseline justify-between">
+          <h2 class="text-lg font-bold text-gray-900">Activity</h2>
+          <span class="text-xs text-gray-500">Last 30 days vs the 30 days before</span>
+        </div>
+        <div id="activityGrid" class="mt-3 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3"></div>
+      </section>
+
+      <!-- Charts -->
+      <section class="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-4" aria-label="Charts">
+        <div class="card p-5">
+          <div class="flex items-baseline justify-between">
+            <h2 class="font-bold text-gray-900">Listings created per week</h2>
+            <span id="listingsWeekTotal" class="text-xs text-gray-500"></span>
+          </div>
+          <div id="listingsChart" class="chart mt-4"></div>
+          <div id="listingsLabels" class="chart-labels"></div>
+        </div>
+        <div class="card p-5">
+          <div class="flex items-baseline justify-between">
+            <h2 class="font-bold text-gray-900">New users per week</h2>
+            <span id="usersWeekTotal" class="text-xs text-gray-500"></span>
+          </div>
+          <div id="usersChart" class="chart mt-4"></div>
+          <div id="usersLabels" class="chart-labels"></div>
+          <p class="mt-3 text-xs text-gray-500">Buyers and dealers together. Hover a bar for the split.</p>
+        </div>
+      </section>
+
+      <!-- Lists -->
+      <section class="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-4" aria-label="Recent activity lists">
+        <div class="card p-5">
+          <div class="flex items-baseline justify-between">
+            <h2 class="font-bold text-gray-900">Recent listings</h2>
+            <a href="/cars.html" class="text-xs font-semibold text-blue-700 hover:underline">Browse all</a>
+          </div>
+          <ul id="recentListings" class="mt-3 divide-y divide-gray-100"></ul>
+        </div>
+        <div class="card p-5">
+          <div class="flex items-baseline justify-between">
+            <h2 class="font-bold text-gray-900">Newest dealers</h2>
+            <a href="/admin/dealers.html" class="text-xs font-semibold text-blue-700 hover:underline">All dealers</a>
+          </div>
+          <ul id="newestDealers" class="mt-3 divide-y divide-gray-100"></ul>
+        </div>
+        <div class="card p-5">
+          <div class="flex items-baseline justify-between">
+            <h2 class="font-bold text-gray-900">Pending applications</h2>
+            <a href="/admin/applications.html" class="text-xs font-semibold text-blue-700 hover:underline">Review all</a>
+          </div>
+          <ul id="pendingApps" class="mt-3 divide-y divide-gray-100"></ul>
+        </div>
+      </section>
+    </main>
+
+    <!-- Reject modal -->
+    <div id="rejectModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+      <div class="absolute inset-0 bg-black/40" data-close-reject></div>
+      <div class="relative bg-white rounded-xl shadow-xl w-[92%] max-w-md p-5">
+        <h3 class="text-lg font-semibold text-gray-900">Reject application</h3>
+        <p id="rejectModalTitle" class="mt-1 text-sm text-gray-600"></p>
+        <textarea id="rejectReason" rows="4" class="mt-3 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Optional reason (sent to the applicant)"></textarea>
+        <div class="mt-4 flex justify-end gap-2">
+          <button class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700" data-close-reject>Cancel</button>
+          <button id="confirmReject" class="px-4 py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700">Reject</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const TOKEN_KEY = 'carfox_token';
+      const USER_KEY = 'carfox_user';
+      let rejectTarget = null;
+      let busy = false;
+
+      const $ = (id) => document.getElementById(id);
+      const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      const authHeaders = () => ({ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem(TOKEN_KEY) });
+      const num = (n) => Number(n || 0).toLocaleString('en-EG');
+      const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
+      function parseTs(t) {
+        if (!t) return null;
+        let s = String(t);
+        if (s.indexOf('T') === -1) s = s.replace(' ', 'T');
+        if (!/[zZ]|[+-]\d\d:\d\d$/.test(s)) s += 'Z';
+        const d = new Date(s);
+        return isNaN(d.getTime()) ? null : d;
+      }
+      function ago(t) {
+        const d = parseTs(t); if (!d) return '—';
+        const mins = Math.round((Date.now() - d.getTime()) / 60000);
+        if (mins < 1) return 'just now';
+        if (mins < 60) return mins + 'm ago';
+        const hrs = Math.round(mins / 60);
+        if (hrs < 24) return hrs + 'h ago';
+        const days = Math.round(hrs / 24);
+        if (days < 30) return days + 'd ago';
+        return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+      }
+      // Prices are stored in piasters (1/100 EGP).
+      const fmtPrice = (p) => (p > 0 ? Math.round(Number(p) / 100).toLocaleString('en-EG') + ' EGP' : '—');
+
+      function setToast(kind, message) {
+        const inner = $('toastInner');
+        inner.className = 'rounded-lg border p-3 text-sm shadow-md ' + (kind === 'error' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-green-50 border-green-200 text-green-800');
+        inner.textContent = message;
+        $('toast').classList.remove('hidden');
+        clearTimeout(setToast._t);
+        setToast._t = setTimeout(() => $('toast').classList.add('hidden'), 3500);
+      }
+
+      // ---------- rendering ----------
+      function setStat(id, value) { const el = $(id); el.classList.remove('skeleton'); el.textContent = num(value); }
+
+      function renderTotals(t) {
+        setStat('statDealers', t.dealers.total);
+        $('statDealersSub').innerHTML =
+          '<span class="text-green-700 font-semibold">' + num(t.dealers.approved) + ' approved</span> · ' +
+          '<span class="text-amber-700 font-semibold">' + num(t.dealers.pending) + ' pending</span> · ' +
+          '<span class="text-red-700 font-semibold">' + num(t.dealers.suspended) + ' suspended</span>';
+        setStat('statBuyers', t.buyers.total);
+        $('statBuyersSub').textContent = t.buyers.suspended ? num(t.buyers.suspended) + ' suspended' : 'Registered buyer accounts';
+        setStat('statActive', t.listings.active);
+        $('statActiveSub').textContent = 'Live on the marketplace' + (t.listings.paused ? ' · ' + num(t.listings.paused) + ' paused' : '');
+        setStat('statTotal', t.listings.total);
+        $('statTotalSub').textContent = 'Published ever' + (t.listings.drafts ? ' · ' + num(t.listings.drafts) + ' drafts' : '');
+        setStat('statSold', t.sold.all_time);
+        $('statSoldSub').innerHTML = '<span class="font-semibold text-gray-800">' + num(t.sold.this_month) + '</span> this month';
+        setStat('statPending', t.pending_applications);
+        const card = $('statPendingCard');
+        card.classList.toggle('alert', t.pending_applications > 0);
+        $('statPendingSub').textContent = t.pending_applications > 0 ? 'Waiting for review' : 'All caught up';
+      }
+
+      function trendHtml(w) {
+        if (w.trend_pct == null) {
+          if (w.previous === 0 && w.current > 0) return '<span class="trend up">New</span>';
+          return '<span class="trend flat">→ 0%</span>';
+        }
+        const p = w.trend_pct;
+        if (p > 0) return '<span class="trend up">↑ ' + p + '%</span>';
+        if (p < 0) return '<span class="trend down">↓ ' + Math.abs(p) + '%</span>';
+        return '<span class="trend flat">→ 0%</span>';
+      }
+      function renderActivity(a) {
+        const items = [
+          ['New dealer signups', a.new_dealers],
+          ['New buyer signups', a.new_buyers],
+          ['New listings', a.new_listings],
+          ['Messages sent', a.messages],
+          ['Total views', null, a.views],
+          ['Engagements', a.engagements]
+        ];
+        $('activityGrid').innerHTML = items.map(([label, w, views]) => {
+          if (views) {
+            return '<div class="card p-4"><div class="stat-label">' + label + '</div>' +
+              '<div class="stat-value mt-1">' + num(views.all_time) + '</div>' +
+              '<div class="stat-sub">All time · views are not timestamped</div></div>';
+          }
+          return '<div class="card p-4"><div class="stat-label">' + label + '</div>' +
+            '<div class="mt-1 flex items-center gap-2 flex-wrap"><span class="stat-value">' + num(w.current) + '</span>' + trendHtml(w) + '</div>' +
+            '<div class="stat-sub">' + num(w.previous) + ' in the previous 30 days</div></div>';
+        }).join('');
+      }
+
+      function renderChart(chartId, labelsId, totalId, weeks, tip) {
+        const chart = $(chartId); chart.innerHTML = '';
+        const labels = $(labelsId); labels.innerHTML = '';
+        const max = Math.max(1, ...weeks.map((w) => w.count));
+        let total = 0;
+        weeks.forEach((w) => {
+          total += w.count;
+          const col = document.createElement('div');
+          col.className = 'vbar' + (w.count === 0 ? ' zero' : '');
+          col.title = 'Week of ' + w.label + ': ' + (tip ? tip(w) : plural(w.count, 'item', 'items'));
+          col.innerHTML = '<span class="text-xs font-semibold text-gray-700">' + w.count + '</span><i style="height:' + Math.max(4, Math.round((w.count / max) * 100)) + '%"></i>';
+          chart.appendChild(col);
+          const lab = document.createElement('div');
+          lab.textContent = w.label;
+          labels.appendChild(lab);
+        });
+        $(totalId).textContent = num(total) + ' in 8 weeks';
+      }
+
+      const STATUS_BADGE = {
+        active: 'bg-green-50 border-green-200 text-green-800',
+        sold: 'bg-gray-100 border-gray-300 text-gray-700',
+        paused: 'bg-amber-50 border-amber-200 text-amber-800',
+        archived: 'bg-gray-50 border-gray-200 text-gray-500'
+      };
+      function renderRecentListings(list) {
+        const ul = $('recentListings'); ul.innerHTML = '';
+        if (!list.length) { ul.innerHTML = '<li class="py-6 text-sm text-gray-500 text-center">No listings yet.</li>'; return; }
+        list.forEach((v) => {
+          const title = [v.year, v.make, v.model].filter(Boolean).join(' ') + (v.trim ? ' ' + v.trim : '');
+          const li = document.createElement('li');
+          li.className = 'py-2.5';
+          li.innerHTML =
+            '<a href="/cars/' + v.id + '" class="flex items-center gap-3 group">' +
+              (v.photo_url
+                ? '<img src="' + esc(v.photo_url) + '" alt="" loading="lazy" class="w-16 h-12 rounded-lg object-cover bg-gray-100 shrink-0" />'
+                : '<span class="w-16 h-12 rounded-lg bg-gray-100 shrink-0 flex items-center justify-center text-gray-400 text-xs">No photo</span>') +
+              '<span class="min-w-0 flex-1">' +
+                '<span class="block text-sm font-semibold text-gray-900 truncate group-hover:text-blue-700">' + esc(title) + '</span>' +
+                '<span class="block text-xs text-gray-500 leading-snug">' + esc(v.dealer_name) + ' · ' + fmtPrice(v.price) + ' · ' + ago(v.created_at) + '</span>' +
+              '</span>' +
+              '<span class="badge ' + (STATUS_BADGE[v.status] || STATUS_BADGE.archived) + '">' + esc(v.status) + '</span>' +
+            '</a>';
+          ul.appendChild(li);
+        });
+      }
+
+      function renderNewestDealers(list) {
+        const ul = $('newestDealers'); ul.innerHTML = '';
+        if (!list.length) { ul.innerHTML = '<li class="py-6 text-sm text-gray-500 text-center">No approved dealers yet.</li>'; return; }
+        list.forEach((d) => {
+          const li = document.createElement('li');
+          li.className = 'py-2.5';
+          const href = '/admin/dealers.html?q=' + encodeURIComponent(d.business_name);
+          li.innerHTML =
+            '<a href="' + href + '" class="flex items-center gap-3 group">' +
+              '<span class="w-10 h-10 rounded-full bg-blue-50 text-blue-700 font-bold flex items-center justify-center shrink-0">' + esc((d.business_name || '?').charAt(0).toUpperCase()) + '</span>' +
+              '<span class="min-w-0 flex-1">' +
+                '<span class="block text-sm font-semibold text-gray-900 truncate group-hover:text-blue-700">' + esc(d.business_name) + '</span>' +
+                '<span class="block text-xs text-gray-500 leading-snug">' + esc(d.governorate || '—') + ' · ' + plural(d.active_listings, 'active listing', 'active listings') + ' · joined ' + ago(d.approved_at || d.created_at) + '</span>' +
+              '</span>' +
+              (d.suspended
+                ? '<span class="badge bg-red-50 border-red-200 text-red-800">Suspended</span>'
+                : '<span class="badge bg-gray-50 border-gray-200 text-gray-600">' + esc(d.plan.charAt(0).toUpperCase() + d.plan.slice(1)) + '</span>') +
+            '</a>';
+          ul.appendChild(li);
+        });
+      }
+
+      function renderPendingApps(list, total) {
+        const ul = $('pendingApps'); ul.innerHTML = '';
+        if (!list.length) { ul.innerHTML = '<li class="py-6 text-sm text-gray-500 text-center">No pending applications. 🎉</li>'; return; }
+        list.forEach((a) => {
+          const li = document.createElement('li');
+          li.className = 'py-3';
+          li.innerHTML =
+            '<div class="flex items-start gap-3">' +
+              '<div class="min-w-0 flex-1">' +
+                '<div class="text-sm font-semibold text-gray-900 truncate">' + esc(a.business_name) + '</div>' +
+                '<div class="text-xs text-gray-500 truncate">' + esc(a.full_name || '') + ' · ' + esc(a.email) + (a.email_verified ? '' : ' · <span class="text-amber-700 font-semibold">email unverified</span>') + '</div>' +
+                '<div class="text-xs text-gray-500 truncate">' + esc(a.governorate || '—') + ' · Lic. ' + esc(a.license_number) + ' · applied ' + ago(a.created_at) + '</div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="mt-2 flex gap-2">' +
+              '<button class="btn-xs bg-green-600 text-white hover:bg-green-700 flex-1" data-approve="' + a.id + '">Approve</button>' +
+              '<button class="btn-xs border border-red-300 text-red-700 hover:bg-red-50 flex-1" data-reject="' + a.id + '" data-name="' + esc(a.business_name) + '">Reject</button>' +
+            '</div>';
+          ul.appendChild(li);
+        });
+        if (total > list.length) {
+          const more = document.createElement('li');
+          more.className = 'pt-3 text-xs text-gray-500 text-center';
+          more.innerHTML = '<a href="/admin/applications.html" class="font-semibold text-blue-700 hover:underline">+ ' + (total - list.length) + ' more waiting</a>';
+          ul.appendChild(more);
+        }
+      }
+
+      function render(data) {
+        renderTotals(data.totals);
+        renderActivity(data.activity);
+        renderChart('listingsChart', 'listingsLabels', 'listingsWeekTotal', data.charts.listings_per_week, (w) => plural(w.count, 'listing', 'listings'));
+        renderChart('usersChart', 'usersLabels', 'usersWeekTotal', data.charts.users_per_week, (w) => plural(w.count, 'user', 'users') + ' (' + (w.extra.buyer || 0) + ' buyers, ' + (w.extra.dealer || 0) + ' dealers)');
+        renderRecentListings(data.recent_listings);
+        renderNewestDealers(data.newest_dealers);
+        renderPendingApps(data.pending_applications, data.totals.pending_applications);
+        $('subtext').textContent = 'Updated ' + new Date(data.generated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+
+      // ---------- data ----------
+      async function load() {
+        $('errorBox').classList.add('hidden');
+        try {
+          const res = await fetch('/api/admin/dashboard', { headers: authHeaders() });
+          if (res.status === 401 || res.status === 403) { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY); window.location.replace('/dealer/login.html'); return; }
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          render(await res.json());
+        } catch (e) {
+          $('subtext').textContent = 'Could not load the dashboard.';
+          $('errorBox').textContent = 'Could not load dashboard data (' + e.message + '). Try refreshing.';
+          $('errorBox').classList.remove('hidden');
+        }
+      }
+
+      async function decide(id, action, reason) {
+        if (busy) return;
+        busy = true;
+        try {
+          const res = await fetch('/api/admin/applications/' + id + '/' + action, {
+            method: 'PATCH', headers: authHeaders(), body: JSON.stringify(action === 'reject' ? { reason: reason || null } : {})
+          });
+          const body = await res.json().catch(() => null);
+          if (!res.ok) { setToast('error', body && body.error ? body.error : 'Failed to ' + action); return; }
+          setToast('ok', action === 'approve' ? 'Application approved' : 'Application rejected');
+          await load();
+        } catch (_) {
+          setToast('error', 'Failed to ' + action);
+        } finally { busy = false; }
+      }
+
+      $('pendingApps').addEventListener('click', (e) => {
+        const ap = e.target.closest('[data-approve]');
+        if (ap) { decide(Number(ap.dataset.approve), 'approve'); return; }
+        const rj = e.target.closest('[data-reject]');
+        if (rj) {
+          rejectTarget = Number(rj.dataset.reject);
+          $('rejectModalTitle').textContent = 'Why are you rejecting ' + (rj.dataset.name || 'this dealership') + '?';
+          $('rejectReason').value = '';
+          $('rejectModal').classList.remove('hidden');
+        }
+      });
+      document.querySelectorAll('[data-close-reject]').forEach((el) => el.addEventListener('click', () => { $('rejectModal').classList.add('hidden'); rejectTarget = null; }));
+      $('confirmReject').addEventListener('click', async () => {
+        if (!rejectTarget) return;
+        const id = rejectTarget; rejectTarget = null;
+        $('rejectModal').classList.add('hidden');
+        await decide(id, 'reject', $('rejectReason').value.trim());
+      });
+      $('refreshBtn').addEventListener('click', load);
+      $('signOutBtn').addEventListener('click', () => { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY); window.location.replace('/'); });
+
+      // ---------- init ----------
+      (async function init() {
+        const token = localStorage.getItem(TOKEN_KEY);
+        if (!token) { window.location.replace('/dealer/login.html'); return; }
+        try {
+          const me = await fetch('/api/auth/me', { headers: authHeaders() });
+          if (me.status === 401) { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY); window.location.replace('/dealer/login.html'); return; }
+          const meData = await me.json();
+          if (!meData || !meData.user || meData.user.role !== 'admin') { window.location.replace('/'); return; }
+          $('adminEmail').textContent = meData.user.email || 'admin';
+          await load();
+        } catch (e) {
+          $('subtext').textContent = 'Could not load the dashboard. Please refresh.';
+        }
+      })();
+    </script>
+  </body>
+</html>

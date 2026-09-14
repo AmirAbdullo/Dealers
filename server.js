@@ -1741,9 +1741,181 @@ app.post('/api/dealer/logo', function (req, res, next) {
   return res.json({ logo_url: logoUrl });
 });
 
-// Short admin URL -> admin panel
+// Short admin URL -> admin dashboard
 app.get('/admin', function (req, res) {
-  return res.redirect('/admin/applications.html');
+  return res.redirect('/admin/index.html');
+});
+
+// Admin dashboard: every number the overview page needs, in one request.
+// Timestamps in the DB are a mix of ISO strings and SQLite 'YYYY-MM-DD HH:MM:SS' defaults,
+// so comparisons go through datetime() which understands both.
+app.get('/api/admin/dashboard', requireAdmin, function (req, res) {
+  const DAY = 24 * 60 * 60 * 1000;
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const since30 = new Date(now.getTime() - 30 * DAY).toISOString();
+  const since60 = new Date(now.getTime() - 60 * DAY).toISOString();
+  const since56 = new Date(now.getTime() - 56 * DAY).toISOString();
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+
+  function count(sql, params) {
+    const st = db.prepare(sql);
+    const row = st.get.apply(st, params || []);
+    return row && row.n != null ? Number(row.n) : 0;
+  }
+  // Count rows of a base query in the last 30 days and the 30 days before that.
+  function windowed(base, col) {
+    const cur = count(base + ' AND datetime(' + col + ') >= datetime(?)', [since30]);
+    const prev = count(base + ' AND datetime(' + col + ') >= datetime(?) AND datetime(' + col + ') < datetime(?)', [since60, since30]);
+    let pct = null;
+    if (prev > 0) pct = Math.round(((cur - prev) / prev) * 100);
+    return { current: cur, previous: prev, trend_pct: pct };
+  }
+  // Parse either timestamp flavour as UTC.
+  function parseTs(t) {
+    if (!t) return null;
+    let s = String(t);
+    if (s.indexOf('T') === -1) s = s.replace(' ', 'T');
+    if (!/[zZ]|[+-]\d\d:\d\d$/.test(s)) s += 'Z';
+    const d = new Date(s);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  // Bucket timestamps into 8 weekly columns ending today (oldest first).
+  function weekly(rows, pick) {
+    const weeks = [];
+    for (let i = 7; i >= 0; i--) {
+      const end = new Date(now.getTime() - i * 7 * DAY);
+      const start = new Date(end.getTime() - 7 * DAY);
+      weeks.push({ start: start.toISOString(), end: end.toISOString(), label: start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }), count: 0, extra: {} });
+    }
+    rows.forEach(function (r) {
+      const d = parseTs(r.t);
+      if (!d) return;
+      const idx = 7 - Math.floor((now.getTime() - d.getTime()) / (7 * DAY));
+      if (idx < 0 || idx > 7) return;
+      weeks[idx].count += 1;
+      if (pick) { const k = pick(r); weeks[idx].extra[k] = (weeks[idx].extra[k] || 0) + 1; }
+    });
+    return weeks;
+  }
+
+  // ---- totals ----
+  const dealerRows = db.prepare('SELECT status, COALESCE(suspended, 0) AS suspended, COUNT(*) AS n FROM dealerships GROUP BY status, COALESCE(suspended, 0)').all();
+  const dealers = { approved: 0, pending: 0, suspended: 0, rejected: 0, total: 0 };
+  dealerRows.forEach(function (r) {
+    const n = Number(r.n) || 0;
+    if (r.status === 'pending') dealers.pending += n;
+    else if (r.status === 'rejected') dealers.rejected += n;
+    else if (r.status === 'approved') { if (Number(r.suspended)) dealers.suspended += n; else dealers.approved += n; }
+  });
+  dealers.total = dealers.approved + dealers.pending + dealers.suspended;
+
+  const buyers = {
+    total: count("SELECT COUNT(*) AS n FROM users WHERE role = 'buyer'"),
+    suspended: count("SELECT COUNT(*) AS n FROM users WHERE role = 'buyer' AND COALESCE(suspended, 0) = 1")
+  };
+  const listings = {
+    active: count("SELECT COUNT(*) AS n FROM vehicles WHERE status = 'active'"),
+    total: count("SELECT COUNT(*) AS n FROM vehicles WHERE status != 'draft'"),
+    paused: count("SELECT COUNT(*) AS n FROM vehicles WHERE status = 'paused'"),
+    drafts: count("SELECT COUNT(*) AS n FROM vehicles WHERE status = 'draft'")
+  };
+  const sold = {
+    all_time: count("SELECT COUNT(*) AS n FROM vehicles WHERE status = 'sold'"),
+    this_month: count("SELECT COUNT(*) AS n FROM vehicles WHERE status = 'sold' AND datetime(COALESCE(sold_at, updated_at, created_at)) >= datetime(?)", [monthStart])
+  };
+
+  // ---- activity (30d vs previous 30d) ----
+  const activity = {
+    new_dealers: windowed('SELECT COUNT(*) AS n FROM dealerships WHERE 1 = 1', 'created_at'),
+    new_buyers: windowed("SELECT COUNT(*) AS n FROM users WHERE role = 'buyer'", 'created_at'),
+    new_listings: windowed("SELECT COUNT(*) AS n FROM vehicles WHERE status != 'draft'", 'COALESCE(published_at, created_at)'),
+    messages: windowed('SELECT COUNT(*) AS n FROM messages WHERE 1 = 1', 'created_at'),
+    engagements: windowed('SELECT COUNT(*) AS n FROM engagement_events WHERE 1 = 1', 'created_at'),
+    // Views are a running counter on each vehicle with no per-view timestamps, so only an
+    // all-time total is available; the client labels it accordingly.
+    views: { all_time: count('SELECT COALESCE(SUM(views), 0) AS n FROM vehicles') }
+  };
+
+  // ---- weekly charts (8 weeks) ----
+  const listingWeeks = weekly(
+    db.prepare("SELECT COALESCE(published_at, created_at) AS t FROM vehicles WHERE status != 'draft' AND datetime(COALESCE(published_at, created_at)) >= datetime(?)").all(since56)
+  );
+  const userWeeks = weekly(
+    db.prepare("SELECT created_at AS t, role FROM users WHERE role IN ('buyer', 'dealer') AND datetime(created_at) >= datetime(?)").all(since56),
+    function (r) { return r.role; }
+  );
+
+  // ---- lists ----
+  const recentListings = db
+    .prepare(
+      `SELECT v.id, v.year, v.make, v.model, v.trim, v.status, v.price,
+              COALESCE(v.published_at, v.created_at) AS t,
+              d.id AS dealership_id, d.business_name,
+              (SELECT p.url FROM vehicle_photos p WHERE p.vehicle_id = v.id ORDER BY p.is_primary DESC, p.display_order ASC LIMIT 1) AS photo
+       FROM vehicles v
+       JOIN dealerships d ON d.id = v.dealership_id
+       WHERE v.status != 'draft'
+       ORDER BY datetime(COALESCE(v.published_at, v.created_at)) DESC, v.id DESC
+       LIMIT 5`
+    )
+    .all()
+    .map(function (r) {
+      return {
+        id: r.id, year: r.year, make: r.make, model: r.model, trim: r.trim, status: r.status, price: r.price,
+        created_at: r.t, dealership_id: r.dealership_id, dealer_name: r.business_name, photo_url: r.photo || null
+      };
+    });
+
+  const newestDealers = db
+    .prepare(
+      `SELECT d.id, d.business_name, COALESCE(d.governorate, d.city) AS governorate, d.created_at, d.approved_at,
+              COALESCE(d.suspended, 0) AS suspended, d.plan AS plan, u.email,
+              (SELECT COUNT(*) FROM vehicles v WHERE v.dealership_id = d.id AND v.status = 'active') AS active_listings
+       FROM dealerships d
+       JOIN users u ON u.id = d.user_id
+       WHERE d.status = 'approved'
+       ORDER BY datetime(COALESCE(d.approved_at, d.created_at)) DESC, d.id DESC
+       LIMIT 5`
+    )
+    .all()
+    .map(function (r) {
+      return {
+        id: r.id, business_name: r.business_name, governorate: r.governorate || null, email: r.email,
+        created_at: r.created_at, approved_at: r.approved_at, suspended: !!Number(r.suspended),
+        plan: r.plan || 'basic', active_listings: Number(r.active_listings) || 0
+      };
+    });
+
+  const pendingApplications = db
+    .prepare(
+      `SELECT d.id, d.business_name, d.license_number, d.phone, COALESCE(d.governorate, d.city) AS governorate,
+              d.created_at, u.email, u.full_name, u.email_verified
+       FROM dealerships d
+       JOIN users u ON u.id = d.user_id
+       WHERE d.status = 'pending'
+       ORDER BY datetime(d.created_at) ASC, d.id ASC
+       LIMIT 5`
+    )
+    .all()
+    .map(function (r) {
+      return {
+        id: r.id, business_name: r.business_name, license_number: r.license_number, phone: r.phone,
+        governorate: r.governorate || null, created_at: r.created_at, email: r.email, full_name: r.full_name,
+        email_verified: !!Number(r.email_verified)
+      };
+    });
+
+  res.set('Cache-Control', 'no-store');
+  return res.json({
+    generated_at: nowIso,
+    totals: { dealers: dealers, buyers: buyers, listings: listings, sold: sold, pending_applications: dealers.pending },
+    activity: activity,
+    charts: { listings_per_week: listingWeeks, users_per_week: userWeeks },
+    recent_listings: recentListings,
+    newest_dealers: newestDealers,
+    pending_applications: pendingApplications
+  });
 });
 
 const { MAKES, getModelsForMake } = require('./lib/car-data');

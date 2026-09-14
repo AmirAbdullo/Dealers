@@ -23,17 +23,18 @@
   <body class="bg-white text-gray-900 font-sans">
     <header class="sticky top-0 z-40 bg-white border-b border-gray-200">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        <div class="flex items-center gap-4">
-          <a href="/" class="text-lg font-extrabold tracking-tight">
+        <div class="flex items-center gap-3 sm:gap-4 min-w-0">
+          <a href="/" class="text-lg font-extrabold tracking-tight shrink-0">
             <span class="text-blue-700">Car</span><span class="text-orange-500">Fox</span>
           </a>
           <span class="text-sm text-gray-500 hidden sm:inline">Admin</span>
-          <nav class="flex items-center gap-1 text-sm font-semibold">
+          <nav class="flex items-center gap-1 text-sm font-semibold min-w-0 overflow-x-auto whitespace-nowrap">
+            <a href="/admin/index.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Dashboard</a>
             <a href="/admin/applications.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Applications</a>
             <a href="/admin/dealers.html" class="rounded-lg px-3 py-1.5 bg-blue-50 text-blue-700" aria-current="page">Dealers</a>
           </nav>
         </div>
-        <div class="flex items-center gap-3 text-sm">
+        <div class="flex items-center gap-3 text-sm shrink-0 pl-3">
           <span id="adminEmail" class="text-gray-700 hidden sm:inline">—</span>
           <button id="signOutBtn" class="text-gray-600 hover:text-gray-900 font-semibold">Sign Out</button>
         </div>
