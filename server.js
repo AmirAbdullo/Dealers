@@ -834,6 +834,69 @@ function carValueExplanation(vehicle, r) {
 
 recomputeAllCarValues('boot');
 setInterval(function () { try { recomputeAllCarValues('daily'); } catch (e) { console.error('Car value daily recompute failed:', e); } }, 24 * 60 * 60 * 1000).unref();
+
+// ---- Car features ------------------------------------------------------------------------
+// Catalogue managed by admins (name, category, active, sort order) + a join table per vehicle.
+// Features are additive information: saving them never touches trust-score verifications.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS features (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    category TEXT NOT NULL,
+    active INTEGER NOT NULL DEFAULT 1,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+  )
+`);
+db.exec(`
+  CREATE TABLE IF NOT EXISTS vehicle_features (
+    vehicle_id INTEGER NOT NULL,
+    feature_id INTEGER NOT NULL,
+    PRIMARY KEY (vehicle_id, feature_id)
+  )
+`);
+db.exec('CREATE INDEX IF NOT EXISTS idx_vehicle_features_feature ON vehicle_features(feature_id)');
+
+const FEATURE_CATEGORIES = ['Comfort', 'Tech', 'Safety', 'Other'];
+const FEATURE_SEED = {
+  Comfort: ['A/C', 'Leather seats', 'Heated seats', 'Sunroof', 'Cruise control', 'Keyless entry', 'Power seats'],
+  Tech: ['Touchscreen', 'Bluetooth', 'Apple CarPlay / Android Auto', 'Rear camera', 'Parking sensors', 'Navigation'],
+  Safety: ['ABS', 'Airbags', 'Lane assist', 'Blind spot monitor'],
+  Other: ['Alloy wheels', 'Fog lights', 'Roof rails']
+};
+if (db.prepare('SELECT COUNT(*) AS n FROM features').get().n === 0) {
+  const ins = db.prepare('INSERT INTO features (name, category, active, sort_order, created_at) VALUES (?, ?, 1, ?, ?)');
+  const now = new Date().toISOString();
+  FEATURE_CATEGORIES.forEach(function (cat) {
+    (FEATURE_SEED[cat] || []).forEach(function (name, i) { ins.run(name, cat, (i + 1) * 10, now); });
+  });
+  console.log('Seeded', db.prepare('SELECT COUNT(*) AS n FROM features').get().n, 'car features');
+}
+const FEATURE_ORDER_SQL = " CASE category WHEN 'Comfort' THEN 0 WHEN 'Tech' THEN 1 WHEN 'Safety' THEN 2 ELSE 3 END, sort_order, name COLLATE NOCASE";
+
+function mapFeatureRow(r) {
+  return { id: r.id, name: r.name, category: r.category, active: !!Number(r.active), sort_order: Number(r.sort_order) || 0 };
+}
+function listFeatures(includeInactive) {
+  return db.prepare('SELECT * FROM features' + (includeInactive ? '' : ' WHERE active = 1') + ' ORDER BY' + FEATURE_ORDER_SQL).all().map(mapFeatureRow);
+}
+function getVehicleFeatures(vehicleId) {
+  return db
+    .prepare('SELECT f.* FROM vehicle_features vf JOIN features f ON f.id = vf.feature_id WHERE vf.vehicle_id = ? ORDER BY' + FEATURE_ORDER_SQL)
+    .all(vehicleId).map(mapFeatureRow);
+}
+function getVehicleFeatureIds(vehicleId) {
+  return db.prepare('SELECT feature_id FROM vehicle_features WHERE vehicle_id = ?').all(vehicleId).map(function (r) { return Number(r.feature_id); });
+}
+function parseFeatureIdList(raw) {
+  const list = Array.isArray(raw) ? raw : parseCsvQueryParam(raw);
+  const out = [];
+  list.forEach(function (x) {
+    const n = Number(x);
+    if (Number.isInteger(n) && n > 0 && out.indexOf(n) === -1) out.push(n);
+  });
+  return out;
+}
 db.exec("UPDATE vehicles SET sold_at = COALESCE(updated_at, created_at) WHERE status = 'sold' AND sold_at IS NULL");
 
 // Grandfather in everyone who signed up before email verification existed.
@@ -2605,6 +2668,81 @@ app.patch('/api/admin/listings/:id/value-exclude', requireAdmin, function (req, 
   return res.json({ id: row.id, excluded: !!Number(row.value_excluded), rating: row.value_rating || null, pct: row.value_pct, median: row.value_median, comparables: Number(row.value_comparables) || 0 });
 });
 
+// Public: active feature catalogue (dealer form chips, buyer filters).
+app.get('/api/features', function (req, res) {
+  res.set('Cache-Control', 'no-store');
+  return res.json({ categories: FEATURE_CATEGORIES, features: listFeatures(false) });
+});
+
+// Admin: full catalogue with usage counts.
+app.get('/api/admin/features', requireAdmin, function (req, res) {
+  const rows = db
+    .prepare('SELECT f.*, (SELECT COUNT(*) FROM vehicle_features vf WHERE vf.feature_id = f.id) AS vehicle_count FROM features f ORDER BY' + FEATURE_ORDER_SQL)
+    .all()
+    .map(function (r) { const m = mapFeatureRow(r); m.vehicle_count = Number(r.vehicle_count) || 0; return m; });
+  res.set('Cache-Control', 'no-store');
+  return res.json({ categories: FEATURE_CATEGORIES, features: rows });
+});
+
+function validateFeatureInput(body, partial) {
+  const out = {};
+  if (!partial || body.name != null) {
+    const name = String(body.name == null ? '' : body.name).trim().replace(/\s+/g, ' ');
+    if (!name || name.length > 60) return { error: 'Name is required (max 60 characters)' };
+    out.name = name;
+  }
+  if (!partial || body.category != null) {
+    const category = String(body.category == null ? '' : body.category).trim();
+    if (FEATURE_CATEGORIES.indexOf(category) === -1) return { error: 'Category must be one of ' + FEATURE_CATEGORIES.join(', ') };
+    out.category = category;
+  }
+  if (body.sort_order != null && body.sort_order !== '') {
+    const so = Number(body.sort_order);
+    if (!Number.isInteger(so) || so < 0 || so > 9999) return { error: 'Sort order must be a whole number between 0 and 9999' };
+    out.sort_order = so;
+  }
+  if (body.active != null) out.active = body.active ? 1 : 0;
+  return { values: out };
+}
+
+app.post('/api/admin/features', requireAdmin, function (req, res) {
+  const v = validateFeatureInput(req.body || {}, false);
+  if (v.error) return res.status(400).json({ error: v.error });
+  if (db.prepare('SELECT id FROM features WHERE name = ? COLLATE NOCASE').get(v.values.name)) return res.status(409).json({ error: 'A feature with that name already exists' });
+  let sortOrder = v.values.sort_order;
+  if (sortOrder == null) {
+    const max = db.prepare('SELECT COALESCE(MAX(sort_order), 0) AS m FROM features WHERE category = ?').get(v.values.category).m;
+    sortOrder = Number(max) + 10;
+  }
+  const info = db.prepare('INSERT INTO features (name, category, active, sort_order, created_at) VALUES (?, ?, ?, ?, ?)')
+    .run(v.values.name, v.values.category, v.values.active == null ? 1 : v.values.active, sortOrder, new Date().toISOString());
+  console.log('Admin', req.user.email, 'added feature', v.values.name, '(' + v.values.category + ')');
+  const row = db.prepare('SELECT * FROM features WHERE id = ?').get(info.lastInsertRowid);
+  return res.status(201).json({ feature: Object.assign(mapFeatureRow(row), { vehicle_count: 0 }) });
+});
+
+app.patch('/api/admin/features/:id', requireAdmin, function (req, res) {
+  const id = Number(req.params.id);
+  if (!id) return res.status(400).json({ error: 'Invalid feature id' });
+  const existing = db.prepare('SELECT * FROM features WHERE id = ?').get(id);
+  if (!existing) return res.status(404).json({ error: 'Feature not found' });
+  const v = validateFeatureInput(req.body || {}, true);
+  if (v.error) return res.status(400).json({ error: v.error });
+  const cols = Object.keys(v.values);
+  if (!cols.length) return res.status(400).json({ error: 'Nothing to update' });
+  if (v.values.name && db.prepare('SELECT id FROM features WHERE name = ? COLLATE NOCASE AND id != ?').get(v.values.name, id)) {
+    return res.status(409).json({ error: 'A feature with that name already exists' });
+  }
+  const sets = cols.map(function (c) { return c + ' = ?'; });
+  const vals = cols.map(function (c) { return v.values[c]; });
+  vals.push(id);
+  const upd = db.prepare('UPDATE features SET ' + sets.join(', ') + ' WHERE id = ?');
+  upd.run.apply(upd, vals);
+  console.log('Admin', req.user.email, 'updated feature', id, JSON.stringify(v.values));
+  const row = db.prepare('SELECT f.*, (SELECT COUNT(*) FROM vehicle_features vf WHERE vf.feature_id = f.id) AS vehicle_count FROM features f WHERE f.id = ?').get(id);
+  return res.json({ feature: Object.assign(mapFeatureRow(row), { vehicle_count: Number(row.vehicle_count) || 0 }) });
+});
+
 app.get('/api/admin/dashboard', requireAdmin, function (req, res) {
   const DAY = 24 * 60 * 60 * 1000;
   const now = new Date();
@@ -2918,6 +3056,13 @@ function buildPublicCarsFilter(query) {
   if (fuelTypes.length) {
     whereParts.push('v.fuel_type IN (' + fuelTypes.map(function () { return '?'; }).join(', ') + ')');
     params.push.apply(params, fuelTypes);
+  }
+
+  const featureIds = parseFeatureIdList(query.features);
+  if (featureIds.length) {
+    whereParts.push('(SELECT COUNT(*) FROM vehicle_features vf WHERE vf.vehicle_id = v.id AND vf.feature_id IN (' + featureIds.map(function () { return '?'; }).join(', ') + ')) = ?');
+    params.push.apply(params, featureIds);
+    params.push(featureIds.length);
   }
 
   const transmission = String(query.transmission || '').trim();
@@ -3479,7 +3624,9 @@ app.get('/api/cars/:id', function (req, res) {
     )
     .all(vehicleId);
 
-  return res.json({ vehicle: mapPublicVehicleDetail(row, photos) });
+  const vehicle = mapPublicVehicleDetail(row, photos);
+  vehicle.features = getVehicleFeatures(vehicleId);
+  return res.json({ vehicle: vehicle });
 });
 
 app.post('/api/cars/:id/view', function (req, res) {
@@ -4018,6 +4165,8 @@ app.get('/api/vehicles/:id', requireDealer, function (req, res) {
   return res.json({
     vehicle: vehicle,
     photos: photos,
+    feature_ids: getVehicleFeatureIds(vehicleId),
+    features: getVehicleFeatures(vehicleId),
     dealership: dealership
       ? {
           business_name: dealership.business_name,
@@ -4401,6 +4550,7 @@ async function hardDeleteVehicle(vehicleId) {
   }
   db.prepare('DELETE FROM vehicle_photos WHERE vehicle_id = ?').run(vehicleId);
   db.prepare('DELETE FROM vehicle_verifications WHERE vehicle_id = ?').run(vehicleId);
+  db.prepare('DELETE FROM vehicle_features WHERE vehicle_id = ?').run(vehicleId);
   db.prepare('DELETE FROM saved_cars WHERE vehicle_id = ?').run(vehicleId);
   db.prepare('DELETE FROM inquiries WHERE vehicle_id = ?').run(vehicleId);
   db.prepare('UPDATE engagement_events SET vehicle_id = NULL WHERE vehicle_id = ?').run(vehicleId);
@@ -4544,6 +4694,30 @@ app.post(
     return res.status(201).json({ photo: photo });
   }
 );
+
+// Dealer: replace the feature set of a listing. Additive info only: no trust factor is cleared.
+app.put('/api/vehicles/:id/features', requireDealer, dealerSuspendedGuard, function (req, res) {
+  const vehicleId = Number(req.params.id);
+  if (!vehicleId) return res.status(400).json({ error: 'Invalid vehicle id' });
+  const vehicle = getDealerVehicle(vehicleId, req.dealership.id);
+  if (!vehicle) return res.status(403).json({ error: 'Forbidden' });
+  const body = req.body || {};
+  if (!Array.isArray(body.feature_ids)) return res.status(400).json({ error: 'feature_ids must be an array' });
+  const wanted = parseFeatureIdList(body.feature_ids);
+  if (wanted.length !== body.feature_ids.length) return res.status(400).json({ error: 'feature_ids must be positive integers' });
+  const current = getVehicleFeatureIds(vehicleId);
+  for (let i = 0; i < wanted.length; i++) {
+    const f = db.prepare('SELECT id, active FROM features WHERE id = ?').get(wanted[i]);
+    if (!f) return res.status(400).json({ error: 'Unknown feature id ' + wanted[i] });
+    // Deactivated features stay on listings that already have them but cannot be newly added.
+    if (!Number(f.active) && current.indexOf(wanted[i]) === -1) return res.status(400).json({ error: 'Feature ' + wanted[i] + ' is no longer available' });
+  }
+  db.prepare('DELETE FROM vehicle_features WHERE vehicle_id = ?').run(vehicleId);
+  const ins = db.prepare('INSERT INTO vehicle_features (vehicle_id, feature_id) VALUES (?, ?)');
+  wanted.forEach(function (id) { ins.run(vehicleId, id); });
+  touchVehicleUpdatedAt(vehicleId);
+  return res.json({ feature_ids: getVehicleFeatureIds(vehicleId), features: getVehicleFeatures(vehicleId) });
+});
 
 app.delete(
   '/api/vehicles/:vehicleId/photos/:photoId',

@@ -94,6 +94,12 @@
         <h2 class="font-semibold">Color</h2>
         <div id="colorChips" class="mt-3 flex flex-wrap gap-2"><span class="text-sm text-gray-500">Loading…</span></div>
       </section>
+
+      <section class="bg-white border border-gray-200 rounded-xl p-4">
+        <h2 class="font-semibold">Features</h2>
+        <p class="text-xs text-gray-500 mt-0.5">Cars must have every feature you pick.</p>
+        <div id="featureGroups" class="mt-3 space-y-3"><span class="text-sm text-gray-500">Loading…</span></div>
+      </section>
     </main>
 
     <!-- Sticky results bar (sits above the mobile bottom nav) -->
@@ -117,7 +123,7 @@
 
         const f = {
           city: [], make: [], model: '', min_year: null, max_year: null, min_price: null, max_price: null,
-          min_mileage: null, max_mileage: null, body_type: [], transmission: '', fuel_type: [], color: []
+          min_mileage: null, max_mileage: null, body_type: [], transmission: '', fuel_type: [], color: [], features: []
         };
         let allMakes = [];
         let showAllMakes = false;
@@ -137,6 +143,7 @@
           const p = new URLSearchParams(location.search);
           const list = (k) => p.has(k) ? p.get(k).split(',').map(s => s.trim()).filter(Boolean) : [];
           f.city = list('city'); f.make = list('make'); f.body_type = list('body_type'); f.fuel_type = list('fuel_type'); f.color = list('color');
+          f.features = list('features').map(s => parseInt(s, 10)).filter(n => Number.isInteger(n) && n > 0);
           f.model = p.has('model') ? p.get('model').trim() : '';
           f.transmission = p.has('transmission') ? p.get('transmission').trim() : '';
           ['min_year', 'max_year', 'min_price', 'max_price', 'min_mileage', 'max_mileage'].forEach(k => { f[k] = p.has(k) ? parseNum(p.get(k)) : null; });
@@ -150,6 +157,7 @@
           if (f.body_type.length) p.set('body_type', f.body_type.join(','));
           if (f.fuel_type.length) p.set('fuel_type', f.fuel_type.join(','));
           if (f.color.length) p.set('color', f.color.join(','));
+          if (f.features.length) p.set('features', f.features.join(','));
           if (f.transmission) p.set('transmission', f.transmission);
           ['min_year', 'max_year', 'min_price', 'max_price', 'min_mileage', 'max_mileage'].forEach(k => { if (f[k] != null) p.set(k, String(f[k])); });
           return p;
@@ -251,6 +259,30 @@
           el.addEventListener('blur', () => { if (f[key] != null) el.value = fmt(f[key]); });
         }
 
+        function renderFeatures() {
+          const host = $('featureGroups');
+          const list = window.__features || [];
+          host.innerHTML = '';
+          if (!list.length) { host.innerHTML = '<span class="text-sm text-gray-500">No features available yet.</span>'; return; }
+          const cats = [];
+          list.forEach(x => { if (cats.indexOf(x.category) === -1) cats.push(x.category); });
+          cats.forEach(cat => {
+            const wrap = document.createElement('div');
+            wrap.innerHTML = '<p class="text-xs font-semibold uppercase tracking-wide text-gray-500">' + String(cat).replace(/[&<>]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[ch]) + '</p>';
+            const row = document.createElement('div');
+            row.className = 'mt-1.5 flex flex-wrap gap-2';
+            list.filter(x => x.category === cat).forEach(x => {
+              const b = document.createElement('button');
+              b.type = 'button'; b.className = 'chip'; b.textContent = x.name;
+              b.setAttribute('aria-pressed', f.features.indexOf(x.id) !== -1 ? 'true' : 'false');
+              b.addEventListener('click', () => { const i = f.features.indexOf(x.id); if (i === -1) f.features.push(x.id); else f.features.splice(i, 1); renderFeatures(); afterChange(); });
+              row.appendChild(b);
+            });
+            wrap.appendChild(row);
+            host.appendChild(wrap);
+          });
+        }
+
         function renderColors(colors) {
           const host = $('colorChips');
           if (!colors.length) { host.innerHTML = '<span class="text-sm text-gray-500">No colors available yet.</span>'; return; }
@@ -275,7 +307,7 @@
         }
 
         function clearAll() {
-          Object.assign(f, { city: [], make: [], model: '', min_year: null, max_year: null, min_price: null, max_price: null, min_mileage: null, max_mileage: null, body_type: [], transmission: '', fuel_type: [], color: [] });
+          Object.assign(f, { city: [], make: [], model: '', min_year: null, max_year: null, min_price: null, max_price: null, min_mileage: null, max_mileage: null, body_type: [], transmission: '', fuel_type: [], color: [], features: [] });
           renderAll();
           afterChange();
         }
@@ -287,6 +319,7 @@
           chipList($('transChips'), TRANSMISSIONS, 'transmission', true);
           chipList($('fuelChips'), FUELS, 'fuel_type', false);
           if (window.__colors) renderColors(window.__colors);
+          if (window.__features) renderFeatures();
         }
 
         // ---------- init ----------
@@ -310,6 +343,10 @@
           window.__colors = (d.colors || []).map(c => c.name);
           renderColors(window.__colors);
         }).catch(() => { renderColors([]); });
+        fetch('/api/features').then(r => r.json()).then(d => {
+          window.__features = d.features || [];
+          renderFeatures();
+        }).catch(() => { window.__features = []; renderFeatures(); });
       })();
     </script>
   </body>

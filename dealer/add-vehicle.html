@@ -138,6 +138,19 @@
       </section>
 
       <section class="bg-white border border-gray-200 rounded-lg p-4 sm:p-5">
+        <style>
+          .feature-chip { display:inline-flex; align-items:center; gap:6px; border:1px solid #d1d5db; background:#fff; color:#374151; border-radius:999px; padding:7px 13px; font-size:13px; font-weight:600; line-height:1; }
+          .feature-chip[aria-pressed="true"] { background:#1d4ed8; border-color:#1d4ed8; color:#fff; }
+          .feature-chip[aria-pressed="true"]::before { content:'✓'; font-size:11px; }
+          .feature-chip[data-inactive="1"] { border-style:dashed; }
+        </style>
+        <h2 class="text-lg font-bold">Features</h2>
+        <p class="mt-1 text-sm text-gray-600">Tap everything this car has. Buyers can filter by these.</p>
+        <div id="featureGroups" class="mt-4 space-y-4"><p class="text-sm text-gray-500">Loading features…</p></div>
+        <p id="featureCount" class="mt-3 text-xs text-gray-500"></p>
+      </section>
+
+      <section class="bg-white border border-gray-200 rounded-lg p-4 sm:p-5">
         <h2 class="text-lg font-bold">Photos</h2>
         <p class="mt-1 text-sm text-gray-600">At least 1 photo required. Drag photos to reorder — the first photo is the primary.</p>
         <div id="dropZone" class="mt-4 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-10 cursor-pointer hover:border-blue-400 transition">
@@ -512,6 +525,80 @@
         }
       }
 
+      // ---- Features: additive info, saved separately (never clears trust-score verifications) ----
+      let allFeatures = [];
+      const selectedFeatureIds = new Set();
+      let featureSaveTimer = null;
+      function escFeat(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+      async function loadFeatures() {
+        try {
+          const r = await fetch('/api/features');
+          const d = await r.json();
+          allFeatures = d.features || [];
+        } catch (_) { allFeatures = []; }
+        renderFeatureChips();
+      }
+      // Features already on the listing but since deactivated still show (dashed) so they are kept.
+      function mergeAttachedFeatures(list) {
+        (list || []).forEach(function (f) {
+          if (!allFeatures.some(function (x) { return x.id === f.id; })) allFeatures.push(f);
+        });
+      }
+      function renderFeatureChips() {
+        const host = document.getElementById('featureGroups');
+        host.innerHTML = '';
+        if (!allFeatures.length) { host.innerHTML = '<p class="text-sm text-gray-500">No features available yet.</p>'; return; }
+        const cats = [];
+        allFeatures.forEach(function (f) { if (cats.indexOf(f.category) === -1) cats.push(f.category); });
+        cats.forEach(function (cat) {
+          const wrap = document.createElement('div');
+          wrap.innerHTML = '<p class="text-xs font-semibold uppercase tracking-wide text-gray-500">' + escFeat(cat) + '</p>';
+          const row = document.createElement('div');
+          row.className = 'mt-2 flex flex-wrap gap-2';
+          allFeatures.filter(function (f) { return f.category === cat; }).forEach(function (f) {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'feature-chip';
+            b.dataset.featureId = String(f.id);
+            if (f.active === false) { b.dataset.inactive = '1'; b.title = 'No longer offered — kept because it is already on this listing'; }
+            b.setAttribute('aria-pressed', selectedFeatureIds.has(f.id) ? 'true' : 'false');
+            b.textContent = f.name;
+            b.addEventListener('click', function () { toggleFeature(f.id); });
+            row.appendChild(b);
+          });
+          wrap.appendChild(row);
+          host.appendChild(wrap);
+        });
+        updateFeatureCount();
+      }
+      function updateFeatureCount() {
+        document.getElementById('featureCount').textContent = selectedFeatureIds.size ? selectedFeatureIds.size + ' selected' : 'None selected yet';
+      }
+      function toggleFeature(id) {
+        if (selectedFeatureIds.has(id)) selectedFeatureIds.delete(id); else selectedFeatureIds.add(id);
+        document.querySelectorAll('[data-feature-id="' + id + '"]').forEach(function (b) { b.setAttribute('aria-pressed', selectedFeatureIds.has(id) ? 'true' : 'false'); });
+        updateFeatureCount();
+        formDirty = true;
+        clearTimeout(featureSaveTimer);
+        featureSaveTimer = setTimeout(saveFeatures, AUTOSAVE_MS);
+      }
+      async function saveFeatures() {
+        try {
+          await ensureDraft();
+          const r = await fetch('/api/vehicles/' + vehicleId + '/features', {
+            method: 'PUT',
+            headers: authHeaders(true),
+            body: JSON.stringify({ feature_ids: Array.from(selectedFeatureIds) })
+          });
+          if (!r.ok) {
+            const b = await r.json().catch(function () { return {}; });
+            showToast(b.error || "Couldn't save features");
+          }
+        } catch (e) {
+          showToast("Couldn't save features");
+        }
+      }
+
       async function fillFormFromVehicle(v) {
         if (v.make) {
           makeEl.value = v.make;
@@ -799,6 +886,7 @@
 
         populateYearOptions();
         await loadMakes();
+        await loadFeatures();
 
         const params = new URLSearchParams(window.location.search);
         const idParam = params.get('id');
@@ -811,6 +899,9 @@
           if (!r.ok) { pageLoading.innerHTML = '<p class="text-red-600">Listing not found</p>'; return; }
           const data = await r.json();
           await fillFormFromVehicle(data.vehicle);
+          (data.feature_ids || []).forEach(function (id) { selectedFeatureIds.add(Number(id)); });
+          mergeAttachedFeatures(data.features);
+          renderFeatureChips();
           loadServerPhotos(data.photos);
         }
         // No id in the URL: ensureDraft() creates the row on the first edit or photo upload.

@@ -100,6 +100,11 @@
         <dl id="specGrid" class="grid grid-cols-2 gap-x-4 gap-y-3"></dl>
       </section>
 
+      <section id="featuresSection" class="hidden px-4 py-4">
+        <h2 class="text-xl font-bold text-gray-900 mb-3">Features</h2>
+        <div id="featureGroups" class="space-y-4"></div>
+      </section>
+
       <section id="descSection" class="hidden px-4 py-4">
         <h2 class="text-xl font-bold text-gray-900 mb-3">Description</h2>
         <p id="listingDesc" class="text-gray-700 whitespace-pre-line"></p>
@@ -292,6 +297,30 @@
           return Boolean(token && user && user.role === 'buyer');
         }
 
+        function renderFeatures(list) {
+          const section = document.getElementById('featuresSection');
+          const host = document.getElementById('featureGroups');
+          host.innerHTML = '';
+          if (!list || !list.length) { section.classList.add('hidden'); return; }
+          const cats = [];
+          list.forEach(function (f) { if (cats.indexOf(f.category) === -1) cats.push(f.category); });
+          cats.forEach(function (cat) {
+            const wrap = document.createElement('div');
+            wrap.innerHTML = '<p class="text-xs font-semibold uppercase tracking-wide text-gray-500">' + escapeHtml(cat) + '</p>';
+            const ul = document.createElement('ul');
+            ul.className = 'mt-2 grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2';
+            list.filter(function (f) { return f.category === cat; }).forEach(function (f) {
+              const li = document.createElement('li');
+              li.className = 'flex items-center gap-2 text-sm text-gray-800';
+              li.innerHTML = '<span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-green-100 text-green-700 shrink-0"><svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span><span>' + escapeHtml(f.name) + '</span>';
+              ul.appendChild(li);
+            });
+            wrap.appendChild(ul);
+            host.appendChild(wrap);
+          });
+          section.classList.remove('hidden');
+        }
+
         function addSpec(label, value) {
           if (value == null || value === '') return;
           const dt = document.createElement('dt');
@@ -463,6 +492,7 @@
           addSpec('Fuel Type', v.fuel_type);
           addSpec('Exterior Color', v.exterior_color);
           addSpec('Interior Color', v.interior_color);
+          renderFeatures(v.features || []);
 
           const descSection = document.getElementById('descSection');
           if (v.description && String(v.description).trim()) {

@@ -203,3 +203,19 @@ CREATE TABLE IF NOT EXISTS vehicle_verifications (
   PRIMARY KEY (vehicle_id, factor)
 );
 CREATE INDEX IF NOT EXISTS idx_vehicle_verifications_vehicle ON vehicle_verifications(vehicle_id);
+
+-- Car features catalogue (admin-managed) + per-vehicle join table. Deactivated features stay on existing listings.
+CREATE TABLE IF NOT EXISTS features (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  category TEXT NOT NULL,
+  active INTEGER NOT NULL DEFAULT 1,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS vehicle_features (
+  vehicle_id INTEGER NOT NULL,
+  feature_id INTEGER NOT NULL,
+  PRIMARY KEY (vehicle_id, feature_id)
+);
+CREATE INDEX IF NOT EXISTS idx_vehicle_features_feature ON vehicle_features(feature_id);

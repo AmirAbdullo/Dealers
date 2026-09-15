@@ -206,6 +206,12 @@
           </section>
 
           <section>
+            <h3 class="text-sm font-semibold text-gray-900 mb-3">Features</h3>
+            <p class="text-xs text-gray-500 mb-2">Cars must have every selected feature.</p>
+            <div id="featureCheckboxes" class="space-y-3"></div>
+          </section>
+
+          <section>
             <h3 class="text-sm font-semibold text-gray-900 mb-3">Governorate (المحافظة)</h3>
             <div id="cityCheckboxes" class="grid grid-cols-2 gap-2"></div>
             <button type="button" id="showAllCitiesBtn" class="mt-2 text-sm text-blue-700 font-medium hidden">Show all</button>
@@ -307,6 +313,7 @@
           max_mileage: null,
           min_mileage: null,
           color: [],
+          features: [],
           q: ''
         };
 
@@ -325,6 +332,7 @@
             max_mileage: null,
             min_mileage: null,
             color: [],
+            features: [],
             q: ''
           };
         }
@@ -344,6 +352,7 @@
             filters.max_mileage != null ||
             filters.min_mileage != null ||
             filters.color.length > 0 ||
+            filters.features.length > 0 ||
             !!filters.q
           );
         }
@@ -363,6 +372,7 @@
           if (filters.max_mileage != null) n += 1;
           if (filters.min_mileage != null) n += 1;
           if (filters.color.length) n += filters.color.length;
+          if (filters.features.length) n += filters.features.length;
           return n;
         }
 
@@ -433,6 +443,7 @@
           if (filters.max_mileage != null) p.set('max_mileage', String(filters.max_mileage));
           if (filters.min_mileage != null) p.set('min_mileage', String(filters.min_mileage));
           if (filters.color.length) p.set('color', filters.color.join(','));
+          if (filters.features.length) p.set('features', filters.features.join(','));
           if (filters.q) p.set('q', filters.q);
           return p;
         }
@@ -461,6 +472,7 @@
           if (p.has('max_mileage')) next.max_mileage = parseInt(p.get('max_mileage'), 10);
           if (p.has('min_mileage')) next.min_mileage = parseInt(p.get('min_mileage'), 10);
           if (p.has('color')) next.color = p.get('color').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+          if (p.has('features')) next.features = p.get('features').split(',').map(function (s) { return parseInt(s, 10); }).filter(function (n) { return Number.isInteger(n) && n > 0; });
           if (p.has('q')) next.q = p.get('q').trim();
           if (p.has('sort')) sort = p.get('sort');
           Object.assign(filters, next);
@@ -471,6 +483,41 @@
         function PUBLIC_CARS_SORT_SAFE() {
           const allowed = { newest: 1, price_asc: 1, price_desc: 1, mileage_asc: 1 };
           return allowed[sort] ? sort : 'newest';
+        }
+
+        let featureOptions = [];
+        function featureName(id) {
+          const f = featureOptions.find(function (x) { return x.id === id; });
+          return f ? f.name : 'Feature #' + id;
+        }
+        function renderFeatureCheckboxes() {
+          const host = document.getElementById('featureCheckboxes');
+          if (!host) return;
+          host.innerHTML = '';
+          if (!featureOptions.length) { host.innerHTML = '<p class="text-sm text-gray-500">No features available.</p>'; return; }
+          const cats = [];
+          featureOptions.forEach(function (f) { if (cats.indexOf(f.category) === -1) cats.push(f.category); });
+          cats.forEach(function (cat) {
+            const wrap = document.createElement('div');
+            wrap.innerHTML = '<p class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1.5">' + escapeHtml(cat) + '</p>';
+            const grid = document.createElement('div');
+            grid.className = 'grid grid-cols-2 gap-2';
+            featureOptions.filter(function (f) { return f.category === cat; }).forEach(function (f) {
+              const label = document.createElement('label');
+              label.className = 'flex items-center gap-2 text-sm text-gray-700';
+              label.innerHTML = '<input type="checkbox" data-filter-feature class="rounded border-gray-300 text-blue-700" value="' + f.id + '" /><span class="truncate">' + escapeHtml(f.name) + '</span>';
+              const input = label.querySelector('input');
+              input.checked = filters.features.indexOf(f.id) !== -1;
+              input.addEventListener('change', function () {
+                if (input.checked) { if (filters.features.indexOf(f.id) === -1) filters.features.push(f.id); }
+                else filters.features = filters.features.filter(function (v) { return v !== f.id; });
+                onFilterChange();
+              });
+              grid.appendChild(label);
+            });
+            wrap.appendChild(grid);
+            host.appendChild(wrap);
+          });
         }
 
         function readFiltersFromForm() {
@@ -495,6 +542,9 @@
           });
           document.querySelectorAll('input[data-filter-city]').forEach(function (el) {
             el.checked = filters.city.indexOf(el.value) !== -1;
+          });
+          document.querySelectorAll('input[data-filter-feature]').forEach(function (el) {
+            el.checked = filters.features.indexOf(parseInt(el.value, 10)) !== -1;
           });
           document.querySelectorAll('input[data-filter-fuel]').forEach(function (el) {
             el.checked = filters.fuel_type.indexOf(el.value) !== -1;
@@ -684,6 +734,7 @@
           renderCheckboxGrid('bodyTypeCheckboxes', filterOptions.body_types, 'data-filter-body', filters.body_type, null);
           renderCheckboxGrid('fuelTypeCheckboxes', filterOptions.fuel_types, 'data-filter-fuel', filters.fuel_type, null);
           renderCheckboxGrid('cityCheckboxes', filterOptions.cities, 'data-filter-city', filters.city, 'showAllCitiesBtn');
+          renderFeatureCheckboxes();
           renderTransmissionRadios();
           populateYearSelects();
           if (filters.make.length === 1) fetchModelsForMake(filters.make[0]);
@@ -692,6 +743,10 @@
         async function loadFilterOptions() {
           const res = await fetch('/api/cars/filter-options');
           filterOptions = await res.json();
+          try {
+            const fr = await fetch('/api/features');
+            featureOptions = fr.ok ? ((await fr.json()).features || []) : [];
+          } catch (_) { featureOptions = []; }
           buildFilterOptionsUi();
           syncFormFromFilters();
         }
@@ -859,6 +914,14 @@
           filters.color.forEach(function (c) {
             filterChips.appendChild(chip(c, function () {
               filters.color = filters.color.filter(function (x) { return x !== c; });
+              resetAndFetch();
+              scheduleFilterSideEffects();
+            }));
+          });
+          filters.features.forEach(function (id) {
+            filterChips.appendChild(chip(featureName(id), function () {
+              filters.features = filters.features.filter(function (x) { return x !== id; });
+              syncFormFromFilters();
               resetAndFetch();
               scheduleFilterSideEffects();
             }));
