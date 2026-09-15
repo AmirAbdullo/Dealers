@@ -45,6 +45,7 @@
 
 
     <script src="/js/carfox-trust.js"></script>
+    <script src="/js/carfox-value.js"></script>
     <script src="/js/carfox-auth.js"></script>
     <script src="/js/carfox-buyer-nav.js"></script>
     <script>
@@ -135,7 +136,7 @@
             '<div class="p-3">' +
             '<h2 class="text-sm font-semibold text-gray-900 truncate">' + esc(title) + '</h2>' +
             (subtitle ? '<p class="text-xs text-gray-500 mt-0.5 truncate">' + esc(subtitle) + '</p>' : '') +
-            '<div class="mt-2 flex items-center justify-between gap-2"><p class="text-lg font-bold ' + (isSold ? 'text-gray-500' : 'text-blue-700') + '">' + esc(fmtPrice(car.price)) + '</p>' + (window.CarfoxTrust ? CarfoxTrust.badge(car.trust_score, { compact: true }) : '') + '</div>' +
+            '<div class="mt-2 flex flex-wrap items-center justify-between gap-2"><p class="text-lg font-bold shrink-0 ' + (isSold ? 'text-gray-500' : 'text-blue-700') + '">' + esc(fmtPrice(car.price)) + '</p>' + '<span class="flex items-center gap-1 flex-wrap justify-end">' + (window.CarfoxValue ? CarfoxValue.badge(car, { compact: true }) : '') + (window.CarfoxTrust ? CarfoxTrust.badge(car.trust_score, { compact: true }) : '') + '</span>' + '</div>' +
             '<div class="flex items-center justify-between text-xs text-gray-500 mt-2">' +
             '<span>' + esc(formatMileage(car.mileage)) + '</span>' +
             '<span class="truncate ml-2 text-right">' + esc(city) + '</span>' +

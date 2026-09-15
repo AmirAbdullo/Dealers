@@ -672,6 +672,168 @@ function trustValuesDiffer(a, b) {
 
 // Backfill the cached score once for vehicles that never had it computed.
 db.prepare('SELECT id FROM vehicles WHERE trust_updated_at IS NULL').all().forEach(function (r) { recomputeTrustScore(r.id); });
+
+// ---- Car Value badge (deal rating) --------------------------------------------------------
+// Compares an active listing's price with comparable listings (same make + model, year within
+// ±N, mileage within ±M%, active or sold in the last K months). Needs at least min_comparables,
+// otherwise no badge at all. Cached on the vehicle; recomputed on price changes, on admin
+// changes, and daily. Settings live in app_meta so admins can tune them.
+addColumnIfMissing('vehicles', 'value_rating', 'TEXT');
+addColumnIfMissing('vehicles', 'value_pct', 'REAL');
+addColumnIfMissing('vehicles', 'value_median', 'INTEGER');
+addColumnIfMissing('vehicles', 'value_comparables', 'INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('vehicles', 'value_updated_at', 'TEXT');
+addColumnIfMissing('vehicles', 'value_excluded', 'INTEGER NOT NULL DEFAULT 0');
+
+const CAR_VALUE_DEFAULTS = {
+  enabled: true,
+  min_comparables: 4,
+  year_range: 2,
+  mileage_pct: 40,
+  great_below_pct: 10,
+  good_below_pct: 3,
+  fair_band_pct: 3,
+  sold_months: 6
+};
+const CAR_VALUE_LABELS = { great: 'Great Deal', good: 'Good Deal', fair: 'Fair Price', above: 'Above Market' };
+const CAR_VALUE_LIMITS = {
+  min_comparables: [2, 50], year_range: [0, 10], mileage_pct: [5, 100],
+  great_below_pct: [1, 60], good_below_pct: [0, 60], fair_band_pct: [0, 30], sold_months: [1, 36]
+};
+
+function loadCarValueSettings() {
+  const row = db.prepare("SELECT value FROM app_meta WHERE key = 'car_value_settings'").get();
+  let saved = {};
+  try { saved = row && row.value ? JSON.parse(row.value) : {}; } catch (_) { saved = {}; }
+  return Object.assign({}, CAR_VALUE_DEFAULTS, saved);
+}
+let carValueSettings = loadCarValueSettings();
+
+// Returns { settings } or { error }.
+function validateCarValueSettings(body) {
+  const out = Object.assign({}, carValueSettings);
+  if (body.enabled != null) out.enabled = !!body.enabled;
+  const keys = Object.keys(CAR_VALUE_LIMITS);
+  for (let i = 0; i < keys.length; i++) {
+    const k = keys[i];
+    if (body[k] == null || body[k] === '') continue;
+    const n = Number(body[k]);
+    const lim = CAR_VALUE_LIMITS[k];
+    if (!Number.isFinite(n) || n < lim[0] || n > lim[1]) return { error: k + ' must be between ' + lim[0] + ' and ' + lim[1] };
+    out[k] = k === 'min_comparables' || k === 'year_range' || k === 'sold_months' ? Math.round(n) : Math.round(n * 10) / 10;
+  }
+  if (out.good_below_pct > out.great_below_pct) return { error: 'good_below_pct cannot be larger than great_below_pct' };
+  return { settings: out };
+}
+function saveCarValueSettings(settings) {
+  db.prepare("INSERT INTO app_meta (key, value) VALUES ('car_value_settings', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+    .run(JSON.stringify(settings));
+  carValueSettings = settings;
+}
+
+function findCarValueComparables(v, s) {
+  if (!v.make || !v.model || !(Number(v.price) > 0) || !(Number(v.year) > 0)) return [];
+  const mileage = Math.max(0, Number(v.mileage) || 0);
+  const lo = Math.floor(mileage * (1 - s.mileage_pct / 100));
+  const hi = Math.ceil(mileage * (1 + s.mileage_pct / 100));
+  const soldSince = new Date(Date.now() - s.sold_months * 30 * 24 * 60 * 60 * 1000).toISOString();
+  return db
+    .prepare(
+      `SELECT v2.id, v2.price, v2.status
+       FROM vehicles v2
+       JOIN dealerships d2 ON d2.id = v2.dealership_id
+       WHERE v2.id != ?
+         AND LOWER(TRIM(v2.make)) = LOWER(TRIM(?)) AND LOWER(TRIM(v2.model)) = LOWER(TRIM(?))
+         AND ABS(v2.year - ?) <= ?
+         AND v2.mileage BETWEEN ? AND ?
+         AND v2.price > 0
+         AND COALESCE(v2.value_excluded, 0) = 0
+         AND (
+           (v2.status = 'active' AND d2.status = 'approved' AND COALESCE(d2.suspended, 0) = 0)
+           OR (v2.status = 'sold' AND datetime(COALESCE(v2.sold_at, v2.updated_at, v2.created_at)) >= datetime(?))
+         )`
+    )
+    .all(v.id, v.make, v.model, Number(v.year), s.year_range, lo, hi, soldSince);
+}
+
+function medianOf(nums) {
+  const a = nums.slice().sort(function (x, y) { return x - y; });
+  const mid = Math.floor(a.length / 2);
+  return a.length % 2 ? a[mid] : (a[mid - 1] + a[mid]) / 2;
+}
+
+// Pure computation for one vehicle row. reason explains why there is no rating.
+function computeCarValue(vehicle, s) {
+  s = s || carValueSettings;
+  const out = { rating: null, pct: null, median: null, comparables: 0, reason: null };
+  if (!s.enabled) { out.reason = 'disabled'; return out; }
+  if (Number(vehicle.value_excluded)) { out.reason = 'excluded'; return out; }
+  if (vehicle.status !== 'active') { out.reason = 'not_active'; return out; }
+  const comps = findCarValueComparables(vehicle, s);
+  out.comparables = comps.length;
+  if (comps.length < s.min_comparables) { out.reason = 'not_enough_comparables'; return out; }
+  const median = medianOf(comps.map(function (c) { return Number(c.price); }));
+  if (!(median > 0)) { out.reason = 'not_enough_comparables'; return out; }
+  const pct = ((Number(vehicle.price) - median) / median) * 100;
+  let rating;
+  if (pct <= -s.great_below_pct) rating = 'great';
+  else if (pct <= -s.good_below_pct) rating = 'good';
+  else if (pct > s.fair_band_pct) rating = 'above';
+  else rating = 'fair';
+  out.rating = rating;
+  out.pct = Math.round(pct * 10) / 10;
+  out.median = Math.round(median);
+  return out;
+}
+
+function recomputeCarValue(vehicleId) {
+  const v = db.prepare('SELECT * FROM vehicles WHERE id = ?').get(vehicleId);
+  if (!v) return null;
+  const r = computeCarValue(v);
+  db.prepare('UPDATE vehicles SET value_rating = ?, value_pct = ?, value_median = ?, value_comparables = ?, value_updated_at = ? WHERE id = ?')
+    .run(r.rating, r.pct, r.median, r.comparables, new Date().toISOString(), vehicleId);
+  return r;
+}
+// A price/mileage change on one car moves the median for its siblings too.
+function recomputeCarValuesForModel(make, model) {
+  if (!make || !model) return 0;
+  const ids = db.prepare('SELECT id FROM vehicles WHERE LOWER(TRIM(make)) = LOWER(TRIM(?)) AND LOWER(TRIM(model)) = LOWER(TRIM(?))').all(make, model);
+  ids.forEach(function (r) { recomputeCarValue(r.id); });
+  return ids.length;
+}
+function recomputeAllCarValues(why) {
+  const started = Date.now();
+  const ids = db.prepare("SELECT id FROM vehicles WHERE status = 'active' OR value_rating IS NOT NULL").all();
+  ids.forEach(function (r) { recomputeCarValue(r.id); });
+  const rated = db.prepare('SELECT COUNT(*) AS n FROM vehicles WHERE value_rating IS NOT NULL').get().n;
+  console.log('Car value ratings recomputed (' + (why || 'scheduled') + '): ' + ids.length + ' listings, ' + rated + ' rated, ' + (Date.now() - started) + 'ms');
+  return { recomputed: ids.length, rated: rated };
+}
+// What buyers see. null when the feature is off or the car has no rating.
+function carValuePublic(row) {
+  if (!carValueSettings.enabled || !row || !row.value_rating) return null;
+  return {
+    rating: row.value_rating,
+    label: CAR_VALUE_LABELS[row.value_rating] || row.value_rating,
+    pct: row.value_pct != null ? Number(row.value_pct) : null,
+    median: row.value_median != null ? Number(row.value_median) : null,
+    comparables: Number(row.value_comparables) || 0
+  };
+}
+function carValueExplanation(vehicle, r) {
+  if (r.rating) {
+    const p = Math.abs(Number(r.pct));
+    const dir = p < 0.5 ? 'at' : (Number(r.pct) < 0 ? Math.round(p) + '% below' : Math.round(p) + '% above');
+    return 'Priced ' + dir + ' the median of ' + r.comparables + ' similar ' + (r.comparables === 1 ? 'car' : 'cars') + '.';
+  }
+  if (r.reason === 'not_enough_comparables') return 'Not enough similar cars to compare yet (' + r.comparables + ' of ' + carValueSettings.min_comparables + ' needed).';
+  if (r.reason === 'excluded') return 'This listing is not rated.';
+  if (r.reason === 'disabled') return 'Deal ratings are currently switched off.';
+  return 'Only live listings are rated.';
+}
+
+recomputeAllCarValues('boot');
+setInterval(function () { try { recomputeAllCarValues('daily'); } catch (e) { console.error('Car value daily recompute failed:', e); } }, 24 * 60 * 60 * 1000).unref();
 db.exec("UPDATE vehicles SET sold_at = COALESCE(updated_at, created_at) WHERE status = 'sold' AND sold_at IS NULL");
 
 // Grandfather in everyone who signed up before email verification existed.
@@ -2250,6 +2412,7 @@ app.post('/api/admin/listings/:id/unpublish', requireAdmin, function (req, res) 
   const now = new Date().toISOString();
   db.prepare("UPDATE vehicles SET status = 'paused', admin_paused = 1, admin_pause_reason = ?, admin_paused_at = ?, updated_at = ? WHERE id = ?")
     .run(reason, now, now, id);
+  recomputeCarValuesForModel(v.make, v.model);
   const owner = db.prepare('SELECT u.email, u.full_name, d.business_name FROM dealerships d JOIN users u ON u.id = d.user_id WHERE d.id = ?').get(v.dealership_id);
   if (owner) {
     sendListingModerationEmail({ email: owner.email, dealerName: owner.full_name || owner.business_name, carTitle: vehicleTitle(v), reason: reason, unpublished: true })
@@ -2268,6 +2431,7 @@ app.post('/api/admin/listings/:id/republish', requireAdmin, function (req, res) 
   const now = new Date().toISOString();
   db.prepare("UPDATE vehicles SET status = 'active', admin_paused = 0, admin_pause_reason = NULL, admin_paused_at = NULL, updated_at = ? WHERE id = ?")
     .run(now, id);
+  recomputeCarValuesForModel(v.make, v.model);
   const owner = db.prepare('SELECT u.email, u.full_name, d.business_name FROM dealerships d JOIN users u ON u.id = d.user_id WHERE d.id = ?').get(v.dealership_id);
   if (owner) {
     sendListingModerationEmail({ email: owner.email, dealerName: owner.full_name || owner.business_name, carTitle: vehicleTitle(v), unpublished: false })
@@ -2381,6 +2545,64 @@ app.get('/api/admin/trust-scores', requireAdmin, function (req, res) {
     factors: TRUST_FACTORS.map(function (f) { return { key: f.key, label: f.label, points: f.points }; }),
     counts: { total: listings.length, needs_inspection: listings.filter(function (l) { return l.needs_inspection; }).length }
   });
+});
+
+// Admin: Car Value settings + every active listing's rating, with exclude flags.
+app.get('/api/admin/car-value', requireAdmin, function (req, res) {
+  const rows = db
+    .prepare(
+      `SELECT v.id, v.year, v.make, v.model, v.trim, v.mileage, v.price, v.status,
+              v.value_rating, v.value_pct, v.value_median, v.value_comparables, v.value_updated_at, COALESCE(v.value_excluded, 0) AS value_excluded,
+              d.business_name AS dealer_name,
+              (SELECT p.url FROM vehicle_photos p WHERE p.vehicle_id = v.id ORDER BY p.is_primary DESC, p.display_order ASC LIMIT 1) AS photo_url
+       FROM vehicles v JOIN dealerships d ON d.id = v.dealership_id
+       WHERE v.status = 'active' OR COALESCE(v.value_excluded, 0) = 1
+       ORDER BY LOWER(v.make), LOWER(v.model), v.year DESC, v.id DESC`
+    )
+    .all();
+  const counts = { total: 0, great: 0, good: 0, fair: 0, above: 0, none: 0, excluded: 0 };
+  const listings = rows.map(function (r) {
+    counts.total += 1;
+    if (Number(r.value_excluded)) counts.excluded += 1;
+    else if (r.value_rating) counts[r.value_rating] += 1;
+    else counts.none += 1;
+    return {
+      id: r.id, title: vehicleTitle(r), status: r.status, dealer_name: r.dealer_name, photo_url: r.photo_url || null,
+      make: r.make, model: r.model, year: r.year, mileage: Number(r.mileage) || 0, price: Number(r.price) || 0,
+      rating: r.value_rating || null, label: r.value_rating ? CAR_VALUE_LABELS[r.value_rating] : null,
+      pct: r.value_pct != null ? Number(r.value_pct) : null, median: r.value_median != null ? Number(r.value_median) : null,
+      comparables: Number(r.value_comparables) || 0, excluded: !!Number(r.value_excluded), updated_at: r.value_updated_at || null
+    };
+  });
+  res.set('Cache-Control', 'no-store');
+  return res.json({ settings: carValueSettings, defaults: CAR_VALUE_DEFAULTS, limits: CAR_VALUE_LIMITS, labels: CAR_VALUE_LABELS, listings: listings, counts: counts });
+});
+
+app.put('/api/admin/car-value/settings', requireAdmin, function (req, res) {
+  const result = validateCarValueSettings(req.body || {});
+  if (result.error) return res.status(400).json({ error: result.error });
+  saveCarValueSettings(result.settings);
+  const summary = recomputeAllCarValues('settings changed by ' + req.user.email);
+  return res.json({ settings: carValueSettings, recomputed: summary.recomputed, rated: summary.rated });
+});
+
+app.post('/api/admin/car-value/recompute', requireAdmin, function (req, res) {
+  const summary = recomputeAllCarValues('manual by ' + req.user.email);
+  return res.json({ recomputed: summary.recomputed, rated: summary.rated, settings: carValueSettings });
+});
+
+// Admin: exclude one listing from deal ratings (it gets no badge and is not used as a comparable).
+app.patch('/api/admin/listings/:id/value-exclude', requireAdmin, function (req, res) {
+  const id = Number(req.params.id);
+  if (!id) return res.status(400).json({ error: 'Invalid listing id' });
+  const v = db.prepare('SELECT id, make, model FROM vehicles WHERE id = ?').get(id);
+  if (!v) return res.status(404).json({ error: 'Listing not found' });
+  const excluded = !!(req.body && req.body.excluded);
+  db.prepare('UPDATE vehicles SET value_excluded = ? WHERE id = ?').run(excluded ? 1 : 0, id);
+  recomputeCarValuesForModel(v.make, v.model);
+  const row = db.prepare('SELECT id, value_rating, value_pct, value_median, value_comparables, COALESCE(value_excluded, 0) AS value_excluded FROM vehicles WHERE id = ?').get(id);
+  console.log('Admin', req.user.email, (excluded ? 'excluded' : 'included'), 'listing', id, 'for car value ratings');
+  return res.json({ id: row.id, excluded: !!Number(row.value_excluded), rating: row.value_rating || null, pct: row.value_pct, median: row.value_median, comparables: Number(row.value_comparables) || 0 });
 });
 
 app.get('/api/admin/dashboard', requireAdmin, function (req, res) {
@@ -2790,6 +3012,7 @@ function mapPublicCarRow(row) {
     exterior_color: row.exterior_color,
     primary_photo_url: row.primary_photo_url || null,
     trust_score: row.trust_score != null ? Number(row.trust_score) : 0,
+    car_value: carValuePublic(row),
     governorate: governorate,
     dealer_name: row.dealer_business_name || null,
     dealer: {
@@ -2831,7 +3054,7 @@ app.get('/api/saved-cars/listings', requireBuyer, function (req, res) {
   const rows = db.prepare(
     'SELECT v.id, v.year, v.make, v.model, v.trim, v.mileage, v.price, v.body_type,' +
     '       v.transmission, v.fuel_type, v.exterior_color, v.published_at, v.status,' +
-    '       p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score,' +
+    '       p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score, v.value_rating, v.value_pct, v.value_median, v.value_comparables,' +
     '       d.id AS dealer_id, d.business_name AS dealer_business_name,' +
     '       d.city AS dealer_city, d.state AS dealer_state' +
     ' ' + PUBLIC_CARS_FROM_SQL +
@@ -2893,7 +3116,7 @@ app.get('/api/dealers/:id/profile', function (req, res) {
         v.id, v.year, v.make, v.model, v.trim, v.mileage, v.price,
         v.body_type, v.transmission, v.fuel_type, v.exterior_color,
         v.published_at,
-        p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score,
+        p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score, v.value_rating, v.value_pct, v.value_median, v.value_comparables,
         d.id AS dealer_id,
         d.business_name AS dealer_business_name,
         d.city AS dealer_city,
@@ -3037,7 +3260,7 @@ app.get('/api/search-suggest', function (req, res) {
 
   const cars = db
     .prepare(
-      'SELECT v.id, v.year, v.make, v.model, v.trim, v.price, p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score,' +
+      'SELECT v.id, v.year, v.make, v.model, v.trim, v.price, p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score, v.value_rating, v.value_pct, v.value_median, v.value_comparables,' +
       ' COALESCE(d.governorate, d.city) AS governorate ' + PUBLIC_CARS_FROM_SQL +
       ' LEFT JOIN vehicle_photos p ON p.vehicle_id = v.id AND p.is_primary = 1' +
       " WHERE " + where +
@@ -3082,7 +3305,7 @@ app.get('/api/cars', function (req, res) {
         v.id, v.year, v.make, v.model, v.trim, v.mileage, v.price,
         v.body_type, v.transmission, v.fuel_type, v.exterior_color,
         v.published_at,
-        p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score,
+        p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score, v.value_rating, v.value_pct, v.value_median, v.value_comparables,
         d.id AS dealer_id,
         d.business_name AS dealer_business_name,
         d.city AS dealer_city,
@@ -3116,7 +3339,7 @@ app.get('/api/vehicles', function (req, res) {
         v.id, v.year, v.make, v.model, v.trim, v.mileage, v.price,
         v.body_type, v.transmission, v.fuel_type, v.exterior_color,
         v.published_at,
-        p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score,
+        p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score, v.value_rating, v.value_pct, v.value_median, v.value_comparables,
         d.id AS dealer_id,
         d.business_name AS dealer_business_name,
         d.city AS dealer_city,
@@ -3155,6 +3378,7 @@ function mapPublicVehicleDetail(row, photoRows) {
     views: row.views != null ? row.views : 0,
     trust_score: row.trust_score != null ? Number(row.trust_score) : 0,
     trust_tier: trustTier(row.trust_score != null ? Number(row.trust_score) : 0),
+    car_value: carValuePublic(row),
     photos: (photoRows || []).map(function (p) {
       return {
         id: p.id,
@@ -3189,6 +3413,32 @@ app.get('/api/cars/:id/trust', function (req, res) {
   return res.json({ trust: getTrustRecord(vehicleId) });
 });
 
+// Public deal-rating explanation ("Priced 12% below the median of 6 similar cars").
+app.get('/api/cars/:id/value', function (req, res) {
+  const vehicleId = Number(req.params.id);
+  if (!vehicleId || !Number.isInteger(vehicleId)) return res.status(404).json({ error: 'Listing not found' });
+  const visibility = requestIsAdmin(req)
+    ? ''
+    : " AND d.status = 'approved' AND COALESCE(d.suspended, 0) = 0 AND v.status IN ('active', 'sold')";
+  const row = db.prepare('SELECT v.*' + PUBLIC_CARS_FROM_SQL + ' WHERE v.id = ?' + visibility).get(vehicleId);
+  if (!row) return res.status(404).json({ error: 'Listing not found' });
+  const r = computeCarValue(row);
+  const pub = carValueSettings.enabled && r.rating
+    ? { rating: r.rating, label: CAR_VALUE_LABELS[r.rating], pct: r.pct, median: r.median, comparables: r.comparables }
+    : null;
+  res.set('Cache-Control', 'no-store');
+  return res.json({
+    value: pub,
+    price: Number(row.price),
+    explanation: carValueExplanation(row, r),
+    method: {
+      year_range: carValueSettings.year_range, mileage_pct: carValueSettings.mileage_pct,
+      sold_months: carValueSettings.sold_months, min_comparables: carValueSettings.min_comparables,
+      great_below_pct: carValueSettings.great_below_pct, good_below_pct: carValueSettings.good_below_pct, fair_band_pct: carValueSettings.fair_band_pct
+    }
+  });
+});
+
 app.get('/api/cars/:id', function (req, res) {
   const vehicleId = Number(req.params.id);
   if (!vehicleId || !Number.isInteger(vehicleId)) {
@@ -3206,6 +3456,7 @@ app.get('/api/cars/:id', function (req, res) {
         v.body_type, v.transmission, v.fuel_type, v.exterior_color, v.interior_color,
         v.description, v.vin, v.status, v.published_at, COALESCE(v.views, 0) AS views,
         COALESCE(v.trust_score, 0) AS trust_score,
+        v.value_rating, v.value_pct, v.value_median, v.value_comparables,
         COALESCE(v.admin_paused, 0) AS admin_paused, v.admin_pause_reason,
         d.id AS dealer_id, d.business_name AS dealer_business_name,
         d.city AS dealer_city, d.state AS dealer_state, d.phone AS dealer_phone,
@@ -3702,7 +3953,7 @@ app.get('/api/dealer/vehicles', requireDealer, function (req, res) {
       COALESCE(v.views, 0) AS views,
       v.published_at,
       COALESCE(v.admin_paused, 0) AS admin_paused, v.admin_pause_reason,
-      p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score
+      p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score, v.value_rating, v.value_pct, v.value_median, v.value_comparables
     FROM vehicles v
     LEFT JOIN vehicle_photos p ON p.vehicle_id = v.id AND p.is_primary = 1
     WHERE v.dealership_id = ?
@@ -3808,6 +4059,11 @@ app.patch('/api/vehicles/:id', requireDealer, dealerSuspendedGuard, function (re
   const changedFields = cols.filter(function (c) { return trustValuesDiffer(existing[c], updates[c]); });
   const trustCleared = clearTrustFactorsForFields(vehicleId, changedFields);
   recomputeTrustScore(vehicleId);
+  if (changedFields.some(function (c) { return ['price', 'mileage', 'year', 'make', 'model'].indexOf(c) !== -1; })) {
+    const after = db.prepare('SELECT make, model FROM vehicles WHERE id = ?').get(vehicleId);
+    recomputeCarValuesForModel(after.make, after.model);
+    if (existing.make !== after.make || existing.model !== after.model) recomputeCarValuesForModel(existing.make, existing.model);
+  }
 
   const row = db.prepare('SELECT * FROM vehicles WHERE id = ?').get(vehicleId);
   return res.json({ vehicle: row, trust_cleared: trustCleared });
@@ -3847,6 +4103,7 @@ app.post('/api/vehicles/:id/publish', requireDealer, dealerSuspendedGuard, funct
     vehicleId
   );
   recomputeTrustScore(vehicleId);
+  recomputeCarValuesForModel(vehicle.make, vehicle.model);
   const row = db.prepare('SELECT * FROM vehicles WHERE id = ?').get(vehicleId);
   return res.json({ vehicle: row });
 });
@@ -3880,6 +4137,7 @@ app.post('/api/vehicles/:id/pause', requireDealer, dealerSuspendedGuard, functio
   }
   const now = new Date().toISOString();
   db.prepare("UPDATE vehicles SET status = 'paused', updated_at = ? WHERE id = ?").run(now, vehicleId);
+  recomputeCarValuesForModel(vehicle.make, vehicle.model);
   const row = db.prepare('SELECT * FROM vehicles WHERE id = ?').get(vehicleId);
   return res.json({ vehicle: row });
 });
@@ -3898,6 +4156,7 @@ app.post('/api/vehicles/:id/resume', requireDealer, dealerSuspendedGuard, functi
   if (pausedErr) return res.status(403).json(pausedErr);
   const now = new Date().toISOString();
   db.prepare("UPDATE vehicles SET status = 'active', updated_at = ? WHERE id = ?").run(now, vehicleId);
+  recomputeCarValuesForModel(vehicle.make, vehicle.model);
   const row = db.prepare('SELECT * FROM vehicles WHERE id = ?').get(vehicleId);
   return res.json({ vehicle: row });
 });
@@ -3919,6 +4178,7 @@ app.post('/api/vehicles/:id/mark-sold', requireDealer, dealerSuspendedGuard, fun
   if (pausedErr) return res.status(403).json(pausedErr);
   const now = new Date().toISOString();
   db.prepare("UPDATE vehicles SET status = 'sold', updated_at = ?, sold_at = ? WHERE id = ?").run(now, now, vehicleId);
+  recomputeCarValuesForModel(vehicle.make, vehicle.model);
   const row = db.prepare('SELECT * FROM vehicles WHERE id = ?').get(vehicleId);
   return res.json({ vehicle: row });
 });
@@ -3942,7 +4202,7 @@ app.get('/api/dealer/insights', requireDealer, function (req, res) {
   const vehicles = db
     .prepare(
       `SELECT v.id, v.year, v.make, v.model, v.body_type, v.price, v.status, COALESCE(v.views, 0) AS views,
-              v.published_at, v.created_at, v.sold_at, p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score
+              v.published_at, v.created_at, v.sold_at, p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score, v.value_rating, v.value_pct, v.value_median, v.value_comparables
        FROM vehicles v
        LEFT JOIN vehicle_photos p ON p.vehicle_id = v.id AND p.is_primary = 1
        WHERE v.dealership_id = ? AND v.status IN ('active', 'paused', 'sold')`

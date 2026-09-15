@@ -233,6 +233,7 @@
 
     <script src="/js/carfox-i18n.js"></script>
     <script src="/js/carfox-trust.js"></script>
+    <script src="/js/carfox-value.js"></script>
     <script src="/js/carfox-track.js"></script>
     <script src="/js/carfox-suggest.js"></script>
     <script src="/js/carfox-auth.js"></script>
@@ -637,7 +638,7 @@
           '<div class="p-3 flex flex-col flex-1">' +
           '<a href="' + detailHref + '" class="block font-semibold text-gray-900 text-base leading-snug truncate hover:text-blue-700">' + escapeHtml(title) + '</a>' +
           (specs.length ? '<div class="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-600">' + specs.join('') + '</div>' : '') +
-          '<div class="mt-2 flex items-center justify-between gap-2"><p class="text-lg font-bold text-blue-700">' + escapeHtml(formatPriceEgp(car.price)) + '</p>' + (window.CarfoxTrust ? CarfoxTrust.badge(car.trust_score, { compact: true }) : '') + '</div>' +
+          '<div class="mt-2 flex flex-wrap items-center justify-between gap-2"><p class="text-lg font-bold text-blue-700 shrink-0">' + escapeHtml(formatPriceEgp(car.price)) + '</p>' + '<span class="flex items-center gap-1 flex-wrap justify-end">' + (window.CarfoxValue ? CarfoxValue.badge(car, { compact: true }) : '') + (window.CarfoxTrust ? CarfoxTrust.badge(car.trust_score, { compact: true }) : '') + '</span>' + '</div>' +
           (metaParts.length ? '<div class="mt-1 flex items-center gap-2 text-xs text-gray-500 min-w-0">' + metaParts.join('<span class="text-gray-300">·</span>') + '</div>' : '') +
           buttons +
           '</div>';

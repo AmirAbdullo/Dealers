@@ -152,6 +152,7 @@
     </script>
 
     <script src="/js/carfox-trust.js"></script>
+    <script src="/js/carfox-value.js"></script>
     <script src="/js/carfox-track.js"></script>
     <script src="/js/carfox-auth.js"></script>
     <script src="/js/carfox-buyer-nav.js"></script>
@@ -413,7 +414,8 @@
           document.getElementById('listingTitle').textContent = title;
           if (window.CarfoxTrust) {
             var trustWrap = document.getElementById('trustBadgeWrap');
-            trustWrap.innerHTML = CarfoxTrust.badge(v.trust_score, { vehicleId: v.id }) +
+            trustWrap.innerHTML = (window.CarfoxValue ? CarfoxValue.badge(v, { vehicleId: v.id }) : '') +
+              CarfoxTrust.badge(v.trust_score, { vehicleId: v.id }) +
               '<button type="button" data-trust-open="' + v.id + '" class="text-xs font-semibold text-blue-700 hover:underline">How is this scored?</button>';
             trustWrap.classList.remove('hidden');
           }
