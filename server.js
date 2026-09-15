@@ -523,6 +523,155 @@ addColumnIfMissing('vehicles', 'sold_at', 'TEXT');
 addColumnIfMissing('vehicles', 'admin_paused', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('vehicles', 'admin_pause_reason', 'TEXT');
 addColumnIfMissing('vehicles', 'admin_paused_at', 'TEXT');
+
+// ---- Car Trust Score (0–100) ------------------------------------------------------------
+// Eight admin-checked factors plus an automatic "listing completeness" factor. The score is
+// computed server-side only and cached on vehicles.trust_score for list queries.
+addColumnIfMissing('vehicles', 'trust_score', 'INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('vehicles', 'trust_updated_at', 'TEXT');
+db.exec(`
+  CREATE TABLE IF NOT EXISTS vehicle_verifications (
+    vehicle_id INTEGER NOT NULL,
+    factor TEXT NOT NULL,
+    verified INTEGER NOT NULL DEFAULT 0,
+    verified_by INTEGER,
+    verified_at TEXT,
+    notes TEXT,
+    cleared_reason TEXT,
+    cleared_at TEXT,
+    PRIMARY KEY (vehicle_id, factor)
+  )
+`);
+db.exec('CREATE INDEX IF NOT EXISTS idx_vehicle_verifications_vehicle ON vehicle_verifications(vehicle_id)');
+
+// fields: vehicle columns that, when edited by the dealer, automatically clear that factor.
+const TRUST_FACTORS = [
+  { key: 'vin', label: 'VIN / chassis verified', points: 15, fields: ['vin', 'year', 'make', 'model'] },
+  { key: 'documents', label: 'Documents verified', points: 15, fields: ['vin', 'year', 'make', 'model'] },
+  { key: 'mileage', label: 'Mileage verified', points: 15, fields: ['mileage'] },
+  { key: 'history', label: 'Accident / history info verified', points: 15, fields: ['description'] },
+  { key: 'inspection', label: 'Physical inspection', points: 15, fields: ['year', 'make', 'model', 'trim', 'body_type', 'transmission', 'fuel_type', 'exterior_color', 'interior_color'] },
+  { key: 'media', label: 'Photos / video verified', points: 10, fields: ['photos'] },
+  { key: 'ownership', label: 'Ownership consistency', points: 5, fields: [] },
+  { key: 'service', label: 'Service history', points: 5, fields: [] }
+];
+const TRUST_FACTOR_MAP = {};
+TRUST_FACTORS.forEach(function (f) { TRUST_FACTOR_MAP[f.key] = f; });
+const TRUST_COMPLETENESS_POINTS = 5;
+const TRUST_MIN_PHOTOS = 4;
+const TRUST_KEY_FIELDS = ['vin', 'year', 'make', 'model', 'mileage', 'price', 'body_type', 'transmission', 'fuel_type', 'exterior_color', 'description'];
+const TRUST_FIELD_LABELS = {
+  vin: 'chassis number', year: 'year', make: 'make', model: 'model', trim: 'trim', mileage: 'mileage', price: 'price',
+  body_type: 'body type', transmission: 'transmission', fuel_type: 'fuel type', exterior_color: 'exterior colour',
+  interior_color: 'interior colour', description: 'description', photos: 'photos'
+};
+
+function trustTier(score) {
+  if (score >= 80) return { key: 'high', label: 'Highly Verified' };
+  if (score >= 60) return { key: 'verified', label: 'Verified' };
+  if (score >= 40) return { key: 'partial', label: 'Partially Verified' };
+  return { key: 'none', label: 'Not yet verified' };
+}
+
+function listingCompleteness(vehicle, photoCount) {
+  const missing = [];
+  TRUST_KEY_FIELDS.forEach(function (f) {
+    const v = vehicle[f];
+    const numeric = f === 'year' || f === 'mileage' || f === 'price';
+    if (v == null || String(v).trim() === '' || (numeric && !(Number(v) > 0))) missing.push(f);
+  });
+  const photos = Number(photoCount) || 0;
+  const ok = missing.length === 0 && photos >= TRUST_MIN_PHOTOS;
+  return { ok: ok, points: ok ? TRUST_COMPLETENESS_POINTS : 0, max: TRUST_COMPLETENESS_POINTS, missing: missing, photo_count: photos, photos_required: TRUST_MIN_PHOTOS };
+}
+
+// Full record for one vehicle. opts.admin adds notes, who verified, and the auto-clear field list.
+function getTrustRecord(vehicleId, opts) {
+  const vehicle = db.prepare('SELECT * FROM vehicles WHERE id = ?').get(vehicleId);
+  if (!vehicle) return null;
+  const photoCount = db.prepare('SELECT COUNT(*) AS c FROM vehicle_photos WHERE vehicle_id = ?').get(vehicleId).c;
+  const rows = db.prepare('SELECT vv.*, u.full_name AS verified_by_name FROM vehicle_verifications vv LEFT JOIN users u ON u.id = vv.verified_by WHERE vv.vehicle_id = ?').all(vehicleId);
+  const byKey = {};
+  rows.forEach(function (r) { byKey[r.factor] = r; });
+  let verifiedPoints = 0;
+  let verifiedCount = 0;
+  let lastVerifiedAt = null;
+  const factors = TRUST_FACTORS.map(function (f) {
+    const r = byKey[f.key];
+    const verified = !!(r && Number(r.verified));
+    if (verified) {
+      verifiedPoints += f.points;
+      verifiedCount += 1;
+      if (r.verified_at && (!lastVerifiedAt || r.verified_at > lastVerifiedAt)) lastVerifiedAt = r.verified_at;
+    }
+    const out = {
+      key: f.key, label: f.label, points: f.points, verified: verified,
+      verified_at: verified ? r.verified_at : null,
+      cleared_reason: !verified && r ? r.cleared_reason || null : null,
+      cleared_at: !verified && r ? r.cleared_at || null : null
+    };
+    if (opts && opts.admin) {
+      out.notes = r ? r.notes || '' : '';
+      out.verified_by = verified ? r.verified_by : null;
+      out.verified_by_name = verified ? r.verified_by_name || null : null;
+      out.auto_clears_on = f.fields.map(function (x) { return TRUST_FIELD_LABELS[x] || x; });
+    }
+    return out;
+  });
+  const completeness = listingCompleteness(vehicle, photoCount);
+  const score = Math.min(100, verifiedPoints + completeness.points);
+  return {
+    vehicle_id: vehicleId, score: score, tier: trustTier(score), factors: factors, completeness: completeness,
+    verified_points: verifiedPoints, verified_count: verifiedCount, factor_count: TRUST_FACTORS.length, last_verified_at: lastVerifiedAt
+  };
+}
+
+function recomputeTrustScore(vehicleId) {
+  const rec = getTrustRecord(vehicleId);
+  if (!rec) return null;
+  db.prepare('UPDATE vehicles SET trust_score = ?, trust_updated_at = ? WHERE id = ?').run(rec.score, new Date().toISOString(), vehicleId);
+  return rec.score;
+}
+
+// Dealer edited some fields: drop every verified factor that depends on them. Returns what was cleared.
+function clearTrustFactorsForFields(vehicleId, changedFields) {
+  if (!changedFields || !changedFields.length) return [];
+  const now = new Date().toISOString();
+  const cleared = [];
+  TRUST_FACTORS.forEach(function (f) {
+    const hit = f.fields.filter(function (x) { return changedFields.indexOf(x) !== -1; });
+    if (!hit.length) return;
+    const row = db.prepare('SELECT verified FROM vehicle_verifications WHERE vehicle_id = ? AND factor = ?').get(vehicleId, f.key);
+    if (!row || !Number(row.verified)) return;
+    const reason = 'Listing edited: ' + hit.map(function (x) { return TRUST_FIELD_LABELS[x] || x; }).join(', ') + ' changed';
+    db.prepare('UPDATE vehicle_verifications SET verified = 0, verified_by = NULL, verified_at = NULL, cleared_reason = ?, cleared_at = ? WHERE vehicle_id = ? AND factor = ?')
+      .run(reason, now, vehicleId, f.key);
+    cleared.push({ key: f.key, label: f.label, reason: reason });
+  });
+  if (cleared.length) console.log('Trust factors cleared on vehicle', vehicleId, cleared.map(function (c) { return c.key; }).join(','), '-', changedFields.join(','));
+  return cleared;
+}
+
+// Cleared-but-not-re-verified factors per vehicle, for the dealer's inventory notices.
+function trustNoticesForDealership(dealershipId) {
+  const rows = db
+    .prepare('SELECT vv.vehicle_id, vv.factor, vv.cleared_reason, vv.cleared_at FROM vehicle_verifications vv JOIN vehicles v ON v.id = vv.vehicle_id WHERE v.dealership_id = ? AND vv.verified = 0 AND vv.cleared_at IS NOT NULL')
+    .all(dealershipId);
+  const out = {};
+  rows.forEach(function (r) {
+    const f = TRUST_FACTOR_MAP[r.factor];
+    if (!f) return;
+    (out[r.vehicle_id] = out[r.vehicle_id] || []).push({ key: r.factor, label: f.label, reason: r.cleared_reason, cleared_at: r.cleared_at });
+  });
+  return out;
+}
+
+function trustValuesDiffer(a, b) {
+  return String(a == null ? '' : a) !== String(b == null ? '' : b);
+}
+
+// Backfill the cached score once for vehicles that never had it computed.
+db.prepare('SELECT id FROM vehicles WHERE trust_updated_at IS NULL').all().forEach(function (r) { recomputeTrustScore(r.id); });
 db.exec("UPDATE vehicles SET sold_at = COALESCE(updated_at, created_at) WHERE status = 'sold' AND sold_at IS NULL");
 
 // Grandfather in everyone who signed up before email verification existed.
@@ -2060,6 +2209,7 @@ app.get('/api/admin/listings', requireAdmin, function (req, res) {
     .prepare(
       'SELECT v.id, v.year, v.make, v.model, v.trim, v.price, v.status, COALESCE(v.views, 0) AS views,' +
       ' v.created_at, v.published_at, v.updated_at, COALESCE(v.admin_paused, 0) AS admin_paused, v.admin_pause_reason, v.admin_paused_at,' +
+      ' COALESCE(v.trust_score, 0) AS trust_score,' +
       ' d.id AS dealership_id, d.business_name AS dealer_name, COALESCE(d.governorate, d.city) AS governorate,' +
       ' (SELECT p.url FROM vehicle_photos p WHERE p.vehicle_id = v.id ORDER BY p.is_primary DESC, p.display_order ASC LIMIT 1) AS photo_url,' +
       ' (SELECT COUNT(*) FROM vehicle_photos p WHERE p.vehicle_id = v.id) AS photo_count,' +
@@ -2140,6 +2290,97 @@ app.delete('/api/admin/listings/:id', requireAdmin, async function (req, res) {
     console.error('Admin delete failed for listing', id, e);
     return res.status(500).json({ error: 'Delete failed' });
   }
+});
+
+// Admin: full trust record for one listing (notes, who verified, auto-clear rules).
+app.get('/api/admin/listings/:id/trust', requireAdmin, function (req, res) {
+  const id = Number(req.params.id);
+  if (!id) return res.status(400).json({ error: 'Invalid listing id' });
+  const v = db.prepare('SELECT v.id, v.year, v.make, v.model, v.trim, v.status, d.business_name AS dealer_name FROM vehicles v JOIN dealerships d ON d.id = v.dealership_id WHERE v.id = ?').get(id);
+  if (!v) return res.status(404).json({ error: 'Listing not found' });
+  res.set('Cache-Control', 'no-store');
+  return res.json({
+    listing: { id: v.id, title: vehicleTitle(v), status: v.status, dealer_name: v.dealer_name },
+    trust: getTrustRecord(id, { admin: true }),
+    factors: TRUST_FACTORS.map(function (f) { return { key: f.key, label: f.label, points: f.points }; })
+  });
+});
+
+// Admin: set which factors are verified (+ optional notes). Body: { factors: { vin: { verified, notes }, ... } }.
+app.put('/api/admin/listings/:id/trust', requireAdmin, function (req, res) {
+  const id = Number(req.params.id);
+  if (!id) return res.status(400).json({ error: 'Invalid listing id' });
+  const v = db.prepare('SELECT id FROM vehicles WHERE id = ?').get(id);
+  if (!v) return res.status(404).json({ error: 'Listing not found' });
+  const factors = req.body && req.body.factors && typeof req.body.factors === 'object' ? req.body.factors : null;
+  if (!factors) return res.status(400).json({ error: 'factors object is required' });
+  const keys = Object.keys(factors);
+  for (let i = 0; i < keys.length; i++) {
+    if (!TRUST_FACTOR_MAP[keys[i]]) return res.status(400).json({ error: 'Unknown factor: ' + keys[i] });
+  }
+  const now = new Date().toISOString();
+  const adminId = req.user.id;
+  keys.forEach(function (key) {
+    const f = factors[key] || {};
+    const verified = !!f.verified;
+    const notes = f.notes != null ? String(f.notes).trim().slice(0, 500) || null : null;
+    const existing = db.prepare('SELECT * FROM vehicle_verifications WHERE vehicle_id = ? AND factor = ?').get(id, key);
+    if (!existing) {
+      db.prepare('INSERT INTO vehicle_verifications (vehicle_id, factor, verified, verified_by, verified_at, notes) VALUES (?, ?, ?, ?, ?, ?)')
+        .run(id, key, verified ? 1 : 0, verified ? adminId : null, verified ? now : null, notes);
+    } else if (verified && !Number(existing.verified)) {
+      db.prepare('UPDATE vehicle_verifications SET verified = 1, verified_by = ?, verified_at = ?, notes = ?, cleared_reason = NULL, cleared_at = NULL WHERE vehicle_id = ? AND factor = ?')
+        .run(adminId, now, notes, id, key);
+    } else if (!verified && Number(existing.verified)) {
+      // Manual un-verify by an admin: no "listing edited" notice for the dealer.
+      db.prepare('UPDATE vehicle_verifications SET verified = 0, verified_by = NULL, verified_at = NULL, notes = ?, cleared_reason = NULL, cleared_at = NULL WHERE vehicle_id = ? AND factor = ?')
+        .run(notes, id, key);
+    } else {
+      db.prepare('UPDATE vehicle_verifications SET notes = ? WHERE vehicle_id = ? AND factor = ?').run(notes, id, key);
+    }
+  });
+  const score = recomputeTrustScore(id);
+  console.log('Admin', req.user.email, 'set trust score of listing', id, 'to', score);
+  return res.json({ trust: getTrustRecord(id, { admin: true }) });
+});
+
+// Admin: every active listing with its score, for the Trust page.
+app.get('/api/admin/trust-scores', requireAdmin, function (req, res) {
+  const rows = db
+    .prepare(
+      `SELECT v.*, d.id AS dealership_id, d.business_name AS dealer_name,
+              (SELECT p.url FROM vehicle_photos p WHERE p.vehicle_id = v.id ORDER BY p.is_primary DESC, p.display_order ASC LIMIT 1) AS photo_url,
+              (SELECT COUNT(*) FROM vehicle_photos p WHERE p.vehicle_id = v.id) AS photo_count,
+              (SELECT COUNT(*) FROM vehicle_verifications vv WHERE vv.vehicle_id = v.id AND vv.verified = 1) AS verified_count,
+              (SELECT MAX(vv.verified_at) FROM vehicle_verifications vv WHERE vv.vehicle_id = v.id AND vv.verified = 1) AS last_verified_at,
+              (SELECT COUNT(*) FROM vehicle_verifications vv WHERE vv.vehicle_id = v.id AND vv.verified = 0 AND vv.cleared_at IS NOT NULL) AS cleared_count
+       FROM vehicles v
+       JOIN dealerships d ON d.id = v.dealership_id
+       WHERE v.status = 'active'
+       ORDER BY COALESCE(v.trust_score, 0) ASC, v.id DESC`
+    )
+    .all();
+  const listings = rows.map(function (r) {
+    const verifiedPoints = db.prepare('SELECT vv.factor FROM vehicle_verifications vv WHERE vv.vehicle_id = ? AND vv.verified = 1').all(r.id)
+      .reduce(function (sum, x) { return sum + (TRUST_FACTOR_MAP[x.factor] ? TRUST_FACTOR_MAP[x.factor].points : 0); }, 0);
+    const completeness = listingCompleteness(r, r.photo_count);
+    const score = Math.min(100, verifiedPoints + completeness.points);
+    return {
+      id: r.id, title: vehicleTitle(r), status: r.status, dealership_id: r.dealership_id, dealer_name: r.dealer_name,
+      photo_url: r.photo_url || null, photo_count: Number(r.photo_count) || 0,
+      score: score, cached_score: Number(r.trust_score) || 0, tier: trustTier(score),
+      verified_count: Number(r.verified_count) || 0, factor_count: TRUST_FACTORS.length, verified_points: verifiedPoints,
+      completeness: completeness, last_verified_at: r.last_verified_at || null,
+      cleared_count: Number(r.cleared_count) || 0,
+      needs_inspection: (Number(r.verified_count) || 0) === 0
+    };
+  });
+  res.set('Cache-Control', 'no-store');
+  return res.json({
+    listings: listings,
+    factors: TRUST_FACTORS.map(function (f) { return { key: f.key, label: f.label, points: f.points }; }),
+    counts: { total: listings.length, needs_inspection: listings.filter(function (l) { return l.needs_inspection; }).length }
+  });
 });
 
 app.get('/api/admin/dashboard', requireAdmin, function (req, res) {
@@ -2548,6 +2789,7 @@ function mapPublicCarRow(row) {
     fuel_type: row.fuel_type,
     exterior_color: row.exterior_color,
     primary_photo_url: row.primary_photo_url || null,
+    trust_score: row.trust_score != null ? Number(row.trust_score) : 0,
     governorate: governorate,
     dealer_name: row.dealer_business_name || null,
     dealer: {
@@ -2589,7 +2831,7 @@ app.get('/api/saved-cars/listings', requireBuyer, function (req, res) {
   const rows = db.prepare(
     'SELECT v.id, v.year, v.make, v.model, v.trim, v.mileage, v.price, v.body_type,' +
     '       v.transmission, v.fuel_type, v.exterior_color, v.published_at, v.status,' +
-    '       p.url AS primary_photo_url,' +
+    '       p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score,' +
     '       d.id AS dealer_id, d.business_name AS dealer_business_name,' +
     '       d.city AS dealer_city, d.state AS dealer_state' +
     ' ' + PUBLIC_CARS_FROM_SQL +
@@ -2651,7 +2893,7 @@ app.get('/api/dealers/:id/profile', function (req, res) {
         v.id, v.year, v.make, v.model, v.trim, v.mileage, v.price,
         v.body_type, v.transmission, v.fuel_type, v.exterior_color,
         v.published_at,
-        p.url AS primary_photo_url,
+        p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score,
         d.id AS dealer_id,
         d.business_name AS dealer_business_name,
         d.city AS dealer_city,
@@ -2795,7 +3037,7 @@ app.get('/api/search-suggest', function (req, res) {
 
   const cars = db
     .prepare(
-      'SELECT v.id, v.year, v.make, v.model, v.trim, v.price, p.url AS primary_photo_url,' +
+      'SELECT v.id, v.year, v.make, v.model, v.trim, v.price, p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score,' +
       ' COALESCE(d.governorate, d.city) AS governorate ' + PUBLIC_CARS_FROM_SQL +
       ' LEFT JOIN vehicle_photos p ON p.vehicle_id = v.id AND p.is_primary = 1' +
       " WHERE " + where +
@@ -2840,7 +3082,7 @@ app.get('/api/cars', function (req, res) {
         v.id, v.year, v.make, v.model, v.trim, v.mileage, v.price,
         v.body_type, v.transmission, v.fuel_type, v.exterior_color,
         v.published_at,
-        p.url AS primary_photo_url,
+        p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score,
         d.id AS dealer_id,
         d.business_name AS dealer_business_name,
         d.city AS dealer_city,
@@ -2874,7 +3116,7 @@ app.get('/api/vehicles', function (req, res) {
         v.id, v.year, v.make, v.model, v.trim, v.mileage, v.price,
         v.body_type, v.transmission, v.fuel_type, v.exterior_color,
         v.published_at,
-        p.url AS primary_photo_url,
+        p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score,
         d.id AS dealer_id,
         d.business_name AS dealer_business_name,
         d.city AS dealer_city,
@@ -2911,6 +3153,8 @@ function mapPublicVehicleDetail(row, photoRows) {
     status: row.status,
     published_at: row.published_at,
     views: row.views != null ? row.views : 0,
+    trust_score: row.trust_score != null ? Number(row.trust_score) : 0,
+    trust_tier: trustTier(row.trust_score != null ? Number(row.trust_score) : 0),
     photos: (photoRows || []).map(function (p) {
       return {
         id: p.id,
@@ -2932,6 +3176,19 @@ function mapPublicVehicleDetail(row, photoRows) {
   };
 }
 
+// Public trust-score breakdown for a listing (factor verified / not, with check dates). No admin names or notes.
+app.get('/api/cars/:id/trust', function (req, res) {
+  const vehicleId = Number(req.params.id);
+  if (!vehicleId || !Number.isInteger(vehicleId)) return res.status(404).json({ error: 'Listing not found' });
+  const visibility = requestIsAdmin(req)
+    ? ''
+    : " AND d.status = 'approved' AND COALESCE(d.suspended, 0) = 0 AND v.status IN ('active', 'sold')";
+  const row = db.prepare('SELECT v.id' + PUBLIC_CARS_FROM_SQL + ' WHERE v.id = ?' + visibility).get(vehicleId);
+  if (!row) return res.status(404).json({ error: 'Listing not found' });
+  res.set('Cache-Control', 'no-store');
+  return res.json({ trust: getTrustRecord(vehicleId) });
+});
+
 app.get('/api/cars/:id', function (req, res) {
   const vehicleId = Number(req.params.id);
   if (!vehicleId || !Number.isInteger(vehicleId)) {
@@ -2948,6 +3205,7 @@ app.get('/api/cars/:id', function (req, res) {
         v.id, v.year, v.make, v.model, v.trim, v.mileage, v.price,
         v.body_type, v.transmission, v.fuel_type, v.exterior_color, v.interior_color,
         v.description, v.vin, v.status, v.published_at, COALESCE(v.views, 0) AS views,
+        COALESCE(v.trust_score, 0) AS trust_score,
         COALESCE(v.admin_paused, 0) AS admin_paused, v.admin_pause_reason,
         d.id AS dealer_id, d.business_name AS dealer_business_name,
         d.city AS dealer_city, d.state AS dealer_state, d.phone AS dealer_phone,
@@ -3444,7 +3702,7 @@ app.get('/api/dealer/vehicles', requireDealer, function (req, res) {
       COALESCE(v.views, 0) AS views,
       v.published_at,
       COALESCE(v.admin_paused, 0) AS admin_paused, v.admin_pause_reason,
-      p.url AS primary_photo_url
+      p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score
     FROM vehicles v
     LEFT JOIN vehicle_photos p ON p.vehicle_id = v.id AND p.is_primary = 1
     WHERE v.dealership_id = ?
@@ -3464,6 +3722,8 @@ app.get('/api/dealer/vehicles', requireDealer, function (req, res) {
   params.push(limit);
 
   const vehicles = db.prepare(sql).all(...params);
+  const notices = trustNoticesForDealership(req.dealership.id);
+  vehicles.forEach(function (v) { v.trust_notices = notices[v.id] || []; });
   return res.json({ vehicles: vehicles });
 });
 
@@ -3544,8 +3804,13 @@ app.patch('/api/vehicles/:id', requireDealer, dealerSuspendedGuard, function (re
   ).run(...values);
   touchVehicleUpdatedAt(vehicleId);
 
+  // Integrity: editing a verified field removes that factor's verification.
+  const changedFields = cols.filter(function (c) { return trustValuesDiffer(existing[c], updates[c]); });
+  const trustCleared = clearTrustFactorsForFields(vehicleId, changedFields);
+  recomputeTrustScore(vehicleId);
+
   const row = db.prepare('SELECT * FROM vehicles WHERE id = ?').get(vehicleId);
-  return res.json({ vehicle: row });
+  return res.json({ vehicle: row, trust_cleared: trustCleared });
 });
 
 app.post('/api/vehicles/:id/publish', requireDealer, dealerSuspendedGuard, function (req, res) {
@@ -3581,6 +3846,7 @@ app.post('/api/vehicles/:id/publish', requireDealer, dealerSuspendedGuard, funct
     publishedAt,
     vehicleId
   );
+  recomputeTrustScore(vehicleId);
   const row = db.prepare('SELECT * FROM vehicles WHERE id = ?').get(vehicleId);
   return res.json({ vehicle: row });
 });
@@ -3676,7 +3942,7 @@ app.get('/api/dealer/insights', requireDealer, function (req, res) {
   const vehicles = db
     .prepare(
       `SELECT v.id, v.year, v.make, v.model, v.body_type, v.price, v.status, COALESCE(v.views, 0) AS views,
-              v.published_at, v.created_at, v.sold_at, p.url AS primary_photo_url
+              v.published_at, v.created_at, v.sold_at, p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score
        FROM vehicles v
        LEFT JOIN vehicle_photos p ON p.vehicle_id = v.id AND p.is_primary = 1
        WHERE v.dealership_id = ? AND v.status IN ('active', 'paused', 'sold')`
@@ -3874,6 +4140,7 @@ async function hardDeleteVehicle(vehicleId) {
     }
   }
   db.prepare('DELETE FROM vehicle_photos WHERE vehicle_id = ?').run(vehicleId);
+  db.prepare('DELETE FROM vehicle_verifications WHERE vehicle_id = ?').run(vehicleId);
   db.prepare('DELETE FROM saved_cars WHERE vehicle_id = ?').run(vehicleId);
   db.prepare('DELETE FROM inquiries WHERE vehicle_id = ?').run(vehicleId);
   db.prepare('UPDATE engagement_events SET vehicle_id = NULL WHERE vehicle_id = ?').run(vehicleId);
@@ -4011,6 +4278,8 @@ app.post(
         'INSERT INTO vehicle_photos (vehicle_id, url, display_order, is_primary) VALUES (?, ?, ?, ?)'
       )
       .run(vehicleId, url, displayOrder, isPrimary);
+    clearTrustFactorsForFields(vehicleId, ['photos']);
+    recomputeTrustScore(vehicleId);
     const photo = db.prepare('SELECT * FROM vehicle_photos WHERE id = ?').get(info.lastInsertRowid);
     return res.status(201).json({ photo: photo });
   }
@@ -4043,6 +4312,8 @@ app.delete(
 
     const wasPrimary = photo.is_primary === 1;
     db.prepare('DELETE FROM vehicle_photos WHERE id = ?').run(photoId);
+    clearTrustFactorsForFields(vehicleId, ['photos']);
+    recomputeTrustScore(vehicleId);
 
     if (wasPrimary) {
       const nextPhoto = db

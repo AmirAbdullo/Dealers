@@ -35,6 +35,7 @@
             <a href="/admin/dealers.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Dealers</a>
             <a href="/admin/listings.html" class="rounded-lg px-3 py-1.5 bg-blue-50 text-blue-700" aria-current="page">Listings</a>
             <a href="/admin/users.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Users</a>
+            <a href="/admin/trust-scores.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Trust</a>
           </nav>
         </div>
         <div class="flex items-center gap-3 text-sm shrink-0 pl-3">
@@ -136,6 +137,8 @@
       </div>
     </div>
 
+    <script src="/js/carfox-trust.js"></script>
+    <script src="/js/carfox-admin-trust.js"></script>
     <script>
       const TOKEN_KEY = 'carfox_token';
       const USER_KEY = 'carfox_user';
@@ -183,6 +186,7 @@
       }
       function actionButtons(v) {
         let html = '<a href="/cars/' + v.id + '" target="_blank" rel="noopener" class="btn-xs border border-gray-300 text-gray-700 hover:bg-gray-50">View</a>';
+        html += '<button class="btn-xs border border-blue-300 text-blue-800 hover:bg-blue-50" data-trust="' + v.id + '">Trust score</button>';
         if (v.admin_paused) {
           html += '<button class="btn-xs bg-green-600 text-white hover:bg-green-700" data-republish="' + v.id + '">Republish</button>';
         } else if (v.status === 'active' || v.status === 'paused') {
@@ -210,7 +214,7 @@
           tr.innerHTML =
             '<td class="px-4 py-3"><div class="flex items-center gap-3">' + thumb(v, 'w-16 h-12') +
               '<div class="min-w-0"><a href="/cars/' + v.id + '" target="_blank" rel="noopener" class="font-semibold text-gray-900 hover:text-blue-700">' + esc(v.title || 'Untitled draft') + '</a>' +
-              '<div class="text-xs text-gray-500">#' + v.id + ' · ' + v.photo_count + ' ' + (v.photo_count === 1 ? 'photo' : 'photos') + '</div>' +
+              '<div class="text-xs text-gray-500 flex items-center gap-2">#' + v.id + ' · ' + v.photo_count + ' ' + (v.photo_count === 1 ? 'photo' : 'photos') + ' ' + CarfoxTrust.badge(v.trust_score, { compact: true }) + '</div>' +
               (v.admin_paused && v.admin_pause_reason ? '<div class="text-xs text-red-700 mt-0.5">Reason: ' + esc(v.admin_pause_reason) + '</div>' : '') +
               '</div></div></td>' +
             '<td class="px-4 py-3">' + dealerLink(v) + '<div class="text-xs text-gray-500">' + esc(v.governorate || '—') + '</div></td>' +
@@ -228,7 +232,7 @@
             '<div class="flex items-start gap-3">' + thumb(v, 'w-20 h-16') +
               '<div class="min-w-0 flex-1">' +
                 '<div class="flex items-start justify-between gap-2"><a href="/cars/' + v.id + '" target="_blank" rel="noopener" class="font-semibold text-gray-900 leading-snug">' + esc(v.title || 'Untitled draft') + '</a>' + statusBadge(v) + '</div>' +
-                '<div class="text-sm text-blue-700 font-bold mt-0.5">' + fmtPrice(v.price) + '</div>' +
+                '<div class="text-sm text-blue-700 font-bold mt-0.5 flex items-center gap-2">' + fmtPrice(v.price) + ' ' + CarfoxTrust.badge(v.trust_score, { compact: true }) + '</div>' +
                 '<div class="text-xs text-gray-500 mt-0.5">' + dealerLink(v) + ' · ' + esc(v.governorate || '—') + '</div>' +
                 '<div class="text-xs text-gray-500 mt-0.5">' + num(v.views) + ' views · ' + num(v.engagements_30d) + ' eng. (30d) · ' + fmtDate(v.created_at) + '</div>' +
                 (v.admin_paused && v.admin_pause_reason ? '<div class="text-xs text-red-700 mt-1">Reason: ' + esc(v.admin_pause_reason) + '</div>' : '') +
@@ -291,6 +295,8 @@
       }
 
       document.addEventListener('click', (e) => {
+        const tr = e.target.closest('[data-trust]');
+        if (tr) { CarfoxAdminTrust.open(Number(tr.dataset.trust), { onSaved: load, toast: setToast }); return; }
         const up = e.target.closest('[data-unpublish]');
         if (up) {
           modalTarget = listings.find((v) => v.id === Number(up.dataset.unpublish));

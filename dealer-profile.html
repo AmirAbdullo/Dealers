@@ -105,6 +105,7 @@
     </main>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="/js/carfox-trust.js"></script>
     <script src="/js/carfox-track.js"></script>
     <script src="/js/carfox-auth.js"></script>
     <script src="/js/carfox-buyer-nav.js"></script>
@@ -138,7 +139,7 @@
             '<div class="p-3">' +
             '<h3 class="text-sm font-semibold text-gray-900 truncate">' + esc(title) + '</h3>' +
             (subtitle ? '<p class="text-xs text-gray-500 mt-0.5 truncate">' + esc(subtitle) + '</p>' : '') +
-            '<p class="text-lg font-bold text-blue-700 mt-2">' + esc(fmtPrice(car.price)) + '</p>' +
+            '<div class="mt-2 flex items-center justify-between gap-2"><p class="text-lg font-bold text-blue-700">' + esc(fmtPrice(car.price)) + '</p>' + (window.CarfoxTrust ? CarfoxTrust.badge(car.trust_score, { compact: true }) : '') + '</div>' +
             '<div class="flex items-center justify-between text-xs text-gray-500 mt-2"><span>' + esc(fmtMileage(car.mileage)) + '</span><span class="truncate ml-2">' + esc(car.governorate || '') + '</span></div>' +
             '</div>';
           return a;

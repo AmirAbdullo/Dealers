@@ -65,6 +65,8 @@ CREATE TABLE IF NOT EXISTS vehicles (
   admin_paused INTEGER NOT NULL DEFAULT 0,
   admin_pause_reason TEXT,
   admin_paused_at TEXT,
+  trust_score INTEGER NOT NULL DEFAULT 0,
+  trust_updated_at TEXT,
   published_at DATETIME,
   updated_at TEXT,
   created_at TEXT NOT NULL,
@@ -180,3 +182,18 @@ CREATE TABLE IF NOT EXISTS invitations (
 );
 CREATE INDEX IF NOT EXISTS idx_invitations_email ON invitations(email);
 CREATE INDEX IF NOT EXISTS idx_invitations_invited_at ON invitations(invited_at);
+
+-- Car Trust Score: admin-checked factors per vehicle (vin, documents, mileage, history, inspection, media, ownership, service).
+-- cleared_* is set when a dealer edit removed the verification automatically; vehicles.trust_score caches the computed score.
+CREATE TABLE IF NOT EXISTS vehicle_verifications (
+  vehicle_id INTEGER NOT NULL,
+  factor TEXT NOT NULL,
+  verified INTEGER NOT NULL DEFAULT 0,
+  verified_by INTEGER,
+  verified_at TEXT,
+  notes TEXT,
+  cleared_reason TEXT,
+  cleared_at TEXT,
+  PRIMARY KEY (vehicle_id, factor)
+);
+CREATE INDEX IF NOT EXISTS idx_vehicle_verifications_vehicle ON vehicle_verifications(vehicle_id);

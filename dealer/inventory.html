@@ -73,6 +73,7 @@
     <!-- Dealer bottom nav injected here -->
     <div id="dealerNavContainer"></div>
 
+    <script src="/js/carfox-trust.js"></script>
     <script src="/js/carfox-dealer-nav.js"></script>
     <script>
       (function () {
@@ -213,6 +214,22 @@
           priceEl.className = 'text-blue-700 font-bold text-sm mt-0.5';
           priceEl.textContent = formatPrice(v.price);
           info.appendChild(priceEl);
+
+          if (window.CarfoxTrust && v.status !== 'draft') {
+            var trustEl = document.createElement('div');
+            trustEl.className = 'mt-1 flex items-center gap-1.5';
+            trustEl.innerHTML = CarfoxTrust.badge(v.trust_score, { compact: true }) + '<span class="text-[11px] text-gray-500">Car Trust Score</span>';
+            info.appendChild(trustEl);
+          }
+          (v.trust_notices || []).forEach(function (n) {
+            var note = document.createElement('p');
+            note.className = 'mt-1.5 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5';
+            var what = String(n.label || 'Verification').replace(/ verified$/i, '').replace(/ info$/i, '');
+            var why = n.reason ? ' (' + String(n.reason).replace(/^Listing edited: /, '') + ')' : '';
+            var when = n.cleared_at ? ' on ' + new Date(n.cleared_at).toLocaleDateString() : '';
+            note.textContent = what + ' verification removed — listing edited' + why + when + '. CarFox will need to re-verify it.';
+            info.appendChild(note);
+          });
 
           // Meta: views + days ago
           var metaEl = document.createElement('div');
