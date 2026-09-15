@@ -897,6 +897,198 @@ function parseFeatureIdList(raw) {
   });
   return out;
 }
+
+// ---- Catalog: makes, models, governorates, search settings ---------------------------------
+// Admin-managed lists that power the dealer make/model dropdowns, the home brand grid and city
+// chips, the quick-search pages, search suggestions and the filter panels. Served by one cached
+// endpoint (GET /api/catalog). Deactivated entries disappear from new selections only.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS catalog_makes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    short_name TEXT,
+    logo_url TEXT,
+    active INTEGER NOT NULL DEFAULT 1,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+  )
+`);
+db.exec(`
+  CREATE TABLE IF NOT EXISTS catalog_models (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    make_id INTEGER NOT NULL,
+    name TEXT NOT NULL COLLATE NOCASE,
+    active INTEGER NOT NULL DEFAULT 1,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    UNIQUE (make_id, name)
+  )
+`);
+db.exec('CREATE INDEX IF NOT EXISTS idx_catalog_models_make ON catalog_models(make_id)');
+db.exec(`
+  CREATE TABLE IF NOT EXISTS governorates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    name_ar TEXT,
+    active INTEGER NOT NULL DEFAULT 1,
+    featured INTEGER NOT NULL DEFAULT 1,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+  )
+`);
+
+const CAR_DATA = require('./lib/car-data');
+// Order the home page "Browse by Brand" grid used before the catalog existed (kept identical).
+const HOME_BRAND_ORDER = [
+  'Toyota', 'Hyundai', 'Kia', 'Nissan', 'Mercedes-Benz', 'BMW', 'Chevrolet', 'Honda', 'Volkswagen', 'Peugeot', 'Renault',
+  'Mitsubishi', 'Chery', 'MG', 'Opel', 'Fiat', 'Skoda', 'Jeep', 'Ford', 'Suzuki', 'Mazda', 'Audi', 'Volvo',
+  'Land Rover', 'Porsche', 'Subaru', 'BAIC', 'Geely', 'BYD', 'Haval', 'JAC', 'Lifan', 'Isuzu', 'Lexus'
+];
+const MAKE_SHORT_NAMES = { 'Mercedes-Benz': 'Mercedes' };
+// Canonical governorate order (was js/carfox-quick-search.js). featured = shown as a home city chip.
+const GOVERNORATE_SEED = [
+  ['Cairo', 'القاهرة', 1], ['Giza', 'الجيزة', 1], ['Alexandria', 'الإسكندرية', 1], ['Qalyubia', 'القليوبية', 1],
+  ['Sharqia', 'الشرقية', 1], ['Dakahlia', 'الدقهلية', 1], ['Gharbia', 'الغربية', 1], ['Monufia', 'المنوفية', 1],
+  ['Beheira', 'البحيرة', 0], ['Kafr El Sheikh', 'كفر الشيخ', 0], ['Damietta', 'دمياط', 0], ['Port Said', 'بورسعيد', 1],
+  ['Ismailia', 'الإسماعيلية', 1], ['Suez', 'السويس', 1], ['Faiyum', 'الفيوم', 1], ['Beni Suef', 'بني سويف', 1],
+  ['Minya', 'المنيا', 1], ['Asyut', 'أسيوط', 1], ['Sohag', 'سوهاج', 1], ['Qena', 'قنا', 1], ['Luxor', 'الأقصر', 1],
+  ['Aswan', 'أسوان', 1], ['Red Sea', 'البحر الأحمر', 0], ['New Valley', 'الوادي الجديد', 0], ['Matrouh', 'مطروح', 0],
+  ['North Sinai', 'شمال سيناء', 0], ['South Sinai', 'جنوب سيناء', 0]
+];
+
+(function seedCatalog() {
+  const now = new Date().toISOString();
+  if (db.prepare('SELECT COUNT(*) AS n FROM catalog_makes').get().n === 0) {
+    const names = [];
+    function addName(n) {
+      const t = String(n || '').trim();
+      if (!t) return;
+      if (!names.some(function (x) { return x.toLowerCase() === t.toLowerCase(); })) names.push(t);
+    }
+    HOME_BRAND_ORDER.forEach(addName);
+    CAR_DATA.MAKES.forEach(addName);
+    db.prepare("SELECT DISTINCT TRIM(make) AS make FROM vehicles WHERE make IS NOT NULL AND TRIM(make) != '' ORDER BY LOWER(TRIM(make))").all()
+      .forEach(function (r) { addName(r.make); });
+    const insMake = db.prepare('INSERT INTO catalog_makes (name, short_name, logo_url, active, sort_order, created_at) VALUES (?, ?, NULL, 1, ?, ?)');
+    const insModel = db.prepare('INSERT INTO catalog_models (make_id, name, active, sort_order, created_at) VALUES (?, ?, 1, ?, ?)');
+    names.forEach(function (name, i) {
+      const makeId = insMake.run(name, MAKE_SHORT_NAMES[name] || null, (i + 1) * 10, now).lastInsertRowid;
+      const models = [];
+      function addModel(m) {
+        const t = String(m || '').trim();
+        if (!t) return;
+        if (!models.some(function (x) { return x.toLowerCase() === t.toLowerCase(); })) models.push(t);
+      }
+      (CAR_DATA.MODELS_BY_MAKE[name] || []).forEach(addModel);
+      db.prepare("SELECT DISTINCT TRIM(model) AS model FROM vehicles WHERE LOWER(TRIM(make)) = LOWER(?) AND model IS NOT NULL AND TRIM(model) != '' ORDER BY LOWER(TRIM(model))").all(name)
+        .forEach(function (r) { addModel(r.model); });
+      models.forEach(function (m, j) { insModel.run(makeId, m, (j + 1) * 10, now); });
+    });
+    console.log('Seeded catalog:', names.length, 'makes,', db.prepare('SELECT COUNT(*) AS n FROM catalog_models').get().n, 'models');
+  }
+  if (db.prepare('SELECT COUNT(*) AS n FROM governorates').get().n === 0) {
+    const ins = db.prepare('INSERT INTO governorates (name, name_ar, active, featured, sort_order, created_at) VALUES (?, ?, 1, ?, ?, ?)');
+    GOVERNORATE_SEED.forEach(function (g, i) { ins.run(g[0], g[1], g[2], (i + 1) * 10, now); });
+    db.prepare("SELECT DISTINCT TRIM(governorate) AS g FROM dealerships WHERE governorate IS NOT NULL AND TRIM(governorate) != ''").all()
+      .forEach(function (r, i) {
+        // Non-canonical values already used by a dealer are kept but inactive (admins can activate them).
+        if (!db.prepare('SELECT id FROM governorates WHERE name = ?').get(r.g)) {
+          db.prepare('INSERT INTO governorates (name, name_ar, active, featured, sort_order, created_at) VALUES (?, NULL, 0, 0, ?, ?)').run(r.g, 1000 + i * 10, now);
+        }
+      });
+    console.log('Seeded governorates:', db.prepare('SELECT COUNT(*) AS n FROM governorates').get().n);
+  }
+})();
+
+const SEARCH_SECTION_KEYS = ['body_type', 'transmission', 'fuel_type', 'color', 'features', 'mileage'];
+const SEARCH_SETTINGS_DEFAULTS = {
+  sections: { body_type: true, transmission: true, fuel_type: true, color: true, features: true, mileage: true },
+  price_picks: [
+    { label: 'Under 300,000', min: null, max: 300000 },
+    { label: '300,000 – 600,000', min: 300000, max: 600000 },
+    { label: '600,000 – 1,000,000', min: 600000, max: 1000000 },
+    { label: '1,000,000 – 2,000,000', min: 1000000, max: 2000000 },
+    { label: '2,000,000 and up', min: 2000000, max: null }
+  ],
+  mileage_picks: [
+    { label: 'Under 20,000 km', min: null, max: 20000 },
+    { label: '20,000 – 50,000 km', min: 20000, max: 50000 },
+    { label: '50,000 – 100,000 km', min: 50000, max: 100000 },
+    { label: '100,000 – 150,000 km', min: 100000, max: 150000 },
+    { label: '150,000 km and up', min: 150000, max: null }
+  ]
+};
+function loadSearchSettings() {
+  const row = db.prepare("SELECT value FROM app_meta WHERE key = 'search_settings'").get();
+  let saved = {};
+  try { saved = row && row.value ? JSON.parse(row.value) : {}; } catch (_) { saved = {}; }
+  return {
+    sections: Object.assign({}, SEARCH_SETTINGS_DEFAULTS.sections, saved.sections || {}),
+    price_picks: Array.isArray(saved.price_picks) && saved.price_picks.length ? saved.price_picks : SEARCH_SETTINGS_DEFAULTS.price_picks,
+    mileage_picks: Array.isArray(saved.mileage_picks) && saved.mileage_picks.length ? saved.mileage_picks : SEARCH_SETTINGS_DEFAULTS.mileage_picks
+  };
+}
+let searchSettings = loadSearchSettings();
+function validatePicks(list, what) {
+  if (!Array.isArray(list) || !list.length || list.length > 10) return { error: what + ' must have between 1 and 10 rows' };
+  const out = [];
+  for (let i = 0; i < list.length; i++) {
+    const p = list[i] || {};
+    const label = String(p.label == null ? '' : p.label).trim();
+    if (!label || label.length > 40) return { error: what + ' row ' + (i + 1) + ': label is required (max 40 characters)' };
+    const min = p.min == null || p.min === '' ? null : Number(p.min);
+    const max = p.max == null || p.max === '' ? null : Number(p.max);
+    if ((min != null && (!Number.isInteger(min) || min < 0)) || (max != null && (!Number.isInteger(max) || max < 0))) return { error: what + ' row ' + (i + 1) + ': min and max must be whole numbers' };
+    if (min == null && max == null) return { error: what + ' row ' + (i + 1) + ': set a min or a max' };
+    if (min != null && max != null && min >= max) return { error: what + ' row ' + (i + 1) + ': min must be below max' };
+    out.push({ label: label, min: min, max: max });
+  }
+  return { picks: out };
+}
+function validateSearchSettings(body) {
+  const out = { sections: Object.assign({}, searchSettings.sections), price_picks: searchSettings.price_picks, mileage_picks: searchSettings.mileage_picks };
+  if (body.sections && typeof body.sections === 'object') {
+    SEARCH_SECTION_KEYS.forEach(function (k) { if (body.sections[k] != null) out.sections[k] = !!body.sections[k]; });
+  }
+  if (body.price_picks != null) { const v = validatePicks(body.price_picks, 'Price quick picks'); if (v.error) return v; out.price_picks = v.picks; }
+  if (body.mileage_picks != null) { const v = validatePicks(body.mileage_picks, 'Mileage quick picks'); if (v.error) return v; out.mileage_picks = v.picks; }
+  return { settings: out };
+}
+function saveSearchSettings(settings) {
+  db.prepare("INSERT INTO app_meta (key, value) VALUES ('search_settings', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(JSON.stringify(settings));
+  searchSettings = settings;
+  invalidateCatalog();
+}
+
+let catalogVersion = 1;
+let catalogCache = null;
+function invalidateCatalog() { catalogCache = null; catalogVersion += 1; }
+function buildPublicCatalog() {
+  const makes = db.prepare('SELECT * FROM catalog_makes WHERE active = 1 ORDER BY sort_order, name COLLATE NOCASE').all();
+  const models = db.prepare('SELECT * FROM catalog_models WHERE active = 1 ORDER BY make_id, sort_order, name COLLATE NOCASE').all();
+  const byMake = {};
+  models.forEach(function (m) { (byMake[m.make_id] = byMake[m.make_id] || []).push({ id: m.id, name: m.name }); });
+  const governorates = db.prepare('SELECT * FROM governorates WHERE active = 1 ORDER BY sort_order, name COLLATE NOCASE').all()
+    .map(function (g) { return { id: g.id, name: g.name, name_ar: g.name_ar || null, featured: !!Number(g.featured) }; });
+  return {
+    version: catalogVersion,
+    makes: makes.map(function (m) { return { id: m.id, name: m.name, short_name: m.short_name || null, logo_url: m.logo_url || null, models: byMake[m.id] || [] }; }),
+    governorates: governorates,
+    search: searchSettings
+  };
+}
+function getPublicCatalog() {
+  if (!catalogCache) catalogCache = buildPublicCatalog();
+  return catalogCache;
+}
+function catalogFindMake(name) {
+  const key = String(name || '').trim().toLowerCase();
+  return getPublicCatalog().makes.find(function (m) { return m.name.toLowerCase() === key; }) || null;
+}
+function catalogMakeLogo(name) {
+  const m = catalogFindMake(name);
+  return m && m.logo_url ? m.logo_url : null;
+}
 db.exec("UPDATE vehicles SET sold_at = COALESCE(updated_at, created_at) WHERE status = 'sold' AND sold_at IS NULL");
 
 // Grandfather in everyone who signed up before email verification existed.
@@ -2743,6 +2935,216 @@ app.patch('/api/admin/features/:id', requireAdmin, function (req, res) {
   return res.json({ feature: Object.assign(mapFeatureRow(row), { vehicle_count: Number(row.vehicle_count) || 0 }) });
 });
 
+// Public: the whole catalog in one cached response (ETag so repeat loads are a 304).
+app.get('/api/catalog', function (req, res) {
+  const c = getPublicCatalog();
+  const etag = 'W/"catalog-' + c.version + '"';
+  res.set('ETag', etag);
+  res.set('Cache-Control', 'no-cache');
+  if (req.headers['if-none-match'] === etag) return res.status(304).end();
+  return res.json(c);
+});
+
+function catalogNameInput(raw, max) {
+  const name = String(raw == null ? '' : raw).trim().replace(/\s+/g, ' ');
+  if (!name || name.length > (max || 60)) return null;
+  return name;
+}
+function catalogSortInput(raw) {
+  if (raw == null || raw === '') return undefined;
+  const n = Number(raw);
+  return Number.isInteger(n) && n >= 0 && n <= 99999 ? n : null;
+}
+function catalogUrlInput(raw) {
+  if (raw == null) return undefined;
+  const s = String(raw).trim();
+  if (!s) return null;
+  if (!/^https?:\/\/[^\s]+$/i.test(s) || s.length > 500) return false;
+  return s;
+}
+
+// Admin: everything, including inactive rows and usage counts.
+app.get('/api/admin/catalog', requireAdmin, function (req, res) {
+  const makes = db.prepare(
+    'SELECT m.*, (SELECT COUNT(*) FROM vehicles v WHERE LOWER(TRIM(v.make)) = LOWER(m.name)) AS listing_count FROM catalog_makes m ORDER BY m.sort_order, m.name COLLATE NOCASE'
+  ).all();
+  const models = db.prepare(
+    'SELECT md.*, (SELECT COUNT(*) FROM vehicles v JOIN catalog_makes m ON m.id = md.make_id WHERE LOWER(TRIM(v.make)) = LOWER(m.name) AND LOWER(TRIM(v.model)) = LOWER(md.name)) AS listing_count FROM catalog_models md ORDER BY md.make_id, md.sort_order, md.name COLLATE NOCASE'
+  ).all();
+  const byMake = {};
+  models.forEach(function (m) {
+    (byMake[m.make_id] = byMake[m.make_id] || []).push({ id: m.id, name: m.name, active: !!Number(m.active), sort_order: Number(m.sort_order) || 0, listing_count: Number(m.listing_count) || 0 });
+  });
+  const governorates = db.prepare(
+    'SELECT g.*, (SELECT COUNT(*) FROM dealerships d WHERE LOWER(TRIM(COALESCE(d.governorate, d.city))) = LOWER(g.name)) AS dealer_count FROM governorates g ORDER BY g.sort_order, g.name COLLATE NOCASE'
+  ).all();
+  res.set('Cache-Control', 'no-store');
+  return res.json({
+    makes: makes.map(function (m) {
+      return { id: m.id, name: m.name, short_name: m.short_name || null, logo_url: m.logo_url || null, active: !!Number(m.active), sort_order: Number(m.sort_order) || 0, listing_count: Number(m.listing_count) || 0, models: byMake[m.id] || [] };
+    }),
+    governorates: governorates.map(function (g) {
+      return { id: g.id, name: g.name, name_ar: g.name_ar || null, active: !!Number(g.active), featured: !!Number(g.featured), sort_order: Number(g.sort_order) || 0, dealer_count: Number(g.dealer_count) || 0 };
+    }),
+    search: searchSettings,
+    defaults: SEARCH_SETTINGS_DEFAULTS
+  });
+});
+
+app.post('/api/admin/catalog/makes', requireAdmin, function (req, res) {
+  const b = req.body || {};
+  const name = catalogNameInput(b.name, 60);
+  if (!name) return res.status(400).json({ error: 'Name is required (max 60 characters)' });
+  if (db.prepare('SELECT id FROM catalog_makes WHERE name = ?').get(name)) return res.status(409).json({ error: 'A make with that name already exists' });
+  const logo = catalogUrlInput(b.logo_url);
+  if (logo === false) return res.status(400).json({ error: 'Logo must be an http(s) URL' });
+  const so = catalogSortInput(b.sort_order);
+  if (so === null) return res.status(400).json({ error: 'Sort order must be a whole number' });
+  const sortOrder = so === undefined ? Number(db.prepare('SELECT COALESCE(MAX(sort_order), 0) AS m FROM catalog_makes').get().m) + 10 : so;
+  const shortName = b.short_name != null && String(b.short_name).trim() ? String(b.short_name).trim().slice(0, 40) : null;
+  const info = db.prepare('INSERT INTO catalog_makes (name, short_name, logo_url, active, sort_order, created_at) VALUES (?, ?, ?, 1, ?, ?)')
+    .run(name, shortName, logo || null, sortOrder, new Date().toISOString());
+  invalidateCatalog();
+  console.log('Admin', req.user.email, 'added make', name);
+  return res.status(201).json({ make: { id: info.lastInsertRowid, name: name, short_name: shortName, logo_url: logo || null, active: true, sort_order: sortOrder, listing_count: 0, models: [] } });
+});
+
+app.patch('/api/admin/catalog/makes/:id', requireAdmin, function (req, res) {
+  const id = Number(req.params.id);
+  const existing = db.prepare('SELECT * FROM catalog_makes WHERE id = ?').get(id);
+  if (!existing) return res.status(404).json({ error: 'Make not found' });
+  const b = req.body || {};
+  const sets = [];
+  const vals = [];
+  if (b.name != null) {
+    const name = catalogNameInput(b.name, 60);
+    if (!name) return res.status(400).json({ error: 'Name is required (max 60 characters)' });
+    if (db.prepare('SELECT id FROM catalog_makes WHERE name = ? AND id != ?').get(name, id)) return res.status(409).json({ error: 'A make with that name already exists' });
+    sets.push('name = ?'); vals.push(name);
+  }
+  if (b.short_name !== undefined) { const sn = b.short_name == null ? '' : String(b.short_name).trim(); sets.push('short_name = ?'); vals.push(sn ? sn.slice(0, 40) : null); }
+  if (b.logo_url !== undefined) {
+    const logo = catalogUrlInput(b.logo_url);
+    if (logo === false) return res.status(400).json({ error: 'Logo must be an http(s) URL' });
+    sets.push('logo_url = ?'); vals.push(logo || null);
+  }
+  if (b.active != null) { sets.push('active = ?'); vals.push(b.active ? 1 : 0); }
+  if (b.sort_order !== undefined) { const so = catalogSortInput(b.sort_order); if (so === null) return res.status(400).json({ error: 'Sort order must be a whole number' }); if (so !== undefined) { sets.push('sort_order = ?'); vals.push(so); } }
+  if (!sets.length) return res.status(400).json({ error: 'Nothing to update' });
+  vals.push(id);
+  const upd = db.prepare('UPDATE catalog_makes SET ' + sets.join(', ') + ' WHERE id = ?');
+  upd.run.apply(upd, vals);
+  // Renaming keeps existing listings attached to the make.
+  if (b.name != null && String(b.name).trim() !== existing.name) {
+    const r = db.prepare('UPDATE vehicles SET make = ? WHERE LOWER(TRIM(make)) = LOWER(?)').run(String(b.name).trim().replace(/\s+/g, ' '), existing.name);
+    console.log('Admin', req.user.email, 'renamed make', existing.name, '->', b.name, '(' + r.changes + ' listings updated)');
+  }
+  invalidateCatalog();
+  const row = db.prepare('SELECT * FROM catalog_makes WHERE id = ?').get(id);
+  return res.json({ make: { id: row.id, name: row.name, short_name: row.short_name || null, logo_url: row.logo_url || null, active: !!Number(row.active), sort_order: Number(row.sort_order) || 0 } });
+});
+
+app.post('/api/admin/catalog/makes/:id/models', requireAdmin, function (req, res) {
+  const makeId = Number(req.params.id);
+  const make = db.prepare('SELECT * FROM catalog_makes WHERE id = ?').get(makeId);
+  if (!make) return res.status(404).json({ error: 'Make not found' });
+  const b = req.body || {};
+  const name = catalogNameInput(b.name, 60);
+  if (!name) return res.status(400).json({ error: 'Name is required (max 60 characters)' });
+  if (db.prepare('SELECT id FROM catalog_models WHERE make_id = ? AND name = ?').get(makeId, name)) return res.status(409).json({ error: 'That model already exists for this make' });
+  const so = catalogSortInput(b.sort_order);
+  if (so === null) return res.status(400).json({ error: 'Sort order must be a whole number' });
+  const sortOrder = so === undefined ? Number(db.prepare('SELECT COALESCE(MAX(sort_order), 0) AS m FROM catalog_models WHERE make_id = ?').get(makeId).m) + 10 : so;
+  const info = db.prepare('INSERT INTO catalog_models (make_id, name, active, sort_order, created_at) VALUES (?, ?, 1, ?, ?)').run(makeId, name, sortOrder, new Date().toISOString());
+  invalidateCatalog();
+  console.log('Admin', req.user.email, 'added model', make.name, name);
+  return res.status(201).json({ model: { id: info.lastInsertRowid, make_id: makeId, name: name, active: true, sort_order: sortOrder, listing_count: 0 } });
+});
+
+app.patch('/api/admin/catalog/models/:id', requireAdmin, function (req, res) {
+  const id = Number(req.params.id);
+  const existing = db.prepare('SELECT md.*, m.name AS make_name FROM catalog_models md JOIN catalog_makes m ON m.id = md.make_id WHERE md.id = ?').get(id);
+  if (!existing) return res.status(404).json({ error: 'Model not found' });
+  const b = req.body || {};
+  const sets = [];
+  const vals = [];
+  if (b.name != null) {
+    const name = catalogNameInput(b.name, 60);
+    if (!name) return res.status(400).json({ error: 'Name is required (max 60 characters)' });
+    if (db.prepare('SELECT id FROM catalog_models WHERE make_id = ? AND name = ? AND id != ?').get(existing.make_id, name, id)) return res.status(409).json({ error: 'That model already exists for this make' });
+    sets.push('name = ?'); vals.push(name);
+  }
+  if (b.active != null) { sets.push('active = ?'); vals.push(b.active ? 1 : 0); }
+  if (b.sort_order !== undefined) { const so = catalogSortInput(b.sort_order); if (so === null) return res.status(400).json({ error: 'Sort order must be a whole number' }); if (so !== undefined) { sets.push('sort_order = ?'); vals.push(so); } }
+  if (!sets.length) return res.status(400).json({ error: 'Nothing to update' });
+  vals.push(id);
+  const upd = db.prepare('UPDATE catalog_models SET ' + sets.join(', ') + ' WHERE id = ?');
+  upd.run.apply(upd, vals);
+  if (b.name != null && String(b.name).trim() !== existing.name) {
+    const r = db.prepare('UPDATE vehicles SET model = ? WHERE LOWER(TRIM(make)) = LOWER(?) AND LOWER(TRIM(model)) = LOWER(?)').run(String(b.name).trim().replace(/\s+/g, ' '), existing.make_name, existing.name);
+    console.log('Admin', req.user.email, 'renamed model', existing.make_name, existing.name, '->', b.name, '(' + r.changes + ' listings updated)');
+  }
+  invalidateCatalog();
+  const row = db.prepare('SELECT * FROM catalog_models WHERE id = ?').get(id);
+  return res.json({ model: { id: row.id, make_id: row.make_id, name: row.name, active: !!Number(row.active), sort_order: Number(row.sort_order) || 0 } });
+});
+
+app.post('/api/admin/catalog/governorates', requireAdmin, function (req, res) {
+  const b = req.body || {};
+  const name = catalogNameInput(b.name, 60);
+  if (!name) return res.status(400).json({ error: 'Name is required (max 60 characters)' });
+  if (db.prepare('SELECT id FROM governorates WHERE name = ?').get(name)) return res.status(409).json({ error: 'That governorate already exists' });
+  const so = catalogSortInput(b.sort_order);
+  if (so === null) return res.status(400).json({ error: 'Sort order must be a whole number' });
+  const sortOrder = so === undefined ? Number(db.prepare('SELECT COALESCE(MAX(sort_order), 0) AS m FROM governorates').get().m) + 10 : so;
+  const nameAr = b.name_ar != null && String(b.name_ar).trim() ? String(b.name_ar).trim().slice(0, 60) : null;
+  const info = db.prepare('INSERT INTO governorates (name, name_ar, active, featured, sort_order, created_at) VALUES (?, ?, 1, ?, ?, ?)')
+    .run(name, nameAr, b.featured == null ? 1 : (b.featured ? 1 : 0), sortOrder, new Date().toISOString());
+  invalidateCatalog();
+  console.log('Admin', req.user.email, 'added governorate', name);
+  return res.status(201).json({ governorate: { id: info.lastInsertRowid, name: name, name_ar: nameAr, active: true, featured: b.featured == null ? true : !!b.featured, sort_order: sortOrder, dealer_count: 0 } });
+});
+
+app.patch('/api/admin/catalog/governorates/:id', requireAdmin, function (req, res) {
+  const id = Number(req.params.id);
+  const existing = db.prepare('SELECT * FROM governorates WHERE id = ?').get(id);
+  if (!existing) return res.status(404).json({ error: 'Governorate not found' });
+  const b = req.body || {};
+  const sets = [];
+  const vals = [];
+  if (b.name != null) {
+    const name = catalogNameInput(b.name, 60);
+    if (!name) return res.status(400).json({ error: 'Name is required (max 60 characters)' });
+    if (db.prepare('SELECT id FROM governorates WHERE name = ? AND id != ?').get(name, id)) return res.status(409).json({ error: 'That governorate already exists' });
+    sets.push('name = ?'); vals.push(name);
+  }
+  if (b.name_ar !== undefined) { const ar = b.name_ar == null ? '' : String(b.name_ar).trim(); sets.push('name_ar = ?'); vals.push(ar ? ar.slice(0, 60) : null); }
+  if (b.active != null) { sets.push('active = ?'); vals.push(b.active ? 1 : 0); }
+  if (b.featured != null) { sets.push('featured = ?'); vals.push(b.featured ? 1 : 0); }
+  if (b.sort_order !== undefined) { const so = catalogSortInput(b.sort_order); if (so === null) return res.status(400).json({ error: 'Sort order must be a whole number' }); if (so !== undefined) { sets.push('sort_order = ?'); vals.push(so); } }
+  if (!sets.length) return res.status(400).json({ error: 'Nothing to update' });
+  vals.push(id);
+  const upd = db.prepare('UPDATE governorates SET ' + sets.join(', ') + ' WHERE id = ?');
+  upd.run.apply(upd, vals);
+  if (b.name != null && String(b.name).trim() !== existing.name) {
+    const newName = String(b.name).trim().replace(/\s+/g, ' ');
+    const r1 = db.prepare('UPDATE dealerships SET governorate = ? WHERE LOWER(TRIM(governorate)) = LOWER(?)').run(newName, existing.name);
+    const r2 = db.prepare('UPDATE dealerships SET city = ? WHERE LOWER(TRIM(city)) = LOWER(?)').run(newName, existing.name);
+    console.log('Admin', req.user.email, 'renamed governorate', existing.name, '->', newName, '(' + (r1.changes + r2.changes) + ' dealership rows updated)');
+  }
+  invalidateCatalog();
+  const row = db.prepare('SELECT * FROM governorates WHERE id = ?').get(id);
+  return res.json({ governorate: { id: row.id, name: row.name, name_ar: row.name_ar || null, active: !!Number(row.active), featured: !!Number(row.featured), sort_order: Number(row.sort_order) || 0 } });
+});
+
+app.put('/api/admin/catalog/search', requireAdmin, function (req, res) {
+  const v = validateSearchSettings(req.body || {});
+  if (v.error) return res.status(400).json({ error: v.error });
+  saveSearchSettings(v.settings);
+  console.log('Admin', req.user.email, 'updated search settings');
+  return res.json({ search: searchSettings });
+});
+
 app.get('/api/admin/dashboard', requireAdmin, function (req, res) {
   const DAY = 24 * 60 * 60 * 1000;
   const now = new Date();
@@ -2950,7 +3352,7 @@ app.get('/api/vin/:vin', function (req, res) {
 });
 
 app.get('/api/car-data/makes', function (req, res) {
-  return res.json({ makes: MAKES });
+  return res.json({ makes: getPublicCatalog().makes.map(function (m) { return m.name; }) });
 });
 
 app.get('/api/car-data/models', function (req, res) {
@@ -2958,7 +3360,8 @@ app.get('/api/car-data/models', function (req, res) {
   if (!make) {
     return res.status(400).json({ error: 'make query parameter is required' });
   }
-  return res.json({ models: getModelsForMake(make) });
+  const catalogMake = catalogFindMake(make);
+  return res.json({ models: catalogMake ? catalogMake.models.map(function (x) { return x.name; }) : [] });
 });
 
 app.get('/api/brands', function (req, res) {
@@ -3420,7 +3823,12 @@ app.get('/api/search-suggest', function (req, res) {
   while (overflow > 0 && makes.length > 1) { makes.pop(); overflow--; }
 
   res.set('Cache-Control', 'no-store');
-  return res.json({ q: q, makes: makes, models: models, cars: cars });
+  return res.json({
+    q: q,
+    makes: makes.map(function (m) { return Object.assign({}, m, { logo_url: catalogMakeLogo(m.name) }); }),
+    models: models,
+    cars: cars
+  });
 });
 
 app.get('/api/cars/count', function (req, res) {

@@ -182,7 +182,7 @@
             </div>
           </section>
 
-          <section>
+          <section data-filter-section="mileage">
             <h3 class="text-sm font-semibold text-gray-900 mb-3">Mileage</h3>
             <label class="text-xs text-gray-500">Maximum mileage (km)</label>
             <input id="maxMileageInput" type="text" inputmode="numeric" placeholder=""
@@ -190,22 +190,22 @@
             <p class="mt-1 text-xs text-gray-500">e.g. 100,000</p>
           </section>
 
-          <section>
+          <section data-filter-section="body_type">
             <h3 class="text-sm font-semibold text-gray-900 mb-3">Body Type</h3>
             <div id="bodyTypeCheckboxes" class="grid grid-cols-2 gap-2"></div>
           </section>
 
-          <section>
+          <section data-filter-section="transmission">
             <h3 class="text-sm font-semibold text-gray-900 mb-3">Transmission</h3>
             <div id="transmissionRadios" class="space-y-2"></div>
           </section>
 
-          <section>
+          <section data-filter-section="fuel_type">
             <h3 class="text-sm font-semibold text-gray-900 mb-3">Fuel Type</h3>
             <div id="fuelTypeCheckboxes" class="grid grid-cols-2 gap-2"></div>
           </section>
 
-          <section>
+          <section data-filter-section="features">
             <h3 class="text-sm font-semibold text-gray-900 mb-3">Features</h3>
             <p class="text-xs text-gray-500 mb-2">Cars must have every selected feature.</p>
             <div id="featureCheckboxes" class="space-y-3"></div>
@@ -747,6 +747,14 @@
             const fr = await fetch('/api/features');
             featureOptions = fr.ok ? ((await fr.json()).features || []) : [];
           } catch (_) { featureOptions = []; }
+          // Admin can switch whole filter sections off (Catalog → Filters).
+          try {
+            const cr = await fetch('/api/catalog');
+            if (cr.ok) {
+              const sections = (((await cr.json()).search || {}).sections) || {};
+              document.querySelectorAll('[data-filter-section]').forEach(function (el) { el.classList.toggle('hidden', sections[el.dataset.filterSection] === false); });
+            }
+          } catch (_) {}
           buildFilterOptionsUi();
           syncFormFromFilters();
         }

@@ -355,18 +355,36 @@
         dropdown.classList.add('hidden');
       });
 
-      const ALL_BRANDS = [
-        'Toyota', 'Hyundai', 'Kia', 'Nissan', 'Mercedes', 'BMW',
+      // Brands and city chips come from the admin-managed catalog (GET /api/catalog). These
+      // lists are only the first-paint fallback and match the seeded catalog order.
+      let ALL_BRANDS = [
+        'Toyota', 'Hyundai', 'Kia', 'Nissan', 'Mercedes-Benz', 'BMW',
         'Chevrolet', 'Honda', 'Volkswagen', 'Peugeot', 'Renault',
         'Mitsubishi', 'Chery', 'MG', 'Opel', 'Fiat', 'Skoda',
         'Jeep', 'Ford', 'Suzuki', 'Mazda', 'Audi', 'Volvo',
         'Land Rover', 'Porsche', 'Subaru', 'BAIC', 'Geely',
         'BYD', 'Haval', 'JAC', 'Lifan', 'Isuzu', 'Lexus'
-      ];
+      ].map(function (n) { return { name: n, label: n === 'Mercedes-Benz' ? 'Mercedes' : n, logo: null }; });
+      let CITIES_EN = [];
+      let CITIES_AR = [];
 
-      const BRAND_LOGOS = {
-        'Mercedes': 'https://www.carlogos.org/car-logos/mercedes-benz-logo.png',
-      };
+      const BRAND_LOGOS = {};
+
+      function applyCatalog(c) {
+        const brands = (c.makes || []).map(function (m) { return { name: m.name, label: m.short_name || m.name, logo: m.logo_url || null }; });
+        const brandsChanged = JSON.stringify(brands) !== JSON.stringify(ALL_BRANDS);
+        if (brands.length) ALL_BRANDS = brands;
+        const govs = (c.governorates || []).filter(function (g) { return g.featured; });
+        const en = ['All Egypt'].concat(govs.map(function (g) { return g.name; }));
+        const ar = ['كل مصر'].concat(govs.map(function (g) { return g.name_ar || g.name; }));
+        const citiesChanged = govs.length > 0 && JSON.stringify(en) !== JSON.stringify(CITIES_EN);
+        if (govs.length) { CITIES_EN = en; CITIES_AR = ar; }
+        return { brandsChanged: brandsChanged && brands.length > 0, citiesChanged: citiesChanged };
+      }
+      const catalogReady = fetch('/api/catalog')
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (c) { return c ? applyCatalog(c) : { brandsChanged: false, citiesChanged: false }; })
+        .catch(function () { return { brandsChanged: false, citiesChanged: false }; });
 
       function brandLogoUrl(brand) {
         if (BRAND_LOGOS[brand]) return BRAND_LOGOS[brand];
@@ -404,7 +422,7 @@
 
       function renderBrandCard(brand) {
         const card = document.createElement('a');
-        card.href = '/cars.html?make=' + encodeURIComponent(brand);
+        card.href = '/cars.html?make=' + encodeURIComponent(brand.name);
         card.className =
           'bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col items-center justify-center py-3 px-1 cursor-pointer hover:border-gray-200 active:bg-gray-50';
 
@@ -412,7 +430,7 @@
         iconWrap.className = 'w-12 h-12 flex items-center justify-center';
 
         const img = document.createElement('img');
-        img.src = brandLogoUrl(brand);
+        img.src = brand.logo || brandLogoUrl(brand.name);
         img.alt = '';
         img.width = 48;
         img.height = 48;
@@ -426,7 +444,7 @@
         fallback.className =
           'hidden w-12 h-12 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-base font-bold';
         fallback.setAttribute('aria-hidden', 'true');
-        fallback.textContent = brand.charAt(0).toUpperCase();
+        fallback.textContent = String(brand.label).charAt(0).toUpperCase();
 
         iconWrap.appendChild(img);
         iconWrap.appendChild(fallback);
@@ -434,7 +452,7 @@
         const label = document.createElement('span');
         label.className =
           'text-[11px] font-medium text-gray-700 mt-2 text-center leading-tight px-0.5';
-        label.textContent = brand;
+        label.textContent = brand.label;
 
         card.appendChild(iconWrap);
         card.appendChild(label);
@@ -775,17 +793,19 @@
           });
       }
 
-      const CITIES_EN = [
-        'All Egypt', 'Cairo', 'Giza', 'Alexandria', 'Sharqia', 'Dakahlia', 'Qalyubia', 'Gharbia',
-        'Monufia', 'Port Said', 'Suez', 'Ismailia', 'Faiyum', 'Beni Suef', 'Minya', 'Asyut',
-        'Sohag', 'Qena', 'Luxor', 'Aswan'
-      ];
-
-      const CITIES_AR = [
-        'كل مصر', 'القاهرة', 'الجيزة', 'الإسكندرية', 'الشرقية', 'الدقهلية', 'القليوبية', 'الغربية',
-        'المنوفية', 'بورسعيد', 'السويس', 'الإسماعيلية', 'الفيوم', 'بني سويف', 'المنيا', 'أسيوط',
-        'سوهاج', 'قنا', 'الأقصر', 'أسوان'
-      ];
+      // Fallback until /api/catalog answers (the catalog's featured governorates replace this).
+      if (!CITIES_EN.length) {
+        CITIES_EN = [
+          'All Egypt', 'Cairo', 'Giza', 'Alexandria', 'Qalyubia', 'Sharqia', 'Dakahlia', 'Gharbia',
+          'Monufia', 'Port Said', 'Ismailia', 'Suez', 'Faiyum', 'Beni Suef', 'Minya', 'Asyut',
+          'Sohag', 'Qena', 'Luxor', 'Aswan'
+        ];
+        CITIES_AR = [
+          'كل مصر', 'القاهرة', 'الجيزة', 'الإسكندرية', 'القليوبية', 'الشرقية', 'الدقهلية', 'الغربية',
+          'المنوفية', 'بورسعيد', 'الإسماعيلية', 'السويس', 'الفيوم', 'بني سويف', 'المنيا', 'أسيوط',
+          'سوهاج', 'قنا', 'الأقصر', 'أسوان'
+        ];
+      }
 
       const CITY_CHIP_BASE =
         'city-chip shrink-0 rounded-full px-4 py-1.5 text-sm font-medium cursor-pointer';
@@ -932,6 +952,11 @@
       });
 
       renderCityChips();
+      // Re-render from the catalog once it arrives (no-op when it matches the fallback).
+      catalogReady.then(function (changed) {
+        if (changed.brandsChanged) initBrandGrid();
+        if (changed.citiesChanged) renderCityChips();
+      });
       if (!initCityFromStorageOrLocation()) {
         loadNewArrivals(selectedCity);
         loadLatestListings(selectedCity);

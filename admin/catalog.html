@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin • Catalog • CarFox</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] } } } };
+    </script>
+    <style>
+      .badge { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid; white-space:nowrap; }
+      .btn-xs { display:inline-flex; align-items:center; justify-content:center; border-radius:8px; padding:6px 10px; font-size:13px; font-weight:600; white-space:nowrap; }
+      .btn-xs:disabled { opacity:.5; cursor:not-allowed; }
+      .input-xs { border:1px solid #d1d5db; border-radius:8px; padding:6px 8px; font-size:13px; background:#fff; }
+      .tab-btn { border-radius:999px; padding:7px 14px; font-size:13px; font-weight:600; white-space:nowrap; }
+      tr.inactive { opacity:.55; }
+      tr.inactive td:first-child { box-shadow: inset 4px 0 0 #9ca3af; }
+      .logo-prev { width:28px; height:28px; object-fit:contain; background:#f8fafc; border-radius:6px; }
+    </style>
+  </head>
+  <body class="bg-white text-gray-900 font-sans">
+    <header class="sticky top-0 z-40 bg-white border-b border-gray-200">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <div class="flex items-center gap-3 sm:gap-4 min-w-0">
+          <a href="/" class="text-lg font-extrabold tracking-tight shrink-0">
+            <span class="text-blue-700">Car</span><span class="text-orange-500">Fox</span>
+          </a>
+          <span class="text-sm text-gray-500 hidden sm:inline">Admin</span>
+          <nav class="flex items-center gap-1 text-sm font-semibold min-w-0 overflow-x-auto whitespace-nowrap">
+            <a href="/admin/index.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Dashboard</a>
+            <a href="/admin/applications.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Applications</a>
+            <a href="/admin/dealers.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Dealers</a>
+            <a href="/admin/listings.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Listings</a>
+            <a href="/admin/users.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Users</a>
+            <a href="/admin/trust-scores.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Trust</a>
+            <a href="/admin/car-value.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Value</a>
+            <a href="/admin/features.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Features</a>
+            <a href="/admin/catalog.html" class="rounded-lg px-3 py-1.5 bg-blue-50 text-blue-700" aria-current="page">Catalog</a>
+          </nav>
+        </div>
+        <div class="flex items-center gap-3 text-sm shrink-0 pl-3">
+          <span id="adminEmail" class="text-gray-700 hidden sm:inline">—</span>
+          <button id="signOutBtn" class="text-gray-600 hover:text-gray-900 font-semibold">Sign Out</button>
+        </div>
+      </div>
+    </header>
+
+    <div id="toast" class="fixed top-3 inset-x-0 mx-auto max-w-md px-4 hidden z-[60]">
+      <div id="toastInner" class="rounded-lg border p-3 text-sm shadow-md"></div>
+    </div>
+
+    <main class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-6 pb-16">
+      <div class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 class="text-2xl font-bold text-gray-900">Catalog</h1>
+          <p id="subtext" class="mt-1 text-sm text-gray-600">Loading…</p>
+        </div>
+      </div>
+
+      <div id="tabs" class="mt-4 flex gap-1 overflow-x-auto pb-1 -mx-1 px-1">
+        <button data-tab="makes" class="tab-btn bg-blue-700 text-white">Makes &amp; Models</button>
+        <button data-tab="cities" class="tab-btn bg-gray-100 text-gray-700">Cities</button>
+        <button data-tab="filters" class="tab-btn bg-gray-100 text-gray-700">Filters</button>
+      </div>
+
+      <!-- Makes & Models -->
+      <section id="tab-makes" class="mt-5">
+        <p class="text-xs text-gray-500">Order here is the order everywhere: dealer dropdowns, the home Browse-by-Brand grid (first 12 open on desktop, first 7 on phones), search suggestions and quick search. Deactivating a make or model hides it from new listings and filters; existing listings keep it. Renaming updates existing listings too.</p>
+        <form id="addMakeForm" class="mt-3 rounded-xl border border-gray-200 p-4 flex flex-wrap items-end gap-3">
+          <label class="block flex-1 min-w-[160px]"><span class="text-xs font-semibold text-gray-600">New make</span><input id="addMakeName" type="text" maxlength="60" required class="input-xs mt-1 w-full py-2" placeholder="e.g. Cupra" /></label>
+          <label class="block w-36"><span class="text-xs font-semibold text-gray-600">Short name (optional)</span><input id="addMakeShort" type="text" maxlength="40" class="input-xs mt-1 w-full py-2" placeholder="home grid label" /></label>
+          <label class="block flex-1 min-w-[200px]"><span class="text-xs font-semibold text-gray-600">Logo URL (optional)</span><input id="addMakeLogo" type="url" maxlength="500" class="input-xs mt-1 w-full py-2" placeholder="https://…/logo.png" /></label>
+          <label class="block w-24"><span class="text-xs font-semibold text-gray-600">Sort</span><input id="addMakeSort" type="number" min="0" max="99999" class="input-xs mt-1 w-full py-2" placeholder="last" /></label>
+          <button type="submit" class="btn-xs bg-blue-700 text-white hover:bg-blue-800 py-2">Add make</button>
+        </form>
+        <div class="mt-3 flex items-center gap-2">
+          <input id="makeSearch" type="search" placeholder="Filter makes" class="input-xs w-56 py-2" />
+          <label class="text-xs text-gray-600 inline-flex items-center gap-1"><input id="showInactiveMakes" type="checkbox" class="rounded border-gray-300" /> show inactive</label>
+        </div>
+        <div class="mt-3 overflow-x-auto rounded-xl border border-gray-200">
+          <table class="min-w-full text-sm">
+            <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+              <tr><th class="px-3 py-2 w-12">Logo</th><th class="px-3 py-2">Name</th><th class="px-3 py-2 w-36">Short name</th><th class="px-3 py-2">Logo URL</th><th class="px-3 py-2 w-24">Sort</th><th class="px-3 py-2 w-20 text-right">Listings</th><th class="px-3 py-2 w-24">Models</th><th class="px-3 py-2 w-28">Status</th></tr>
+            </thead>
+            <tbody id="makesBody" class="divide-y divide-gray-100"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Cities -->
+      <section id="tab-cities" class="mt-5 hidden">
+        <p class="text-xs text-gray-500">Canonical governorate list in display order (lower sort first). Powers signup dropdowns, the quick-search region page, search chips and the home city chips ("Home chip" = shown on the home page). Renaming updates dealers that use the old name.</p>
+        <form id="addGovForm" class="mt-3 rounded-xl border border-gray-200 p-4 flex flex-wrap items-end gap-3">
+          <label class="block flex-1 min-w-[160px]"><span class="text-xs font-semibold text-gray-600">New governorate</span><input id="addGovName" type="text" maxlength="60" required class="input-xs mt-1 w-full py-2" /></label>
+          <label class="block w-44"><span class="text-xs font-semibold text-gray-600">Arabic name (optional)</span><input id="addGovAr" type="text" maxlength="60" dir="rtl" class="input-xs mt-1 w-full py-2" /></label>
+          <label class="block w-24"><span class="text-xs font-semibold text-gray-600">Sort</span><input id="addGovSort" type="number" min="0" max="99999" class="input-xs mt-1 w-full py-2" placeholder="last" /></label>
+          <label class="text-xs text-gray-600 inline-flex items-center gap-1 pb-2"><input id="addGovFeatured" type="checkbox" checked class="rounded border-gray-300" /> home chip</label>
+          <button type="submit" class="btn-xs bg-blue-700 text-white hover:bg-blue-800 py-2">Add</button>
+        </form>
+        <div class="mt-3 overflow-x-auto rounded-xl border border-gray-200">
+          <table class="min-w-full text-sm">
+            <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+              <tr><th class="px-3 py-2 w-24">Order</th><th class="px-3 py-2">Name</th><th class="px-3 py-2 w-44">Arabic</th><th class="px-3 py-2 w-24">Sort</th><th class="px-3 py-2 w-24">Home chip</th><th class="px-3 py-2 w-20 text-right">Dealers</th><th class="px-3 py-2 w-28">Status</th></tr>
+            </thead>
+            <tbody id="govBody" class="divide-y divide-gray-100"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Filters -->
+      <section id="tab-filters" class="mt-5 hidden">
+        <p class="text-xs text-gray-500">Switch filter sections off to hide them on the browse filter panel and the advanced search page. Quick picks are the one-tap ranges on the quick-search price and mileage pages (leave min or max empty for open ranges).</p>
+        <div class="mt-3 rounded-xl border border-gray-200 p-4">
+          <h2 class="font-bold text-gray-900">Filter sections</h2>
+          <div id="sectionToggles" class="mt-3 grid grid-cols-2 md:grid-cols-3 gap-2 text-sm"></div>
+        </div>
+        <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div class="rounded-xl border border-gray-200 p-4">
+            <div class="flex items-center justify-between"><h2 class="font-bold text-gray-900">Price quick picks <span class="text-xs font-normal text-gray-500">(EGP)</span></h2><button type="button" class="btn-xs border border-gray-300 text-gray-700 hover:bg-gray-50" data-add-pick="price">+ Row</button></div>
+            <div id="pricePicks" class="mt-3 space-y-2"></div>
+          </div>
+          <div class="rounded-xl border border-gray-200 p-4">
+            <div class="flex items-center justify-between"><h2 class="font-bold text-gray-900">Mileage quick picks <span class="text-xs font-normal text-gray-500">(km)</span></h2><button type="button" class="btn-xs border border-gray-300 text-gray-700 hover:bg-gray-50" data-add-pick="mileage">+ Row</button></div>
+            <div id="mileagePicks" class="mt-3 space-y-2"></div>
+          </div>
+        </div>
+        <div class="mt-4 flex gap-2">
+          <button id="saveFiltersBtn" class="btn-xs bg-blue-700 text-white hover:bg-blue-800 py-2">Save filter settings</button>
+          <button id="resetFiltersBtn" class="btn-xs border border-gray-300 text-gray-700 hover:bg-gray-50 py-2">Reset to defaults</button>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const TOKEN_KEY = 'carfox_token';
+      const USER_KEY = 'carfox_user';
+      const SECTION_LABELS = { body_type: 'Body type', transmission: 'Transmission', fuel_type: 'Fuel type', color: 'Color', features: 'Features', mileage: 'Mileage' };
+      let data = { makes: [], governorates: [], search: null, defaults: null };
+      let expandedMakes = new Set();
+      let makeQuery = '';
+
+      const $ = (id) => document.getElementById(id);
+      const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      const authHeaders = () => ({ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem(TOKEN_KEY) });
+      function setToast(kind, message) {
+        const inner = $('toastInner');
+        inner.className = 'rounded-lg border p-3 text-sm shadow-md ' + (kind === 'error' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-green-50 border-green-200 text-green-800');
+        inner.textContent = message;
+        $('toast').classList.remove('hidden');
+        clearTimeout(setToast._t);
+        setToast._t = setTimeout(() => $('toast').classList.add('hidden'), 3500);
+      }
+      async function call(method, url, body) {
+        try {
+          const res = await fetch(url, { method, headers: authHeaders(), body: body ? JSON.stringify(body) : undefined });
+          const d = await res.json().catch(() => null);
+          if (!res.ok) { setToast('error', d && d.error ? d.error : 'Request failed'); return null; }
+          return d || {};
+        } catch (_) { setToast('error', 'Network error'); return null; }
+      }
+      function fallbackLogo(name) {
+        if (/^mercedes/i.test(name)) return 'https://www.carlogos.org/car-logos/mercedes-benz-logo.png';
+        return 'https://www.carlogos.org/car-logos/' + String(name).toLowerCase().replace(/\s+/g, '-') + '-logo.png';
+      }
+
+      // ---------- makes ----------
+      function makeRow(m) {
+        const open = expandedMakes.has(m.id);
+        return '<tr class="' + (m.active ? '' : 'inactive') + '" data-make="' + m.id + '">' +
+          '<td class="px-3 py-2"><img class="logo-prev" src="' + esc(m.logo_url || fallbackLogo(m.name)) + '" alt="" loading="lazy" onerror="this.style.visibility=\'hidden\'" /></td>' +
+          '<td class="px-3 py-2"><input type="text" value="' + esc(m.name) + '" maxlength="60" data-mfield="name" class="input-xs w-full" /></td>' +
+          '<td class="px-3 py-2"><input type="text" value="' + esc(m.short_name || '') + '" maxlength="40" data-mfield="short_name" class="input-xs w-full" placeholder="—" /></td>' +
+          '<td class="px-3 py-2"><input type="url" value="' + esc(m.logo_url || '') + '" maxlength="500" data-mfield="logo_url" class="input-xs w-full" placeholder="carlogos.org fallback" /></td>' +
+          '<td class="px-3 py-2"><input type="number" min="0" value="' + m.sort_order + '" data-mfield="sort_order" class="input-xs w-full" /></td>' +
+          '<td class="px-3 py-2 text-right text-gray-700">' + m.listing_count + '</td>' +
+          '<td class="px-3 py-2"><button class="btn-xs border border-gray-300 text-gray-700 hover:bg-gray-50" data-expand="' + m.id + '">' + (open ? '▾ ' : '▸ ') + m.models.length + '</button></td>' +
+          '<td class="px-3 py-2">' + (m.active
+            ? '<button class="btn-xs border border-gray-300 text-gray-700 hover:bg-gray-50" data-make-active="0">Deactivate</button>'
+            : '<button class="btn-xs bg-green-600 text-white hover:bg-green-700" data-make-active="1">Activate</button>') + '</td>' +
+          '</tr>' +
+          (open ? '<tr data-models-for="' + m.id + '"><td colspan="8" class="px-3 py-3 bg-gray-50">' + modelsPanel(m) + '</td></tr>' : '');
+      }
+      function modelsPanel(m) {
+        const rows = m.models.map((md) =>
+          '<tr class="' + (md.active ? '' : 'inactive') + '" data-model="' + md.id + '">' +
+          '<td class="px-2 py-1.5"><input type="text" value="' + esc(md.name) + '" maxlength="60" data-mdfield="name" class="input-xs w-full" /></td>' +
+          '<td class="px-2 py-1.5 w-24"><input type="number" min="0" value="' + md.sort_order + '" data-mdfield="sort_order" class="input-xs w-full" /></td>' +
+          '<td class="px-2 py-1.5 w-20 text-right text-gray-700">' + md.listing_count + '</td>' +
+          '<td class="px-2 py-1.5 w-28">' + (md.active
+            ? '<button class="btn-xs border border-gray-300 text-gray-700 hover:bg-gray-50" data-model-active="0">Deactivate</button>'
+            : '<button class="btn-xs bg-green-600 text-white hover:bg-green-700" data-model-active="1">Activate</button>') + '</td></tr>'
+        ).join('');
+        return '<div class="text-xs font-semibold text-gray-600 mb-2">Models of ' + esc(m.name) + '</div>' +
+          '<table class="min-w-full text-sm bg-white rounded-lg border border-gray-200"><thead class="text-left text-xs text-gray-500"><tr><th class="px-2 py-1.5">Name</th><th class="px-2 py-1.5">Sort</th><th class="px-2 py-1.5 text-right">Listings</th><th class="px-2 py-1.5">Status</th></tr></thead><tbody class="divide-y divide-gray-100">' +
+          (rows || '<tr><td colspan="4" class="px-2 py-2 text-xs text-gray-500">No models yet — dealers type the model as free text for this make.</td></tr>') + '</tbody></table>' +
+          '<form class="mt-2 flex flex-wrap items-end gap-2" data-add-model="' + m.id + '"><input type="text" maxlength="60" required placeholder="New model name" class="input-xs w-56 py-1.5" /><input type="number" min="0" placeholder="sort (last)" class="input-xs w-28 py-1.5" /><button type="submit" class="btn-xs bg-blue-700 text-white hover:bg-blue-800">Add model</button></form>';
+      }
+      function renderMakes() {
+        const showInactive = $('showInactiveMakes').checked;
+        const list = data.makes.filter((m) => (showInactive || m.active) && (!makeQuery || m.name.toLowerCase().indexOf(makeQuery) !== -1 || (m.short_name || '').toLowerCase().indexOf(makeQuery) !== -1));
+        $('makesBody').innerHTML = list.map(makeRow).join('') || '<tr><td colspan="8" class="px-3 py-4 text-sm text-gray-500">No makes match.</td></tr>';
+      }
+
+      // ---------- cities ----------
+      function renderGov() {
+        $('govBody').innerHTML = data.governorates.map((g, i) =>
+          '<tr class="' + (g.active ? '' : 'inactive') + '" data-gov="' + g.id + '">' +
+          '<td class="px-3 py-2 text-gray-500">' + (i + 1) + '</td>' +
+          '<td class="px-3 py-2"><input type="text" value="' + esc(g.name) + '" maxlength="60" data-gfield="name" class="input-xs w-full" /></td>' +
+          '<td class="px-3 py-2"><input type="text" dir="rtl" value="' + esc(g.name_ar || '') + '" maxlength="60" data-gfield="name_ar" class="input-xs w-full" placeholder="—" /></td>' +
+          '<td class="px-3 py-2"><input type="number" min="0" value="' + g.sort_order + '" data-gfield="sort_order" class="input-xs w-full" /></td>' +
+          '<td class="px-3 py-2"><input type="checkbox" data-gfeatured' + (g.featured ? ' checked' : '') + ' class="h-4 w-4 rounded border-gray-300" /></td>' +
+          '<td class="px-3 py-2 text-right text-gray-700">' + g.dealer_count + '</td>' +
+          '<td class="px-3 py-2">' + (g.active
+            ? '<button class="btn-xs border border-gray-300 text-gray-700 hover:bg-gray-50" data-gov-active="0">Deactivate</button>'
+            : '<button class="btn-xs bg-green-600 text-white hover:bg-green-700" data-gov-active="1">Activate</button>') + '</td></tr>'
+        ).join('');
+      }
+
+      // ---------- filters ----------
+      function pickRow(kind, p) {
+        return '<div class="flex flex-wrap items-center gap-2" data-pick-row="' + kind + '">' +
+          '<input type="text" value="' + esc(p.label) + '" maxlength="40" placeholder="Label" class="input-xs flex-1 min-w-[140px]" data-pick="label" />' +
+          '<input type="number" min="0" value="' + (p.min == null ? '' : p.min) + '" placeholder="min" class="input-xs w-28" data-pick="min" />' +
+          '<input type="number" min="0" value="' + (p.max == null ? '' : p.max) + '" placeholder="max" class="input-xs w-28" data-pick="max" />' +
+          '<button type="button" class="btn-xs border border-red-300 text-red-700 hover:bg-red-50" data-remove-pick>✕</button></div>';
+      }
+      function renderFilters(s) {
+        $('sectionToggles').innerHTML = Object.keys(SECTION_LABELS).map((k) =>
+          '<label class="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2"><input type="checkbox" data-section="' + k + '"' + (s.sections[k] !== false ? ' checked' : '') + ' class="h-4 w-4 rounded border-gray-300" /> ' + SECTION_LABELS[k] + '</label>'
+        ).join('');
+        $('pricePicks').innerHTML = s.price_picks.map((p) => pickRow('price', p)).join('');
+        $('mileagePicks').innerHTML = s.mileage_picks.map((p) => pickRow('mileage', p)).join('');
+      }
+      function readPicks(hostId) {
+        return [...$(hostId).querySelectorAll('[data-pick-row]')].map((row) => ({
+          label: row.querySelector('[data-pick="label"]').value.trim(),
+          min: row.querySelector('[data-pick="min"]').value === '' ? null : Number(row.querySelector('[data-pick="min"]').value),
+          max: row.querySelector('[data-pick="max"]').value === '' ? null : Number(row.querySelector('[data-pick="max"]').value)
+        }));
+      }
+
+      function renderAll() {
+        renderMakes(); renderGov(); renderFilters(data.search);
+        const activeMakes = data.makes.filter((m) => m.active).length;
+        const models = data.makes.reduce((n, m) => n + m.models.length, 0);
+        $('subtext').textContent = data.makes.length + ' makes (' + activeMakes + ' active) · ' + models + ' models · ' + data.governorates.length + ' governorates';
+      }
+      async function load() {
+        const d = await call('GET', '/api/admin/catalog');
+        if (!d) { $('subtext').textContent = 'Could not load the catalog. Please refresh.'; return; }
+        data = d;
+        renderAll();
+      }
+
+      // ---------- events: makes ----------
+      $('addMakeForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const body = { name: $('addMakeName').value.trim(), short_name: $('addMakeShort').value.trim(), logo_url: $('addMakeLogo').value.trim() };
+        if ($('addMakeSort').value !== '') body.sort_order = Number($('addMakeSort').value);
+        const d = await call('POST', '/api/admin/catalog/makes', body);
+        if (!d) return;
+        setToast('ok', 'Added make "' + d.make.name + '"');
+        $('addMakeName').value = ''; $('addMakeShort').value = ''; $('addMakeLogo').value = ''; $('addMakeSort').value = '';
+        await load();
+      });
+      $('makeSearch').addEventListener('input', () => { makeQuery = $('makeSearch').value.trim().toLowerCase(); renderMakes(); });
+      $('showInactiveMakes').addEventListener('change', renderMakes);
+      $('makesBody').addEventListener('change', async (e) => {
+        const mf = e.target.closest('[data-mfield]');
+        if (mf) {
+          const id = Number(mf.closest('tr').dataset.make);
+          const m = data.makes.find((x) => x.id === id);
+          const field = mf.dataset.mfield;
+          const value = field === 'sort_order' ? Number(mf.value) : mf.value.trim();
+          if (m && String(m[field] == null ? '' : m[field]) === String(value)) return;
+          const d = await call('PATCH', '/api/admin/catalog/makes/' + id, { [field]: value });
+          if (!d) { await load(); return; }
+          setToast('ok', field === 'name' ? 'Renamed to "' + d.make.name + '" (listings updated)' : 'Saved');
+          await load();
+          return;
+        }
+        const mdf = e.target.closest('[data-mdfield]');
+        if (mdf) {
+          const id = Number(mdf.closest('tr').dataset.model);
+          const field = mdf.dataset.mdfield;
+          const value = field === 'sort_order' ? Number(mdf.value) : mdf.value.trim();
+          const d = await call('PATCH', '/api/admin/catalog/models/' + id, { [field]: value });
+          if (!d) { await load(); return; }
+          setToast('ok', field === 'name' ? 'Model renamed (listings updated)' : 'Saved');
+          await load();
+        }
+      });
+      $('makesBody').addEventListener('click', async (e) => {
+        const ex = e.target.closest('[data-expand]');
+        if (ex) { const id = Number(ex.dataset.expand); if (expandedMakes.has(id)) expandedMakes.delete(id); else expandedMakes.add(id); renderMakes(); return; }
+        const ma = e.target.closest('[data-make-active]');
+        if (ma) {
+          const id = Number(ma.closest('tr').dataset.make);
+          const d = await call('PATCH', '/api/admin/catalog/makes/' + id, { active: ma.dataset.makeActive === '1' });
+          if (d) { setToast('ok', d.make.active ? 'Make activated' : 'Make deactivated — existing listings keep it'); await load(); }
+          return;
+        }
+        const mda = e.target.closest('[data-model-active]');
+        if (mda) {
+          const id = Number(mda.closest('tr').dataset.model);
+          const d = await call('PATCH', '/api/admin/catalog/models/' + id, { active: mda.dataset.modelActive === '1' });
+          if (d) { setToast('ok', d.model.active ? 'Model activated' : 'Model deactivated — existing listings keep it'); await load(); }
+        }
+      });
+      $('makesBody').addEventListener('submit', async (e) => {
+        const form = e.target.closest('[data-add-model]');
+        if (!form) return;
+        e.preventDefault();
+        const inputs = form.querySelectorAll('input');
+        const body = { name: inputs[0].value.trim() };
+        if (inputs[1].value !== '') body.sort_order = Number(inputs[1].value);
+        const d = await call('POST', '/api/admin/catalog/makes/' + form.dataset.addModel + '/models', body);
+        if (d) { setToast('ok', 'Added model "' + d.model.name + '"'); await load(); }
+      });
+
+      // ---------- events: cities ----------
+      $('addGovForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const body = { name: $('addGovName').value.trim(), name_ar: $('addGovAr').value.trim(), featured: $('addGovFeatured').checked };
+        if ($('addGovSort').value !== '') body.sort_order = Number($('addGovSort').value);
+        const d = await call('POST', '/api/admin/catalog/governorates', body);
+        if (!d) return;
+        setToast('ok', 'Added "' + d.governorate.name + '"');
+        $('addGovName').value = ''; $('addGovAr').value = ''; $('addGovSort').value = '';
+        await load();
+      });
+      $('govBody').addEventListener('change', async (e) => {
+        const gf = e.target.closest('[data-gfield]');
+        const feat = e.target.closest('[data-gfeatured]');
+        const tr = e.target.closest('tr');
+        if (!tr) return;
+        const id = Number(tr.dataset.gov);
+        let body = null;
+        if (gf) { body = { [gf.dataset.gfield]: gf.dataset.gfield === 'sort_order' ? Number(gf.value) : gf.value.trim() }; }
+        else if (feat) body = { featured: feat.checked };
+        if (!body) return;
+        const d = await call('PATCH', '/api/admin/catalog/governorates/' + id, body);
+        if (!d) { await load(); return; }
+        setToast('ok', body.name != null ? 'Renamed to "' + d.governorate.name + '" (dealers updated)' : 'Saved');
+        await load();
+      });
+      $('govBody').addEventListener('click', async (e) => {
+        const b = e.target.closest('[data-gov-active]'); if (!b) return;
+        const id = Number(b.closest('tr').dataset.gov);
+        const d = await call('PATCH', '/api/admin/catalog/governorates/' + id, { active: b.dataset.govActive === '1' });
+        if (d) { setToast('ok', d.governorate.active ? 'Governorate activated' : 'Governorate deactivated'); await load(); }
+      });
+
+      // ---------- events: filters ----------
+      document.querySelectorAll('[data-add-pick]').forEach((btn) => btn.addEventListener('click', () => {
+        const kind = btn.dataset.addPick;
+        $(kind + 'Picks').insertAdjacentHTML('beforeend', pickRow(kind, { label: '', min: null, max: null }));
+      }));
+      document.addEventListener('click', (e) => {
+        const rm = e.target.closest('[data-remove-pick]');
+        if (rm) rm.closest('[data-pick-row]').remove();
+      });
+      $('saveFiltersBtn').addEventListener('click', async () => {
+        const sections = {};
+        document.querySelectorAll('[data-section]').forEach((cb) => { sections[cb.dataset.section] = cb.checked; });
+        const d = await call('PUT', '/api/admin/catalog/search', { sections, price_picks: readPicks('pricePicks'), mileage_picks: readPicks('mileagePicks') });
+        if (d) { setToast('ok', 'Filter settings saved'); data.search = d.search; renderFilters(d.search); }
+      });
+      $('resetFiltersBtn').addEventListener('click', () => { if (data.defaults) renderFilters(data.defaults); });
+
+      // ---------- tabs ----------
+      document.getElementById('tabs').addEventListener('click', (e) => {
+        const b = e.target.closest('.tab-btn'); if (!b) return;
+        document.querySelectorAll('#tabs .tab-btn').forEach((t) => { t.className = 'tab-btn ' + (t === b ? 'bg-blue-700 text-white' : 'bg-gray-100 text-gray-700'); });
+        ['makes', 'cities', 'filters'].forEach((k) => $('tab-' + k).classList.toggle('hidden', k !== b.dataset.tab));
+        history.replaceState(null, '', location.pathname + '?tab=' + b.dataset.tab);
+      });
+      (function initTab() {
+        const t = new URLSearchParams(location.search).get('tab');
+        const b = t && document.querySelector('#tabs [data-tab="' + t + '"]');
+        if (b) b.click();
+      })();
+      $('signOutBtn').addEventListener('click', () => { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY); window.location.replace('/'); });
+
+      (async function init() {
+        const token = localStorage.getItem(TOKEN_KEY);
+        if (!token) { window.location.replace('/dealer/login.html'); return; }
+        try {
+          const me = await fetch('/api/auth/me', { headers: authHeaders() });
+          if (me.status === 401) { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY); window.location.replace('/dealer/login.html'); return; }
+          const meData = await me.json();
+          if (!meData || !meData.user || meData.user.role !== 'admin') { window.location.replace('/'); return; }
+          $('adminEmail').textContent = meData.user.email || 'admin';
+          await load();
+        } catch (e) { $('subtext').textContent = 'Could not load. Please refresh.'; }
+      })();
+    </script>
+  </body>
+</html>

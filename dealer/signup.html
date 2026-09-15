@@ -391,6 +391,25 @@
         });
       });
     </script>
+    <script>
+      // Governorate options come from the admin-managed catalog; the hardcoded list is only a fallback.
+      (function loadGovernorateOptions() {
+        var sel = document.getElementById('governorate');
+        if (!sel) return;
+        fetch('/api/catalog').then(function (r) { return r.ok ? r.json() : null; }).then(function (c) {
+          if (!c || !c.governorates || !c.governorates.length) return;
+          var current = sel.value;
+          var first = sel.options.length && sel.options[0].value === '' ? sel.options[0] : null;
+          sel.innerHTML = '';
+          if (first) sel.appendChild(first);
+          c.governorates.forEach(function (g) { var o = document.createElement('option'); o.value = g.name; o.textContent = g.name; sel.appendChild(o); });
+          if (current && !Array.prototype.some.call(sel.options, function (o) { return o.value === current; })) {
+            var keep = document.createElement('option'); keep.value = current; keep.textContent = current; sel.appendChild(keep);
+          }
+          if (current) sel.value = current;
+        }).catch(function () {});
+      })();
+    </script>
   </body>
   </html>
 

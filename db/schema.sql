@@ -219,3 +219,34 @@ CREATE TABLE IF NOT EXISTS vehicle_features (
   PRIMARY KEY (vehicle_id, feature_id)
 );
 CREATE INDEX IF NOT EXISTS idx_vehicle_features_feature ON vehicle_features(feature_id);
+
+-- Admin-managed catalog: makes (+ optional short name / logo), models, governorates (canonical order, Arabic name,
+-- featured = home city chip). Search settings (filter section toggles, quick picks) live in app_meta 'search_settings'.
+CREATE TABLE IF NOT EXISTS catalog_makes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  short_name TEXT,
+  logo_url TEXT,
+  active INTEGER NOT NULL DEFAULT 1,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS catalog_models (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  make_id INTEGER NOT NULL,
+  name TEXT NOT NULL COLLATE NOCASE,
+  active INTEGER NOT NULL DEFAULT 1,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  UNIQUE (make_id, name)
+);
+CREATE INDEX IF NOT EXISTS idx_catalog_models_make ON catalog_models(make_id);
+CREATE TABLE IF NOT EXISTS governorates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  name_ar TEXT,
+  active INTEGER NOT NULL DEFAULT 1,
+  featured INTEGER NOT NULL DEFAULT 1,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+);

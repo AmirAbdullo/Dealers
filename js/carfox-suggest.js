@@ -134,7 +134,7 @@
       group('Brands', data.makes, function (m) {
         return {
           href: '/cars.html?make=' + encodeURIComponent(m.name),
-          html: '<img src="' + esc(brandLogoUrl(m.name)) + '" alt="" loading="lazy" onerror="this.outerHTML=\'<span class=&quot;cf-sg-fb&quot;>' + esc(m.name.charAt(0)) + '</span>\'" />' +
+          html: '<img src="' + esc(m.logo_url || brandLogoUrl(m.name)) + '" alt="" loading="lazy" onerror="this.outerHTML=\'<span class=&quot;cf-sg-fb&quot;>' + esc(m.name.charAt(0)) + '</span>\'" />' +
             '<span class="cf-sg-t"><span>' + highlight(m.name, q) + '</span></span>' +
             '<span class="cf-sg-c">' + m.count + ' ' + (m.count === 1 ? 'car' : 'cars') + '</span>'
         };

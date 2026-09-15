@@ -67,7 +67,7 @@
         </div>
       </section>
 
-      <section class="bg-white border border-gray-200 rounded-xl p-4">
+      <section class="bg-white border border-gray-200 rounded-xl p-4" data-section="mileage">
         <h2 class="font-semibold">Mileage <span class="text-xs font-normal text-gray-500">(km)</span></h2>
         <div class="mt-3 grid grid-cols-2 gap-3">
           <label class="block"><span class="block text-xs font-semibold text-gray-600 mb-1">Min</span><input id="minMileage" class="num" inputmode="numeric" placeholder="No min" /></label>
@@ -75,27 +75,27 @@
         </div>
       </section>
 
-      <section class="bg-white border border-gray-200 rounded-xl p-4">
+      <section class="bg-white border border-gray-200 rounded-xl p-4" data-section="body_type">
         <h2 class="font-semibold">Body type</h2>
         <div id="bodyChips" class="mt-3 flex flex-wrap gap-2"></div>
       </section>
 
-      <section class="bg-white border border-gray-200 rounded-xl p-4">
+      <section class="bg-white border border-gray-200 rounded-xl p-4" data-section="transmission">
         <h2 class="font-semibold">Transmission</h2>
         <div id="transChips" class="mt-3 flex flex-wrap gap-2"></div>
       </section>
 
-      <section class="bg-white border border-gray-200 rounded-xl p-4">
+      <section class="bg-white border border-gray-200 rounded-xl p-4" data-section="fuel_type">
         <h2 class="font-semibold">Fuel type</h2>
         <div id="fuelChips" class="mt-3 flex flex-wrap gap-2"></div>
       </section>
 
-      <section class="bg-white border border-gray-200 rounded-xl p-4">
+      <section class="bg-white border border-gray-200 rounded-xl p-4" data-section="color">
         <h2 class="font-semibold">Color</h2>
         <div id="colorChips" class="mt-3 flex flex-wrap gap-2"><span class="text-sm text-gray-500">Loading…</span></div>
       </section>
 
-      <section class="bg-white border border-gray-200 rounded-xl p-4">
+      <section class="bg-white border border-gray-200 rounded-xl p-4" data-section="features">
         <h2 class="font-semibold">Features</h2>
         <p class="text-xs text-gray-500 mt-0.5">Cars must have every feature you pick.</p>
         <div id="featureGroups" class="mt-3 space-y-3"><span class="text-sm text-gray-500">Loading…</span></div>
@@ -118,7 +118,22 @@
         const BODY_TYPES = ['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Pickup', 'Van', 'Wagon', 'Convertible', 'Other'];
         const TRANSMISSIONS = ['Automatic', 'Manual', 'CVT', 'Semi-Automatic'];
         const FUELS = ['Gasoline', 'Diesel', 'Hybrid', 'Electric', 'LPG', 'Other'];
-        const POPULAR_MAKES = ['Toyota', 'Hyundai', 'Kia', 'Nissan', 'Mercedes-Benz', 'BMW', 'Chevrolet', 'Honda', 'Volkswagen', 'Peugeot', 'Renault', 'Mitsubishi'];
+        // Popular = first 12 makes in the admin catalog order (same list as before the catalog existed).
+        let POPULAR_MAKES = ['Toyota', 'Hyundai', 'Kia', 'Nissan', 'Mercedes-Benz', 'BMW', 'Chevrolet', 'Honda', 'Volkswagen', 'Peugeot', 'Renault', 'Mitsubishi'];
+        let GOV_LIST = CarfoxQuickSearch.GOVERNORATES.slice();
+        let CATALOG = null;
+        function logoFor(name) {
+          const m = CATALOG && CATALOG.makes.find(x => x.name === name);
+          return (m && m.logo_url) || brandLogoUrl(name);
+        }
+        function catalogModels(make) {
+          const m = CATALOG && CATALOG.makes.find(x => x.name.toLowerCase() === String(make).toLowerCase());
+          return m ? m.models.map(x => x.name) : [];
+        }
+        function applySections(search) {
+          const sections = (search && search.sections) || {};
+          document.querySelectorAll('[data-section]').forEach(el => el.classList.toggle('hidden', sections[el.dataset.section] === false));
+        }
         const CURRENT_YEAR = new Date().getFullYear();
 
         const f = {
@@ -189,7 +204,7 @@
           all.setAttribute('aria-pressed', f.city.length ? 'false' : 'true');
           all.addEventListener('click', () => { f.city = []; renderRegion(); afterChange(); });
           host.appendChild(all);
-          CarfoxQuickSearch.GOVERNORATES.forEach(g => {
+          GOV_LIST.forEach(g => {
             const b = document.createElement('button');
             b.type = 'button'; b.className = 'chip'; b.textContent = g;
             b.setAttribute('aria-pressed', f.city.indexOf(g) !== -1 ? 'true' : 'false');
@@ -208,7 +223,7 @@
             card.type = 'button'; card.className = 'make-card';
             card.setAttribute('aria-pressed', f.make.indexOf(m) !== -1 ? 'true' : 'false');
             const img = document.createElement('img');
-            img.src = brandLogoUrl(m); img.alt = ''; img.width = 36; img.height = 36; img.loading = 'lazy'; img.className = 'w-9 h-9 object-contain';
+            img.src = logoFor(m); img.alt = ''; img.width = 36; img.height = 36; img.loading = 'lazy'; img.className = 'w-9 h-9 object-contain';
             const fb = document.createElement('div');
             fb.className = 'hidden w-9 h-9 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-sm font-bold';
             fb.textContent = m.charAt(0);
@@ -234,7 +249,7 @@
           }
           sel.disabled = false;
           sel.innerHTML = '<option value="">Any model</option>';
-          fetch('/api/car-data/models?make=' + encodeURIComponent(f.make[0])).then(r => r.json()).then(d => {
+          Promise.resolve({ models: catalogModels(f.make[0]) }).then(d => {
             (d.models || []).forEach(m => { const o = document.createElement('option'); o.value = m; o.textContent = m; sel.appendChild(o); });
             sel.value = f.model || '';
             $('modelSummary').textContent = f.model || 'Any model';
@@ -332,8 +347,12 @@
         $('clearAllBottom').addEventListener('click', clearAll);
         $('showResults').addEventListener('click', () => { const qs = params().toString(); location.href = '/cars.html' + (qs ? '?' + qs : ''); });
 
-        fetch('/api/car-data/makes').then(r => r.json()).then(d => {
-          allMakes = d.makes || [];
+        fetch('/api/catalog').then(r => r.json()).then(c => {
+          CATALOG = c;
+          if (c.governorates && c.governorates.length) GOV_LIST = c.governorates.map(g => g.name);
+          if (c.makes && c.makes.length >= 12) POPULAR_MAKES = c.makes.slice(0, 12).map(m => m.name);
+          applySections(c.search);
+          allMakes = (c.makes || []).map(m => m.name);
           f.make.forEach(m => { if (allMakes.indexOf(m) === -1) allMakes.push(m); });
           renderAll();
           updateCount();

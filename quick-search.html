@@ -129,8 +129,25 @@
         const STEPS = ['main', 'region', 'make', 'model', 'price', 'mileage'];
         const TITLES = { main: 'Search', region: 'Region', make: 'Make', model: 'Model', price: 'Price', mileage: 'Mileage' };
         const FILTER_KEYS = ['city', 'make', 'model', 'min_price', 'max_price', 'min_mileage', 'max_mileage'];
-        const PRICE_PICKS = [['Under 300,000', null, 300000], ['300,000 – 600,000', 300000, 600000], ['600,000 – 1,000,000', 600000, 1000000], ['1,000,000 – 2,000,000', 1000000, 2000000], ['2,000,000 and up', 2000000, null]];
-        const MILEAGE_PICKS = [['Under 20,000 km', null, 20000], ['20,000 – 50,000 km', 20000, 50000], ['50,000 – 100,000 km', 50000, 100000], ['100,000 – 150,000 km', 100000, 150000], ['150,000 km and up', 150000, null]];
+        // Defaults until /api/catalog answers; admins edit these on /admin/catalog.html (Filters tab).
+        let PRICE_PICKS = [['Under 300,000', null, 300000], ['300,000 – 600,000', 300000, 600000], ['600,000 – 1,000,000', 600000, 1000000], ['1,000,000 – 2,000,000', 1000000, 2000000], ['2,000,000 and up', 2000000, null]];
+        let MILEAGE_PICKS = [['Under 20,000 km', null, 20000], ['20,000 – 50,000 km', 20000, 50000], ['50,000 – 100,000 km', 50000, 100000], ['100,000 – 150,000 km', 100000, 150000], ['150,000 km and up', 150000, null]];
+        let GOV_LIST = CarfoxQuickSearch.GOVERNORATES.slice();
+        let catalog = null;
+        function toPicks(list, fallback) {
+          if (!Array.isArray(list) || !list.length) return fallback;
+          return list.map((p) => [p.label, p.min == null ? null : Number(p.min), p.max == null ? null : Number(p.max)]);
+        }
+        const catalogReady = fetch('/api/catalog').then((r) => (r.ok ? r.json() : null)).then((c) => {
+          if (!c) return;
+          catalog = c;
+          if (c.governorates && c.governorates.length) GOV_LIST = c.governorates.map((g) => g.name);
+          if (c.search) { PRICE_PICKS = toPicks(c.search.price_picks, PRICE_PICKS); MILEAGE_PICKS = toPicks(c.search.mileage_picks, MILEAGE_PICKS); }
+        }).catch(() => {});
+        function logoFor(name) {
+          const m = catalog && catalog.makes.find((x) => x.name === name);
+          return (m && m.logo_url) || brandLogoUrl(name);
+        }
 
         let state = { city: '', make: '', model: '', min_price: null, max_price: null, min_mileage: null, max_mileage: null };
         let makesCache = null;
@@ -237,7 +254,7 @@
           const all = listItem('All Egypt', !state.city, { bold: true });
           all.addEventListener('click', () => { state.city = ''; save(); back(); });
           host.appendChild(all);
-          CarfoxQuickSearch.GOVERNORATES.forEach((g) => {
+          GOV_LIST.forEach((g) => {
             const it = listItem(g, state.city === g);
             it.addEventListener('click', () => { state.city = g; save(); back(); });
             host.appendChild(it);
@@ -247,7 +264,7 @@
         function loadMakes() {
           if (makesCache) return Promise.resolve(makesCache);
           return Promise.all([
-            fetch('/api/car-data/makes').then((r) => r.json()).then((d) => d.makes || []),
+            catalogReady.then(() => (catalog ? catalog.makes.map((m) => m.name) : [])),
             fetch('/api/cars/filter-options').then((r) => r.json()).then((d) => d.makes || []).catch(() => [])
           ]).then(([all, withCounts]) => {
             const counts = {};
@@ -267,7 +284,7 @@
             all.addEventListener('click', () => { state.make = ''; state.model = ''; save(); back(); });
             host.appendChild(all);
             makes.forEach((m) => {
-              const it = listItem(m.name, state.make === m.name, { logo: brandLogoUrl(m.name), count: m.count });
+              const it = listItem(m.name, state.make === m.name, { logo: logoFor(m.name), count: m.count });
               it.addEventListener('click', () => {
                 if (state.make !== m.name) state.model = '';
                 state.make = m.name;
@@ -284,7 +301,7 @@
         function loadModels(make) {
           if (modelsCache[make]) return Promise.resolve(modelsCache[make]);
           return Promise.all([
-            fetch('/api/car-data/models?make=' + encodeURIComponent(make)).then((r) => r.json()).then((d) => d.models || []),
+            catalogReady.then(() => { const mk = catalog && catalog.makes.find((x) => x.name.toLowerCase() === String(make).toLowerCase()); return mk ? mk.models.map((x) => x.name) : []; }),
             fetch('/api/cars/filter-options?make=' + encodeURIComponent(make)).then((r) => r.json()).then((d) => d.models || []).catch(() => [])
           ]).then(([all, withCounts]) => {
             const counts = {};
@@ -317,7 +334,7 @@
         function renderPicks(hostId, picks, minKey, maxKey, minInput, maxInput) {
           const host = $(hostId);
           host.innerHTML = '';
-          picks.forEach(([label, min, max]) => {
+          (hostId === 'pricePicks' ? PRICE_PICKS : MILEAGE_PICKS).forEach(([label, min, max]) => {
             const b = document.createElement('button');
             b.type = 'button';
             b.className = 'pick';
@@ -379,6 +396,7 @@
         loadState();
         if (!history.state || !history.state.qs) history.replaceState({ qs: true, step: currentStep() }, '', location.href);
         render();
+        catalogReady.then(() => { if (['region', 'price', 'mileage'].indexOf(currentStep()) !== -1) render(); });
       })();
     </script>
   </body>
