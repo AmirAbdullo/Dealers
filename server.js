@@ -3992,6 +3992,54 @@ app.get('/api/cars/:id/value', function (req, res) {
   });
 });
 
+// Similar cars for the detail page: same make OR same body type, price within ±30%, active only,
+// excluding the car itself. Same-make matches come first, then the closest prices. Max 6.
+// Works for sold listings too (the sold banner links down to this section).
+app.get('/api/cars/:id/similar', function (req, res) {
+  const vehicleId = Number(req.params.id);
+  if (!vehicleId || !Number.isInteger(vehicleId)) return res.status(404).json({ error: 'Listing not found' });
+  const visibility = requestIsAdmin(req)
+    ? ''
+    : " AND d.status = 'approved' AND COALESCE(d.suspended, 0) = 0 AND v.status IN ('active', 'sold')";
+  const base = db.prepare('SELECT v.id, v.make, v.body_type, v.price' + PUBLIC_CARS_FROM_SQL + ' WHERE v.id = ?' + visibility).get(vehicleId);
+  if (!base) return res.status(404).json({ error: 'Listing not found' });
+  const price = Number(base.price) || 0;
+  const make = String(base.make || '').trim();
+  const body = String(base.body_type || '').trim();
+  if (!price || (!make && !body)) return res.json({ vehicles: [] });
+  const conds = [];
+  const params = [vehicleId];
+  if (make) { conds.push('LOWER(TRIM(v.make)) = LOWER(?)'); params.push(make); }
+  if (body) { conds.push('LOWER(TRIM(v.body_type)) = LOWER(?)'); params.push(body); }
+  params.push(Math.floor(price * 0.7), Math.ceil(price * 1.3));
+  // ORDER BY: same make first (when the base has one), then closest price.
+  const orderSql = (make ? 'CASE WHEN LOWER(TRIM(v.make)) = LOWER(?) THEN 0 ELSE 1 END, ' : '') + 'ABS(v.price - ?) ASC, v.id DESC';
+  if (make) params.push(make);
+  params.push(Math.round(price));
+  const rows = db
+    .prepare(
+      `SELECT
+        v.id, v.year, v.make, v.model, v.trim, v.mileage, v.price,
+        v.body_type, v.transmission, v.fuel_type, v.exterior_color,
+        v.published_at,
+        p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score, v.value_rating, v.value_pct, v.value_median, v.value_comparables,
+        d.id AS dealer_id,
+        d.business_name AS dealer_business_name,
+        d.city AS dealer_city,
+        d.state AS dealer_state,
+        d.governorate AS dealer_governorate,
+        d.whatsapp AS dealer_whatsapp
+      ${PUBLIC_CARS_FROM_SQL}
+      LEFT JOIN vehicle_photos p ON p.vehicle_id = v.id AND p.is_primary = 1
+      WHERE ${PUBLIC_CARS_BASE_WHERE} AND v.id != ? AND (${conds.join(' OR ')}) AND v.price BETWEEN ? AND ?
+      ORDER BY ${orderSql}
+      LIMIT 6`
+    )
+    .all(...params);
+  res.set('Cache-Control', 'no-store');
+  return res.json({ vehicles: rows.map(mapPublicCarRow) });
+});
+
 app.get('/api/cars/:id', function (req, res) {
   const vehicleId = Number(req.params.id);
   if (!vehicleId || !Number.isInteger(vehicleId)) {

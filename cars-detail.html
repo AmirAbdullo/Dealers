@@ -14,6 +14,11 @@
       #vehicle-gallery .gallery-slide { scroll-snap-align: start; scroll-snap-stop: always; }
       #vehicle-gallery::-webkit-scrollbar { display: none; }
       #vehicle-gallery { scrollbar-width: none; }
+      .gallery-arrow { position:absolute; top:50%; transform:translateY(-50%); width:40px; height:40px; border-radius:999px; background:rgba(255,255,255,.92); color:#111827; box-shadow:0 2px 8px rgba(0,0,0,.25); display:none; align-items:center; justify-content:center; z-index:10; }
+      .gallery-arrow:hover { background:#fff; }
+      .gallery-arrow[disabled] { opacity:.35; cursor:default; }
+      @media (min-width: 768px) and (hover: hover) { .gallery-arrow { display:flex; } }
+      #vehicle-gallery .gallery-slide img { cursor: zoom-in; }
     </style>
     <script>
       tailwind.config = {
@@ -50,9 +55,11 @@
 
     <div id="pageLoading" class="px-4 py-16 text-center text-gray-600">Loading listing…</div>
 
-    <div id="soldBanner" class="hidden mx-4 mt-3 rounded-lg border border-gray-300 bg-gray-100 px-4 py-3 text-sm text-gray-800">
-      <span class="inline-block rounded bg-gray-900 text-white text-xs font-semibold uppercase tracking-wide px-2 py-0.5 mr-2">Sold</span>
-      This car has been sold. <a href="/cars.html" class="font-semibold text-blue-700 hover:underline">Browse similar cars</a>
+    <div id="soldBanner" class="hidden mx-4 mt-3 md:mx-auto md:max-w-6xl md:px-6 md:mt-6">
+      <div class="rounded-lg border border-gray-300 bg-gray-100 px-4 py-3 text-sm text-gray-800">
+        <span class="inline-block rounded bg-gray-900 text-white text-xs font-semibold uppercase tracking-wide px-2 py-0.5 mr-2">Sold</span>
+        This car has been sold. <a id="soldSimilarLink" href="/cars.html" class="font-semibold text-blue-700 hover:underline">Browse similar cars</a>
+      </div>
     </div>
 
     <div id="pageError" class="hidden px-4 py-16 text-center">
@@ -61,21 +68,33 @@
     </div>
 
     <div id="pageContent" class="hidden pb-36 md:pb-32">
-      <div class="px-4 py-3 bg-white">
-        <div class="relative rounded-lg overflow-hidden -mx-0">
+      <div class="md:mx-auto md:max-w-6xl md:px-6 md:pt-6 md:grid md:grid-cols-12 md:gap-8 md:items-start">
+      <!-- Left column on desktop: gallery -->
+      <div class="md:col-span-7 md:sticky md:top-20">
+      <div class="px-4 py-3 bg-white md:px-0 md:py-0 md:bg-transparent">
+        <div class="relative rounded-lg overflow-hidden -mx-0 md:rounded-xl">
           <div id="vehicle-gallery" class="flex overflow-x-auto aspect-[4/3] bg-gray-100"></div>
+          <button type="button" id="galleryPrev" class="gallery-arrow left-3" aria-label="Previous photo">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 6-6 6 6 6"/></svg>
+          </button>
+          <button type="button" id="galleryNext" class="gallery-arrow right-3" aria-label="Next photo">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+          </button>
           <span id="photoCounter" class="absolute bottom-3 right-3 rounded-md bg-black/70 text-white text-xs px-2 py-1 pointer-events-none z-10">0 / 0</span>
         </div>
         <div id="thumbStrip" class="flex gap-2 overflow-x-auto mt-2 pb-1"></div>
       </div>
+      </div>
 
-      <section class="px-4 py-4 bg-white">
+      <!-- Right column on desktop: price, badges, dealer, specs, features, description -->
+      <div class="md:col-span-5 md:min-w-0">
+      <section class="px-4 py-4 bg-white md:rounded-xl md:border md:border-gray-200 md:mb-4">
         <h1 id="listingTitle" class="text-2xl md:text-3xl font-bold text-gray-900"></h1>
         <p id="listingPrice" class="text-3xl font-bold text-blue-700 mt-2"></p>
         <div id="trustBadgeWrap" class="hidden mt-3 flex items-center gap-2 flex-wrap"></div>
       </section>
 
-      <section class="mx-4 mb-4 bg-white border border-gray-200 rounded-lg p-4">
+      <section class="mx-4 mb-4 bg-white border border-gray-200 rounded-lg p-4 md:mx-0 md:rounded-xl">
         <p class="text-xs text-gray-500 uppercase tracking-wider">Listed by</p>
         <div class="mt-2 flex items-center gap-3">
           <a id="dealerLogoLink" href="#" class="shrink-0 w-14 h-14 rounded-xl bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
@@ -108,6 +127,17 @@
       <section id="descSection" class="hidden px-4 py-4">
         <h2 class="text-xl font-bold text-gray-900 mb-3">Description</h2>
         <p id="listingDesc" class="text-gray-700 whitespace-pre-line"></p>
+      </section>
+      </div>
+      </div>
+
+      <!-- Similar cars: same make or body type, price within ±30%, hidden when fewer than 2 -->
+      <section id="similarSection" class="hidden mt-6 px-4 md:mx-auto md:max-w-6xl md:px-6 scroll-mt-20">
+        <div class="flex items-baseline justify-between mb-3">
+          <h2 class="text-xl font-bold text-gray-900">Similar cars</h2>
+          <a id="similarBrowseLink" href="/cars.html" class="text-sm font-semibold text-blue-700 hover:underline">Browse all →</a>
+        </div>
+        <div id="similarGrid" class="grid grid-cols-2 md:grid-cols-3 gap-3"></div>
       </section>
     </div>
 
@@ -345,6 +375,7 @@
           }
           mainIndex = idx;
           photoCounter.textContent = (idx + 1) + ' / ' + total;
+          updateGalleryArrows();
           Array.from(thumbStrip.children).forEach(function (el, i) {
             const active = i === idx;
             el.classList.toggle('border-blue-600', active);
@@ -358,6 +389,26 @@
           const slide = vehicleGallery.querySelector('[data-slide-index="' + idx + '"]');
           if (slide) slide.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
         }
+
+        // Desktop arrows (hidden on touch devices, where the gallery swipes) + keyboard arrows.
+        const galleryPrev = document.getElementById('galleryPrev');
+        const galleryNext = document.getElementById('galleryNext');
+        function updateGalleryArrows() {
+          const total = photos.length;
+          galleryPrev.disabled = total < 2 || mainIndex <= 0;
+          galleryNext.disabled = total < 2 || mainIndex >= total - 1;
+          galleryPrev.classList.toggle('!hidden', total < 2);
+          galleryNext.classList.toggle('!hidden', total < 2);
+        }
+        galleryPrev.addEventListener('click', function () { if (mainIndex > 0) scrollToSlide(mainIndex - 1); });
+        galleryNext.addEventListener('click', function () { if (mainIndex < photos.length - 1) scrollToSlide(mainIndex + 1); });
+        document.addEventListener('keydown', function (e) {
+          if (document.querySelector('.pswp--open')) return; // PhotoSwipe handles its own keys
+          const tag = (e.target && e.target.tagName) || '';
+          if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+          if (e.key === 'ArrowLeft' && mainIndex > 0) scrollToSlide(mainIndex - 1);
+          else if (e.key === 'ArrowRight' && mainIndex < photos.length - 1) scrollToSlide(mainIndex + 1);
+        });
 
         function setupGalleryObserver() {
           if (galleryObserver) galleryObserver.disconnect();
@@ -396,6 +447,7 @@
             slide.innerHTML = carIconSvg();
             vehicleGallery.appendChild(slide);
             photoCounter.textContent = '0 / 0';
+            updateGalleryArrows();
             return;
           }
 
@@ -510,6 +562,59 @@
           document.getElementById('soldBanner').classList.toggle('hidden', !isSold);
           contactBar.classList.toggle('hidden', isSold);
 
+        }
+
+        // ---- Similar cars (standard card design, with Value + Trust badges) ----
+        function renderSimilarCard(car) {
+          const title = [car.year, car.make, car.model].filter(Boolean).join(' ');
+          const subtitle = (car.trim && String(car.trim).trim()) || car.body_type || '';
+          const city = car.governorate || (car.dealer && car.dealer.city) || '';
+          const photoHtml = car.primary_photo_url
+            ? '<div class="aspect-[4/3] overflow-hidden bg-gray-100"><img src="' + escapeHtml(car.primary_photo_url) + '" alt="" class="w-full h-full object-cover" loading="lazy" /></div>'
+            : '<div class="aspect-[4/3] bg-gray-100 flex items-center justify-center overflow-hidden">' + carIconSvg() + '</div>';
+          const card = document.createElement('a');
+          card.href = '/cars/' + car.id;
+          card.setAttribute('data-car-id', String(car.id));
+          card.className = 'block bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow';
+          card.innerHTML = photoHtml +
+            '<div class="p-3">' +
+            '<h3 class="text-sm md:text-base font-semibold text-gray-900 truncate">' + escapeHtml(title) + '</h3>' +
+            (subtitle ? '<p class="text-xs text-gray-500 mt-0.5 truncate">' + escapeHtml(subtitle) + '</p>' : '') +
+            '<div class="mt-2 flex flex-wrap items-center justify-between gap-2"><p class="text-lg font-bold text-blue-700 shrink-0">' + escapeHtml(formatPrice(car.price)) + '</p>' +
+              '<span class="flex items-center gap-1 flex-wrap justify-end">' + (window.CarfoxValue ? CarfoxValue.badge(car, { compact: true }) : '') + (window.CarfoxTrust ? CarfoxTrust.badge(car.trust_score, { compact: true }) : '') + '</span></div>' +
+            '<div class="flex items-center justify-between text-xs text-gray-500 mt-2">' +
+            '<span>' + escapeHtml(formatMileage(car.mileage) || '') + '</span>' +
+            '<span class="truncate ml-2 text-right">' + escapeHtml(city) + '</span>' +
+            '</div>' +
+            (car.dealer_name ? '<div class="mt-1.5 text-xs text-gray-500 truncate">' + escapeHtml(car.dealer_name) + '</div>' : '') +
+            '</div>';
+          return card;
+        }
+
+        function loadSimilarCars(v) {
+          const section = document.getElementById('similarSection');
+          const grid = document.getElementById('similarGrid');
+          const soldLink = document.getElementById('soldSimilarLink');
+          const browseLink = document.getElementById('similarBrowseLink');
+          section.classList.add('hidden');
+          soldLink.href = v.make ? '/cars.html?make=' + encodeURIComponent(v.make) : '/cars.html';
+          browseLink.href = soldLink.href;
+          fetch('/api/cars/' + v.id + '/similar')
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (data) {
+              const cars = (data && data.vehicles) || [];
+              if (cars.length < 2) return;
+              grid.innerHTML = '';
+              cars.forEach(function (car) { grid.appendChild(renderSimilarCard(car)); });
+              section.classList.remove('hidden');
+              // The sold banner's "Browse similar cars" scrolls down to this section.
+              soldLink.href = '#similarSection';
+              soldLink.onclick = function (e) {
+                e.preventDefault();
+                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              };
+            })
+            .catch(function () {});
         }
 
         function recordView() {
@@ -681,7 +786,8 @@
               return;
             }
             renderVehicle(data.vehicle);
-            recordView();
+            loadSimilarCars(data.vehicle);
+            if (data.vehicle.status !== 'sold') recordView(); // views only count for live listings
             if (new URLSearchParams(window.location.search).get('openInquiry') === '1' && isSignedInBuyer() && data.vehicle.status !== 'sold') {
               startConversationAndGoToChat();
             }
