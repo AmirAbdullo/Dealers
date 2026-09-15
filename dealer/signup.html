@@ -197,6 +197,15 @@
 
     <script src="/js/signup-password-validation.js"></script>
     <script>
+      // Invitation links arrive as /dealer/signup.html?email=...&invite=1
+      (function prefillInvitedEmail() {
+        try {
+          var invited = new URLSearchParams(location.search).get('email');
+          var el = document.getElementById('email');
+          if (invited && el && !el.value) el.value = invited;
+        } catch (_) {}
+      })();
+
       const form = document.getElementById('dealerForm');
       const formSection = document.getElementById('formSection');
       const submitBtn = document.getElementById('submitBtn');

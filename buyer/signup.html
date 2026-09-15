@@ -165,6 +165,15 @@
       const TOKEN_KEY = 'carfox_token';
       const USER_KEY = 'carfox_user';
 
+      // Invitation links arrive as /buyer/signup.html?email=...&invite=1
+      (function prefillInvitedEmail() {
+        try {
+          var invited = new URLSearchParams(location.search).get('email');
+          var el = document.getElementById('email');
+          if (invited && el && !el.value) el.value = invited;
+        } catch (_) {}
+      })();
+
       function postSignupRedirect() {
         if (window.CarfoxAuth && CarfoxAuth.parseReturnToRedirect()) {
           return CarfoxAuth.parseReturnToRedirect();

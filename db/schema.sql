@@ -166,3 +166,17 @@ CREATE TABLE IF NOT EXISTS saved_cars (
   FOREIGN KEY (buyer_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
 );
+
+-- Admin email invitations (buyer / dealer). status: sending | sent | failed | registered
+CREATE TABLE IF NOT EXISTS invitations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT NOT NULL,
+  role TEXT NOT NULL CHECK (role IN ('buyer', 'dealer')),
+  invited_by INTEGER,
+  invited_at TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'sent',
+  error TEXT,
+  registered_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_invitations_email ON invitations(email);
+CREATE INDEX IF NOT EXISTS idx_invitations_invited_at ON invitations(invited_at);

@@ -346,6 +346,22 @@ db.exec(`
 db.exec('CREATE INDEX IF NOT EXISTS idx_engagement_dealership_created ON engagement_events(dealership_id, created_at)');
 db.exec('CREATE INDEX IF NOT EXISTS idx_engagement_vehicle ON engagement_events(vehicle_id)');
 
+// Admin email invitations (buyer / dealer). status: sending | sent | failed | registered
+db.exec(`
+  CREATE TABLE IF NOT EXISTS invitations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('buyer', 'dealer')),
+    invited_by INTEGER,
+    invited_at TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'sent',
+    error TEXT,
+    registered_at TEXT
+  )
+`);
+db.exec('CREATE INDEX IF NOT EXISTS idx_invitations_email ON invitations(email)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_invitations_invited_at ON invitations(invited_at)');
+
 const ENGAGEMENT_TYPES = { whatsapp: true, call: true, message: true, share: true, website: true };
 const ENGAGEMENT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -1379,31 +1395,269 @@ app.patch('/api/admin/dealerships/:id/unsuspend', requireAdmin, function (req, r
 });
 
 // Admin: find buyers (by email) or list suspended buyers
+// Integer-safe pagination params: a REAL bound to LIMIT/OFFSET makes SQLite throw "datatype mismatch".
+function pageParams(query, defaultLimit, maxLimit) {
+  var limit = Math.floor(Number(query.limit));
+  if (!Number.isFinite(limit) || limit < 1) limit = defaultLimit;
+  if (limit > maxLimit) limit = maxLimit;
+  var page = Math.floor(Number(query.page));
+  if (!Number.isFinite(page) || page < 1) page = 1;
+  if (page > 1000000) page = 1000000;
+  return { limit: limit, page: page };
+}
+
+// Admin: paginated user directory (buyers, dealers, admins) with search and role/suspended tabs.
 app.get('/api/admin/users', requireAdmin, function (req, res) {
-  var email = normalizeEmail(req.query.email);
-  var onlySuspended = String(req.query.suspended || '') === '1';
-  var sql = "SELECT id, email, full_name, role, created_at, suspended, suspension_reason, suspended_at FROM users WHERE role = 'buyer'";
+  var role = String(req.query.role || '').toLowerCase();
+  // Legacy params from the old Dealers-page buyer search.
+  if (!role && String(req.query.suspended || '') === '1') role = 'suspended';
+  var q = String(req.query.q || req.query.email || '').trim().toLowerCase();
+  var allowed = { all: true, buyer: true, dealer: true, admin: true, suspended: true };
+  if (!allowed[role]) role = 'all';
+  var paging = pageParams(req.query, 25, 100);
+  var limit = paging.limit;
+  var page = paging.page;
+
+  var where = ' WHERE 1 = 1';
   var params = [];
-  if (email) {
-    sql += ' AND LOWER(email) LIKE ?';
-    params.push('%' + email + '%');
+  if (role === 'suspended') where += ' AND (COALESCE(u.suspended, 0) = 1 OR COALESCE(d.suspended, 0) = 1)';
+  else if (role !== 'all') { where += ' AND u.role = ?'; params.push(role); }
+  if (q) {
+    var like = '%' + q.replace(/[%_\\]/g, function (ch) { return '\\' + ch; }) + '%';
+    where += " AND (LOWER(u.email) LIKE ? ESCAPE '\\' OR LOWER(COALESCE(u.full_name, '')) LIKE ? ESCAPE '\\' OR LOWER(COALESCE(d.business_name, '')) LIKE ? ESCAPE '\\')";
+    params.push(like, like, like);
   }
-  if (onlySuspended) sql += ' AND COALESCE(suspended, 0) = 1';
-  if (!email && !onlySuspended) return res.json({ users: [] });
-  sql += ' ORDER BY created_at DESC LIMIT 50';
-  var rows = db.prepare(sql).all(...params).map(function (u) {
-    return {
-      id: u.id,
-      email: u.email,
-      full_name: u.full_name,
-      role: u.role,
-      created_at: u.created_at,
-      suspended: !!u.suspended,
-      suspension_reason: u.suspension_reason || null,
-      suspended_at: u.suspended_at || null
-    };
+  var from = ' FROM users u LEFT JOIN dealerships d ON d.user_id = u.id';
+  var countStmt = db.prepare('SELECT COUNT(*) AS n' + from + where);
+  var total = countStmt.get.apply(countStmt, params).n;
+  var listStmt = db.prepare(
+    'SELECT u.id, u.email, u.full_name, u.role, COALESCE(u.email_verified, 0) AS email_verified, u.auth_provider,' +
+    ' COALESCE(u.suspended, 0) AS suspended, u.suspension_reason, u.suspended_at, u.created_at,' +
+    ' d.id AS dealership_id, d.business_name, d.status AS dealership_status, COALESCE(d.suspended, 0) AS dealership_suspended,' +
+    ' (SELECT COUNT(*) FROM saved_cars s WHERE s.buyer_id = u.id) AS saved_cars_count,' +
+    ' (SELECT COUNT(*) FROM conversations c WHERE c.buyer_id = u.id) AS conversations_count' +
+    from + where + ' ORDER BY datetime(u.created_at) DESC, u.id DESC LIMIT ? OFFSET ?'
+  );
+  var rows = listStmt.all.apply(listStmt, params.concat([limit, (page - 1) * limit]));
+
+  var counts = { all: 0, buyer: 0, dealer: 0, admin: 0, suspended: 0 };
+  db.prepare('SELECT role, COUNT(*) AS n FROM users GROUP BY role').all().forEach(function (r) {
+    counts[r.role] = Number(r.n); counts.all += Number(r.n);
   });
-  return res.json({ users: rows });
+  counts.suspended = db.prepare('SELECT COUNT(*) AS n FROM users u LEFT JOIN dealerships d ON d.user_id = u.id WHERE COALESCE(u.suspended, 0) = 1 OR COALESCE(d.suspended, 0) = 1').get().n;
+
+  res.set('Cache-Control', 'no-store');
+  return res.json({
+    users: rows.map(function (u) {
+      return {
+        id: u.id,
+        email: u.email,
+        full_name: u.full_name,
+        role: u.role,
+        email_verified: !!Number(u.email_verified),
+        auth_provider: u.auth_provider || 'email',
+        created_at: u.created_at,
+        suspended: !!Number(u.suspended) || (u.role === 'dealer' && !!Number(u.dealership_suspended)),
+        suspension_reason: u.suspension_reason || null,
+        suspended_at: u.suspended_at || null,
+        saved_cars_count: u.role === 'buyer' ? Number(u.saved_cars_count) || 0 : null,
+        conversations_count: u.role === 'buyer' ? Number(u.conversations_count) || 0 : null,
+        dealership: u.dealership_id
+          ? { id: u.dealership_id, business_name: u.business_name, status: u.dealership_status, suspended: !!Number(u.dealership_suspended) }
+          : null
+      };
+    }),
+    total: total, page: page, limit: limit, pages: Math.max(1, Math.ceil(total / limit)),
+    counts: counts
+  });
+});
+
+// Admin: manually mark an email as verified (support cases where the code never arrives).
+app.post('/api/admin/users/:id/verify', requireAdmin, function (req, res) {
+  var id = Number(req.params.id);
+  if (!id) return res.status(400).json({ error: 'Invalid user id' });
+  var user = db.prepare('SELECT id, email, full_name, role, COALESCE(email_verified, 0) AS email_verified FROM users WHERE id = ?').get(id);
+  if (!user) return res.status(404).json({ error: 'Not found' });
+  var already = !!Number(user.email_verified);
+  if (!already) {
+    db.prepare('UPDATE users SET email_verified = 1 WHERE id = ?').run(id);
+    db.prepare('UPDATE email_verification_tokens SET used = 1 WHERE user_id = ? AND used = 0').run(id);
+    console.log('Admin', req.user.email, 'manually verified user', id, user.email);
+  }
+  return res.json({ user: { id: user.id, email: user.email, full_name: user.full_name, role: user.role, email_verified: true }, already_verified: already });
+});
+
+// ---- Invitations -------------------------------------------------------------
+var INVITE_DAILY_LIMIT = 50;
+var INVITE_MAX_PER_REQUEST = 50;
+
+function inviteWindowStart() {
+  return new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+}
+function invitesSentInWindow() {
+  return db.prepare("SELECT COUNT(*) AS n FROM invitations WHERE datetime(invited_at) >= datetime(?) AND status != 'failed'").get(inviteWindowStart()).n;
+}
+// Mark invitations whose email has since registered (any role) so the list reflects reality.
+function refreshInvitationRegistrations() {
+  db.prepare(
+    "UPDATE invitations SET status = 'registered', registered_at = (SELECT u.created_at FROM users u WHERE u.email = invitations.email LIMIT 1)" +
+    " WHERE status != 'registered' AND EXISTS (SELECT 1 FROM users u WHERE u.email = invitations.email)"
+  ).run();
+}
+function parseInviteEmails(raw) {
+  var list = Array.isArray(raw) ? raw : String(raw || '').split(/[\s,;]+/);
+  var seen = {};
+  var valid = [];
+  var invalid = [];
+  list.forEach(function (e) {
+    var email = normalizeEmail(e);
+    if (!email) return;
+    if (seen[email]) return;
+    seen[email] = true;
+    if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) && email.length <= 254) valid.push(email);
+    else invalid.push(email);
+  });
+  return { valid: valid, invalid: invalid };
+}
+async function sendInvitationEmail(opts) {
+  var role = opts.role === 'dealer' ? 'dealer' : 'buyer';
+  var link = opts.base + (role === 'dealer' ? '/dealer/signup.html' : '/buyer/signup.html') + '?email=' + encodeURIComponent(opts.email) + '&invite=1';
+  var pitch = role === 'dealer'
+    ? '<p>CarFox is a marketplace where verified dealers list their cars to buyers across Egypt. As a dealer you get a storefront, buyer messages and WhatsApp leads, and inventory insights.</p>' +
+      '<p>Create your dealer account below. Applications are reviewed by our team before listings go live.</p>'
+    : '<p>CarFox is where buyers in Egypt browse cars from verified dealers only: save favourites, filter by governorate, and message dealers directly.</p>' +
+      '<p>Create your free buyer account below to get started.</p>';
+  var result = await resend.emails.send({
+    from: 'CarFox <noreply@mawtiq.online>',
+    to: opts.email,
+    subject: "You've been invited to join CarFox",
+    html: emailShell(
+      "You've been invited to join CarFox",
+      '<p>Hi there,</p>' +
+      '<p>' + escapeHtmlForEmail(opts.inviterName || 'The CarFox team') + ' has invited you to join CarFox as a ' + (role === 'dealer' ? '<strong>dealer</strong>' : '<strong>buyer</strong>') + '.</p>' +
+      pitch +
+      '<p><a href="' + escapeHtmlForEmail(link) + '" style="display:inline-block;background:#1d4ed8;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:bold">' + (role === 'dealer' ? 'Apply as a dealer' : 'Create my account') + '</a></p>' +
+      '<p style="color:#999;font-size:13px">Or copy this link into your browser: ' + escapeHtmlForEmail(link) + '</p>' +
+      '<p style="color:#999;font-size:13px">If you were not expecting this invitation, you can ignore this email.</p>'
+    )
+  });
+  // The Resend SDK resolves with { data: null, error } on API failures (bad key, unverified domain,
+  // rejected recipient, Resend's own rate limit) instead of throwing, so turn that into a failure.
+  if (!result || result.error || !result.data) {
+    var err = new Error((result && result.error && (result.error.message || result.error.name)) || 'Email send failed');
+    if (result && result.error) { err.code = result.error.name; err.statusCode = result.error.statusCode; }
+    throw err;
+  }
+  return result.data;
+}
+
+// Signup links must point at a host we control: APP_URL, or, when it is unset, the request host
+// only if it is localhost or a *.onrender.com service. Never an arbitrary Host header.
+function invitationBaseUrl(req) {
+  var configured = appBaseUrl();
+  if (configured) return configured;
+  var host = String(req.get('host') || '').toLowerCase();
+  if (/^(localhost|127\.0\.0\.1)(:\d+)?$/.test(host) || /^[a-z0-9-]+\.onrender\.com$/.test(host)) return req.protocol + '://' + host;
+  return '';
+}
+
+// Admin: list invitations (newest first) with registration status.
+app.get('/api/admin/invitations', requireAdmin, function (req, res) {
+  refreshInvitationRegistrations();
+  var limit = pageParams(req.query, 100, 500).limit;
+  var rows = db
+    .prepare(
+      'SELECT i.id, i.email, i.role, i.invited_at, i.status, i.error, i.registered_at, i.invited_by, g.send_count,' +
+      ' a.email AS invited_by_email, u.id AS user_id, u.role AS registered_role, COALESCE(u.email_verified, 0) AS registered_verified' +
+      ' FROM invitations i' +
+      ' JOIN (SELECT email, MAX(id) AS max_id, COUNT(*) AS send_count FROM invitations GROUP BY email) g ON g.max_id = i.id' +
+      ' LEFT JOIN users a ON a.id = i.invited_by LEFT JOIN users u ON u.email = i.email' +
+      ' ORDER BY datetime(i.invited_at) DESC, i.id DESC LIMIT ?'
+    )
+    .all(limit);
+  var sent = invitesSentInWindow();
+  res.set('Cache-Control', 'no-store');
+  return res.json({
+    invitations: rows.map(function (r) {
+      return {
+        id: r.id, email: r.email, role: r.role, invited_at: r.invited_at, status: r.status, error: r.error || null,
+        send_count: Number(r.send_count) || 1,
+        invited_by_email: r.invited_by_email || null,
+        registered: r.status === 'registered' || !!r.user_id,
+        registered_at: r.registered_at || null,
+        registered_role: r.registered_role || null,
+        registered_verified: !!Number(r.registered_verified),
+        user_id: r.user_id || null
+      };
+    }),
+    sent_last_24h: sent, daily_limit: INVITE_DAILY_LIMIT, remaining_today: Math.max(0, INVITE_DAILY_LIMIT - sent)
+  });
+});
+
+// Admin: send invitation emails. Body: { emails: "a@x.com, b@y.com" | [...], role: "buyer" | "dealer" }.
+app.post('/api/admin/invitations', requireAdmin, async function (req, res) {
+  var body = req.body || {};
+  var role = String(body.role || '').toLowerCase();
+  if (role !== 'buyer' && role !== 'dealer') return res.status(400).json({ error: 'Role must be buyer or dealer' });
+  var parsed = parseInviteEmails(body.emails);
+  if (!parsed.valid.length && !parsed.invalid.length) return res.status(400).json({ error: 'Enter at least one email address' });
+  if (parsed.valid.length > INVITE_MAX_PER_REQUEST) {
+    return res.status(400).json({ error: 'At most ' + INVITE_MAX_PER_REQUEST + ' addresses per request' });
+  }
+
+  // Skip addresses that already have an account.
+  var toSend = [];
+  var alreadyRegistered = [];
+  parsed.valid.forEach(function (email) {
+    var existing = db.prepare('SELECT id, role FROM users WHERE email = ?').get(email);
+    if (existing) alreadyRegistered.push({ email: email, role: existing.role });
+    else toSend.push(email);
+  });
+
+  var sentSoFar = invitesSentInWindow();
+  if (toSend.length && sentSoFar + toSend.length > INVITE_DAILY_LIMIT) {
+    return res.status(429).json({
+      error: 'Daily invite limit reached: ' + sentSoFar + ' of ' + INVITE_DAILY_LIMIT + ' sent in the last 24 hours, ' +
+        Math.max(0, INVITE_DAILY_LIMIT - sentSoFar) + ' left. Try again later or send fewer addresses.',
+      sent_last_24h: sentSoFar, daily_limit: INVITE_DAILY_LIMIT
+    });
+  }
+
+  var base = invitationBaseUrl(req);
+  if (!base) return res.status(503).json({ error: 'APP_URL is not configured on the server, so invitation links cannot be built.' });
+  var now = new Date().toISOString();
+  var inviter = req.user;
+  var results = await Promise.all(toSend.map(async function (email) {
+    // Re-check right before writing so two concurrent requests cannot both slip past the pre-check
+    // (not atomic without transactions, but closes the double-submit case within this process).
+    if (invitesSentInWindow() >= INVITE_DAILY_LIMIT) {
+      return { email: email, status: 'failed', error: 'Daily invite limit reached' };
+    }
+    // Append-only: every send is its own row, so the 24h limit counts emails actually sent.
+    // The list endpoint collapses rows to the latest per address.
+    var rowId = db.prepare("INSERT INTO invitations (email, role, invited_by, invited_at, status) VALUES (?, ?, ?, ?, 'sending')").run(email, role, inviter.id, now).lastInsertRowid;
+    try {
+      await sendInvitationEmail({ email: email, role: role, base: base, inviterName: inviter.full_name });
+      db.prepare("UPDATE invitations SET status = 'sent', error = NULL WHERE id = ?").run(rowId);
+      return { email: email, status: 'sent' };
+    } catch (err) {
+      var msg = String(err && err.message ? err.message : err).slice(0, 300);
+      db.prepare("UPDATE invitations SET status = 'failed', error = ? WHERE id = ?").run(msg, rowId);
+      console.error('Invitation email failed for', email, msg);
+      return { email: email, status: 'failed', error: msg };
+    }
+  }));
+
+  var sent = results.filter(function (r) { return r.status === 'sent'; });
+  var failed = results.filter(function (r) { return r.status === 'failed'; });
+  console.log('Admin', inviter.email, 'sent', sent.length, role, 'invitation(s)', failed.length ? '(' + failed.length + ' failed)' : '');
+  return res.json({
+    sent: sent.map(function (r) { return r.email; }),
+    failed: failed,
+    already_registered: alreadyRegistered,
+    invalid: parsed.invalid,
+    sent_last_24h: invitesSentInWindow(), daily_limit: INVITE_DAILY_LIMIT
+  });
 });
 
 // Admin: suspend / unsuspend a buyer
@@ -1784,11 +2038,9 @@ app.get('/api/admin/listings', requireAdmin, function (req, res) {
   const allowed = { all: true, active: true, paused: true, sold: true, draft: true, archived: true };
   const q = String(req.query.q || '').trim().toLowerCase();
   const governorate = String(req.query.governorate || '').trim();
-  let limit = Number(req.query.limit) || 25;
-  if (limit < 1) limit = 25;
-  if (limit > 100) limit = 100;
-  let page = Number(req.query.page) || 1;
-  if (page < 1) page = 1;
+  const paging = pageParams(req.query, 25, 100);
+  const limit = paging.limit;
+  const page = paging.page;
 
   let where = ' WHERE 1 = 1';
   const params = [];
