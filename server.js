@@ -3374,10 +3374,11 @@ app.get('/api/brands', function (req, res) {
 });
 
 const PUBLIC_CARS_SORT = {
-  newest: 'COALESCE(v.published_at, v.created_at) DESC',
-  price_asc: 'v.price ASC',
-  price_desc: 'v.price DESC',
-  mileage_asc: 'v.mileage ASC'
+  newest: 'COALESCE(v.published_at, v.created_at) DESC, v.id DESC',
+  price_asc: 'v.price ASC, v.id DESC',
+  price_desc: 'v.price DESC, v.id DESC',
+  mileage_asc: 'v.mileage ASC, v.id DESC',
+  year_desc: 'v.year DESC, COALESCE(v.published_at, v.created_at) DESC, v.id DESC'
 };
 
 const PUBLIC_CARS_TRANSMISSIONS = {
@@ -3559,6 +3560,9 @@ function mapPublicCarRow(row) {
     fuel_type: row.fuel_type,
     exterior_color: row.exterior_color,
     primary_photo_url: row.primary_photo_url || null,
+    photo_count: row.photo_count != null ? Number(row.photo_count) : undefined,
+    feature_count: row.feature_count != null ? Number(row.feature_count) : undefined,
+    features_preview: row.feature_count == null ? undefined : !row.feature_preview ? [] : String(row.feature_preview).split('\u001f').filter(Boolean),
     trust_score: row.trust_score != null ? Number(row.trust_score) : 0,
     car_value: carValuePublic(row),
     governorate: governorate,
@@ -3703,25 +3707,65 @@ app.get('/api/dealers/:id/profile', function (req, res) {
   });
 });
 
+function facetQuery(query, dropKeys) {
+  const q = Object.assign({}, query);
+  dropKeys.forEach(function (k) { delete q[k]; });
+  return q;
+}
+
+// Grouped counts for one facet, filtered by every active filter except the facet's own keys.
+function facetedFilterOptions(columnExpr, notNullExpr, query, dropKeys) {
+  const f = buildPublicCarsFilter(facetQuery(query, dropKeys));
+  return db
+    .prepare(
+      `SELECT ${columnExpr} AS name, COUNT(*) AS count
+       ${PUBLIC_CARS_FROM_SQL}
+       WHERE ${f.whereSql}
+         AND ${notNullExpr}
+       GROUP BY ${columnExpr}
+       ORDER BY count DESC, name ASC`
+    )
+    .all(...f.params);
+}
+
+// Counts for admin quick-pick ranges (price in EGP / mileage in km) with the other filters applied.
+function pickCounts(picks, column, scale, query, dropKeys) {
+  const f = buildPublicCarsFilter(facetQuery(query, dropKeys));
+  return (picks || []).map(function (pick) {
+    const conds = [];
+    const params = f.params.slice();
+    if (pick.min != null) { conds.push(column + ' >= ?'); params.push(Math.round(Number(pick.min) * scale)); }
+    if (pick.max != null) { conds.push(column + ' <= ?'); params.push(Math.round(Number(pick.max) * scale)); }
+    const where = f.whereSql + (conds.length ? ' AND ' + conds.join(' AND ') : '');
+    const count = db.prepare('SELECT COUNT(*) AS c ' + PUBLIC_CARS_FROM_SQL + ' WHERE ' + where).get(...params).c;
+    return { label: pick.label, min: pick.min == null ? null : Number(pick.min), max: pick.max == null ? null : Number(pick.max), count: Number(count) || 0 };
+  });
+}
+
 app.get('/api/cars/filter-options', function (req, res) {
-  const makes = groupedFilterOptions('v.make', "v.make IS NOT NULL AND TRIM(v.make) != ''");
-  const bodyTypes = groupedFilterOptions(
+  const q = req.query || {};
+  const makes = facetedFilterOptions('v.make', "v.make IS NOT NULL AND TRIM(v.make) != ''", q, ['make', 'model']);
+  const bodyTypes = facetedFilterOptions(
     'v.body_type',
-    "v.body_type IS NOT NULL AND TRIM(v.body_type) != ''"
+    "v.body_type IS NOT NULL AND TRIM(v.body_type) != ''",
+    q, ['body_type']
   );
-  const cities = groupedFilterOptions('d.city', "d.city IS NOT NULL AND TRIM(d.city) != ''");
-  const transmissions = groupedFilterOptions(
+  const cities = facetedFilterOptions('d.city', "d.city IS NOT NULL AND TRIM(d.city) != ''", q, ['city', 'governorate']);
+  const transmissions = facetedFilterOptions(
     'v.transmission',
-    "v.transmission IS NOT NULL AND TRIM(v.transmission) != ''"
+    "v.transmission IS NOT NULL AND TRIM(v.transmission) != ''",
+    q, ['transmission']
   );
-  const fuelTypes = groupedFilterOptions(
+  const fuelTypes = facetedFilterOptions(
     'v.fuel_type',
-    "v.fuel_type IS NOT NULL AND TRIM(v.fuel_type) != ''"
+    "v.fuel_type IS NOT NULL AND TRIM(v.fuel_type) != ''",
+    q, ['fuel_type']
   );
   // Colors are free text from dealers ("Black" / "black"): group case-insensitively, display capitalised.
-  const colors = groupedFilterOptions(
+  const colors = facetedFilterOptions(
     'LOWER(TRIM(v.exterior_color))',
-    "v.exterior_color IS NOT NULL AND TRIM(v.exterior_color) != ''"
+    "v.exterior_color IS NOT NULL AND TRIM(v.exterior_color) != ''",
+    q, ['color']
   ).map(function (c) {
     const name = String(c.name || '');
     return { name: name.charAt(0).toUpperCase() + name.slice(1), count: c.count };
@@ -3759,26 +3803,34 @@ app.get('/api/cars/filter-options', function (req, res) {
     mileage_range: {
       min: ranges.min_mileage != null ? ranges.min_mileage : 0,
       max: ranges.max_mileage != null ? ranges.max_mileage : 0
-    }
+    },
+    price_picks: pickCounts(searchSettings.price_picks, 'v.price', 100, q, ['min_price', 'max_price']),
+    mileage_picks: pickCounts(searchSettings.mileage_picks, 'v.mileage', 1, q, ['min_mileage', 'max_mileage']),
+    features: facetedFeatureCounts(q)
   };
 
   const makeParam = String(req.query.make || '').trim();
   if (makeParam) {
-    payload.models = db
-      .prepare(
-        `SELECT v.model AS name, COUNT(*) AS count
-         ${PUBLIC_CARS_FROM_SQL}
-         WHERE ${PUBLIC_CARS_BASE_WHERE}
-           AND v.make = ?
-           AND v.model IS NOT NULL AND TRIM(v.model) != ''
-         GROUP BY v.model
-         ORDER BY count DESC, name ASC`
-      )
-      .all(makeParam);
+    payload.models = facetedFilterOptions('v.model', "v.model IS NOT NULL AND TRIM(v.model) != ''", q, ['model']);
   }
 
+  res.set('Cache-Control', 'no-store');
   return res.json(payload);
 });
+
+// Per-feature counts among the cars matching the other filters (features facet ignores its own selection).
+function facetedFeatureCounts(query) {
+  const f = buildPublicCarsFilter(facetQuery(query, ['features']));
+  return db
+    .prepare(
+      `SELECT vf.feature_id AS id, COUNT(*) AS count
+       FROM vehicle_features vf
+       WHERE vf.vehicle_id IN (SELECT v.id ${PUBLIC_CARS_FROM_SQL} WHERE ${f.whereSql})
+       GROUP BY vf.feature_id`
+    )
+    .all(...f.params)
+    .map(function (r) { return { id: Number(r.id), count: Number(r.count) || 0 }; });
+}
 
 // Live search suggestions: brands, models and top listings matching a partial word.
 // Only active listings from approved, non-suspended dealers are considered.
@@ -3859,10 +3911,15 @@ app.get('/api/cars', function (req, res) {
         v.body_type, v.transmission, v.fuel_type, v.exterior_color,
         v.published_at,
         p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score, v.value_rating, v.value_pct, v.value_median, v.value_comparables,
+        (SELECT COUNT(*) FROM vehicle_photos ph WHERE ph.vehicle_id = v.id) AS photo_count,
+        (SELECT COUNT(*) FROM vehicle_features vf WHERE vf.vehicle_id = v.id) AS feature_count,
+        (SELECT GROUP_CONCAT(name, char(31)) FROM (SELECT f.name FROM vehicle_features vf JOIN features f ON f.id = vf.feature_id WHERE vf.vehicle_id = v.id ORDER BY${FEATURE_ORDER_SQL} LIMIT 3)) AS feature_preview,
         d.id AS dealer_id,
         d.business_name AS dealer_business_name,
         d.city AS dealer_city,
-        d.state AS dealer_state
+        d.state AS dealer_state,
+        d.governorate AS dealer_governorate,
+        d.whatsapp AS dealer_whatsapp
       ${PUBLIC_CARS_FROM_SQL}
       LEFT JOIN vehicle_photos p ON p.vehicle_id = v.id AND p.is_primary = 1
       WHERE ${filter.whereSql}
