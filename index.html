@@ -27,12 +27,6 @@
       .scrollbar-hide::-webkit-scrollbar {
         display: none;
       }
-      body.font-cairo {
-        font-family: 'Cairo', ui-sans-serif, system-ui, sans-serif;
-      }
-      [dir="rtl"] nav.fixed .grid {
-        direction: ltr;
-      }
     </style>
   </head>
   <body class="bg-gray-50 text-gray-900 font-sans pb-20 md:pb-0">
@@ -45,17 +39,17 @@
         </a>
         <!-- Center: Desktop nav -->
         <div class="hidden md:flex items-center gap-6 text-sm font-medium">
-          <a href="/cars.html" class="text-gray-300 hover:text-white" data-i18n="cars.title">Browse Cars</a>
-          <a href="#" class="text-gray-300 hover:text-white">How It Works</a>
-          <a href="#" data-quick-search class="text-gray-300 hover:text-white">Quick Search</a>
-          <a href="/pricing.html" class="text-gray-300 hover:text-white">For Dealers</a>
+          <a href="/cars.html" class="text-gray-300 hover:text-white" data-i18n="nav.browse_cars">Browse Cars</a>
+          <a href="#" class="text-gray-300 hover:text-white" data-i18n="nav.how_it_works">How It Works</a>
+          <a href="#" data-quick-search class="text-gray-300 hover:text-white" data-i18n="nav.quick_search">Quick Search</a>
+          <a href="/pricing.html" class="text-gray-300 hover:text-white" data-i18n="nav.for_dealers">For Dealers</a>
         </div>
         <!-- Center: Desktop search -->
         <form id="desktopSearchForm" class="hidden md:flex items-center flex-1 max-w-sm mx-6">
           <div class="relative w-full">
-            <input type="text" id="desktopSearchInput" data-suggest placeholder="Search make, model..."
-              class="w-full rounded-full border border-gray-300 pl-4 pr-10 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <button type="submit" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-700" aria-label="Search">
+            <input type="text" id="desktopSearchInput" data-suggest placeholder="Search make, model..." data-i18n-placeholder="search.placeholder"
+              class="w-full rounded-full border border-gray-300 ps-4 pe-10 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <button type="submit" class="absolute end-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-700" aria-label="Search" data-i18n-aria-label="search.button">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
               </svg>
@@ -67,17 +61,17 @@
           <!-- Saved cars + messages icons -->
           <div class="hidden md:flex items-center gap-4">
             <!-- Saved cars -->
-            <a href="/buyer/saved-cars.html" id="deskSavedLink" class="relative text-gray-300 hover:text-white" aria-label="Saved cars">
+            <a href="/buyer/saved-cars.html" id="deskSavedLink" class="relative text-gray-300 hover:text-white" aria-label="Saved cars" data-i18n-aria-label="nav.saved_cars">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
               </svg>
             </a>
             <!-- Messages -->
-            <a href="/buyer/inbox.html" id="deskMsgLink" class="relative text-gray-300 hover:text-white" aria-label="Messages">
+            <a href="/buyer/inbox.html" id="deskMsgLink" class="relative text-gray-300 hover:text-white" aria-label="Messages" data-i18n-aria-label="nav.messages">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
               </svg>
-              <span id="desktopMsgBadge" class="hidden absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center"></span>
+              <span id="desktopMsgBadge" class="hidden absolute -top-1 -end-1 h-4 w-4 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center"></span>
             </a>
           </div>
           <button
@@ -85,6 +79,7 @@
             id="langToggle"
             class="flex items-center gap-1 text-sm font-semibold text-gray-300 hover:text-white"
             aria-label="Switch language"
+            data-i18n-aria-label="nav.switch_language"
           >
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.128"/>
@@ -92,8 +87,8 @@
             <span id="langLabel">AR</span>
           </button>
           <div id="desktopAuth" class="hidden md:flex items-center gap-3">
-            <a href="/buyer/login.html" class="text-gray-300 hover:text-white text-sm font-semibold" data-i18n="auth.sign_in">Sign In</a>
-            <a href="/dealer/signup.html" class="inline-flex items-center rounded-lg bg-blue-700 px-4 py-2 text-white text-sm font-semibold hover:bg-blue-800" data-i18n="auth.become_dealer">Become a Dealer</a>
+            <a href="/buyer/login.html" class="text-gray-300 hover:text-white text-sm font-semibold" data-i18n="nav.sign_in">Sign In</a>
+            <a href="/dealer/signup.html" class="inline-flex items-center rounded-lg bg-blue-700 px-4 py-2 text-white text-sm font-semibold hover:bg-blue-800" data-i18n="nav.become_dealer">Become a Dealer</a>
           </div>
         </div>
       </nav>
@@ -105,7 +100,7 @@
         id="homeSearchForm"
         class="flex w-full items-stretch overflow-hidden rounded-full border border-gray-200 bg-white shadow-sm"
       >
-        <span class="flex shrink-0 items-center pl-4 text-gray-400" aria-hidden="true">
+        <span class="flex shrink-0 items-center ps-4 text-gray-400" aria-hidden="true">
           <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
           </svg>
@@ -114,15 +109,17 @@
           id="homeSearchInput"
           type="search"
           data-suggest
-          data-i18n-placeholder="home.search_placeholder"
+          data-i18n-placeholder="search.placeholder"
           placeholder="Search make, model..."
-          class="min-w-0 flex-1 border-0 bg-transparent py-3.5 pl-2 pr-2 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0"
+          class="min-w-0 flex-1 border-0 bg-transparent py-3.5 px-2 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0"
           aria-label="Search make or model"
+          data-i18n-aria-label="search.aria"
         />
         <button
           type="submit"
           class="flex shrink-0 items-center justify-center bg-blue-700 px-4 text-white hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset"
           aria-label="Search"
+          data-i18n-aria-label="search.button"
         >
           <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -162,14 +159,14 @@
         <a href="/cars.html" class="text-sm font-medium text-blue-700 hover:text-blue-800" data-i18n="home.see_all">See all →</a>
       </div>
       <div class="relative">
-        <button type="button" data-scroll="prev" aria-label="Scroll left" class="hidden md:flex absolute -left-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 items-center justify-center rounded-full bg-white shadow-md border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-0 disabled:pointer-events-none transition-opacity">
-          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+        <button type="button" data-scroll="prev" aria-label="Scroll left" data-i18n-aria-label="home.scroll_left" class="hidden md:flex absolute -start-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 items-center justify-center rounded-full bg-white shadow-md border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-0 disabled:pointer-events-none transition-opacity">
+          <svg class="h-5 w-5 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
         </button>
         <div id="newArrivalsRow" class="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory scroll-smooth">
-          <p class="text-sm text-gray-500 py-4 shrink-0" data-i18n="cars.loading">Loading…</p>
+          <p class="text-sm text-gray-500 py-4 shrink-0" data-i18n="home.loading">Loading…</p>
         </div>
-        <button type="button" data-scroll="next" aria-label="Scroll right" class="hidden md:flex absolute -right-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 items-center justify-center rounded-full bg-white shadow-md border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-0 disabled:pointer-events-none transition-opacity">
-          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+        <button type="button" data-scroll="next" aria-label="Scroll right" data-i18n-aria-label="home.scroll_right" class="hidden md:flex absolute -end-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 items-center justify-center rounded-full bg-white shadow-md border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-0 disabled:pointer-events-none transition-opacity">
+          <svg class="h-5 w-5 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
         </button>
       </div>
     </section>
@@ -181,7 +178,7 @@
         <a href="/cars.html" class="text-sm font-medium text-blue-700 hover:text-blue-800" data-i18n="home.see_all">See all →</a>
       </div>
       <div id="latestCarsList" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-        <p class="text-sm text-gray-500 py-4 text-center" data-i18n="cars.loading">Loading listings…</p>
+        <p class="text-sm text-gray-500 py-4 text-center" data-i18n="home.loading_listings">Loading listings…</p>
       </div>
     </section>
 
@@ -192,46 +189,46 @@
           <div class="text-xl font-extrabold">
             <span class="text-blue-700">Car</span><span class="text-orange-500">Fox</span>
           </div>
-          <p class="mt-2 text-sm text-gray-300">
+          <p class="mt-2 text-sm text-gray-300" data-i18n="footer.tagline">
             Skip the private seller chaos — shop verified dealers only.
           </p>
-          <p class="mt-4 text-xs text-gray-400">© 2026 CarFox</p>
+          <p class="mt-4 text-xs text-gray-400" data-i18n="footer.copyright">© 2026 CarFox</p>
         </div>
         <div>
-          <div class="text-sm font-semibold mb-3">Shop</div>
+          <div class="text-sm font-semibold mb-3" data-i18n="footer.shop">Shop</div>
           <ul class="space-y-2 text-sm text-gray-300">
-            <li><a href="/cars.html" class="hover:text-white">Browse Cars</a></li>
-            <li><a href="#" class="hover:text-white">Search by Make</a></li>
-            <li><a href="#" class="hover:text-white">Search by Location</a></li>
+            <li><a href="/cars.html" class="hover:text-white" data-i18n="footer.browse_cars">Browse Cars</a></li>
+            <li><a href="#" class="hover:text-white" data-i18n="footer.search_by_make">Search by Make</a></li>
+            <li><a href="#" class="hover:text-white" data-i18n="footer.search_by_location">Search by Location</a></li>
           </ul>
         </div>
         <div>
-          <div class="text-sm font-semibold mb-3">Dealers</div>
+          <div class="text-sm font-semibold mb-3" data-i18n="footer.dealers">Dealers</div>
           <ul class="space-y-2 text-sm text-gray-300">
-            <li><a href="/dealer/signup.html" class="hover:text-white">Become a Dealer</a></li>
-            <li><a href="/dealer/login.html" class="hover:text-white">Dealer Login</a></li>
-            <li><a href="#" class="hover:text-white">Dealer Resources</a></li>
+            <li><a href="/dealer/signup.html" class="hover:text-white" data-i18n="footer.become_dealer">Become a Dealer</a></li>
+            <li><a href="/dealer/login.html" class="hover:text-white" data-i18n="footer.dealer_login">Dealer Login</a></li>
+            <li><a href="#" class="hover:text-white" data-i18n="footer.dealer_resources">Dealer Resources</a></li>
           </ul>
         </div>
         <div>
-          <div class="text-sm font-semibold mb-3">Company</div>
+          <div class="text-sm font-semibold mb-3" data-i18n="footer.company">Company</div>
           <ul class="space-y-2 text-sm text-gray-300">
-            <li><a href="#" class="hover:text-white">About</a></li>
-            <li><a href="#" class="hover:text-white">Contact</a></li>
-            <li><a href="#" class="hover:text-white">Terms</a></li>
-            <li><a href="#" class="hover:text-white">Privacy</a></li>
+            <li><a href="#" class="hover:text-white" data-i18n="footer.about">About</a></li>
+            <li><a href="#" class="hover:text-white" data-i18n="footer.contact">Contact</a></li>
+            <li><a href="#" class="hover:text-white" data-i18n="footer.terms">Terms</a></li>
+            <li><a href="#" class="hover:text-white" data-i18n="footer.privacy">Privacy</a></li>
           </ul>
         </div>
       </div>
       <p class="mt-8 text-center text-sm text-gray-400">
-        Are you a dealer?
-        <a href="/dealer/login.html" class="text-gray-300 hover:text-white underline">Sign in here</a>
+        <span data-i18n="footer.are_you_dealer">Are you a dealer?</span>
+        <a href="/dealer/login.html" class="text-gray-300 hover:text-white underline" data-i18n="footer.sign_in_here">Sign in here</a>
       </p>
     </footer>
 
     <!-- Mobile bottom navigation (visible on mobile only) -->
 
-    <script src="/js/carfox-i18n.js"></script>
+    <script src="/js/i18n/i18n.js"></script>
     <script src="/js/carfox-trust.js"></script>
     <script src="/js/carfox-value.js"></script>
     <script src="/js/carfox-track.js"></script>
@@ -266,6 +263,20 @@
           .replace(/"/g, '&quot;');
       }
 
+      // Translation helpers. tx() is safe to call before the dictionaries have loaded (falls back to English).
+      function tx(key, fallback) {
+        return window.CarfoxI18n && CarfoxI18n.has(key) ? CarfoxI18n.t(key) : fallback;
+      }
+      function trv(group, value) {
+        return window.CarfoxI18n ? CarfoxI18n.tr(group, value) : value;
+      }
+      function isArabic() {
+        return !!(window.CarfoxI18n && CarfoxI18n.getLang() === 'ar');
+      }
+      function menuLink(href, key, fallback) {
+        return '    <a href="' + href + '" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" data-i18n="' + key + '">' + escapeHtmlAttr(tx(key, fallback)) + '</a>';
+      }
+
       function initDesktopAuth() {
         var token = localStorage.getItem('carfox_token');
         var authEl = document.getElementById('desktopAuth');
@@ -275,7 +286,7 @@
           .then(function (data) {
             if (!data || !data.user) return;
             var user = data.user;
-            var name = user.full_name || user.email || 'Account';
+            var name = user.full_name || user.email || tx('account.account', 'Account');
             var initials = name
               .split(' ')
               .map(function (w) { return w[0]; })
@@ -298,18 +309,17 @@
             var menuLinks;
             if (user.role === 'dealer') {
               menuLinks =
-                '    <a href="/dealer/dashboard.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Dashboard</a>' +
-                '    <a href="/dealer/inventory.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">My Inventory</a>' +
-                '    <a href="/dealer/chat.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Messages</a>' +
-                '    <a href="/dealer/account.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">My Account</a>';
+                menuLink('/dealer/dashboard.html', 'account.dashboard', 'Dashboard') +
+                menuLink('/dealer/inventory.html', 'account.inventory', 'My Inventory') +
+                menuLink('/dealer/chat.html', 'account.messages', 'Messages') +
+                menuLink('/dealer/account.html', 'account.my_account', 'My Account');
             } else if (user.role === 'admin') {
-              menuLinks =
-                '    <a href="/admin" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Admin Panel</a>';
+              menuLinks = menuLink('/admin', 'account.admin_panel', 'Admin Panel');
             } else {
               menuLinks =
-                '    <a href="/buyer/account.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">My Account</a>' +
-                '    <a href="/buyer/saved-cars.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Saved Cars</a>' +
-                '    <a href="/buyer/inbox.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Messages</a>';
+                menuLink('/buyer/account.html', 'account.my_account', 'My Account') +
+                menuLink('/buyer/saved-cars.html', 'account.saved_cars', 'Saved Cars') +
+                menuLink('/buyer/inbox.html', 'account.messages', 'Messages');
             }
             authEl.innerHTML =
               '<div class="relative">' +
@@ -318,10 +328,10 @@
               '    <span>' + escapeHtmlAttr(firstName) + '</span>' +
               '    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>' +
               '  </button>' +
-              '  <div id="profileDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-50">' +
+              '  <div id="profileDropdown" class="hidden absolute end-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-50">' +
               menuLinks +
               '    <hr class="my-1"/>' +
-              '    <button type="button" id="profileSignOutBtn" class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50">Sign Out</button>' +
+              '    <button type="button" id="profileSignOutBtn" class="block w-full text-start px-4 py-2 text-sm text-red-600 hover:bg-gray-50" data-i18n="account.sign_out">' + escapeHtmlAttr(tx('account.sign_out', 'Sign Out')) + '</button>' +
               '  </div>' +
               '</div>';
 
@@ -367,6 +377,7 @@
       ].map(function (n) { return { name: n, label: n === 'Mercedes-Benz' ? 'Mercedes' : n, logo: null }; });
       let CITIES_EN = [];
       let CITIES_AR = [];
+      const GOV_AR = {};
 
       const BRAND_LOGOS = {};
 
@@ -374,6 +385,7 @@
         const brands = (c.makes || []).map(function (m) { return { name: m.name, label: m.short_name || m.name, logo: m.logo_url || null }; });
         const brandsChanged = JSON.stringify(brands) !== JSON.stringify(ALL_BRANDS);
         if (brands.length) ALL_BRANDS = brands;
+        (c.governorates || []).forEach(function (g) { if (g.name_ar) GOV_AR[g.name] = g.name_ar; });
         const govs = (c.governorates || []).filter(function (g) { return g.featured; });
         const en = ['All Egypt'].concat(govs.map(function (g) { return g.name; }));
         const ar = ['كل مصر'].concat(govs.map(function (g) { return g.name_ar || g.name; }));
@@ -393,13 +405,20 @@
       }
 
       function formatPriceEgp(cents) {
-        if (!cents || cents <= 0) return 'Price on request';
-        return Math.round(Number(cents) / 100).toLocaleString('en-EG') + ' EGP';
+        if (!cents || cents <= 0) return tx('card.price_on_request', 'Price on request');
+        return Math.round(Number(cents) / 100).toLocaleString('en-EG') + ' ' + tx('card.egp', 'EGP');
       }
 
       function formatMileage(km) {
         if (km == null || km === '' || Number(km) <= 0) return '';
-        return Number(km).toLocaleString('en-US') + ' km';
+        return Number(km).toLocaleString('en-US') + ' ' + tx('card.km', 'km');
+      }
+
+      // Brand tiles show the Arabic name when the dictionary has one (Hatla2ee style), else the catalog label.
+      function brandLabel(brand) {
+        if (!isArabic()) return brand.label;
+        var ar = trv('brand', brand.name);
+        return ar === brand.name ? brand.label : ar;
       }
 
       function escapeHtml(str) {
@@ -452,7 +471,7 @@
         const label = document.createElement('span');
         label.className =
           'text-[11px] font-medium text-gray-700 mt-2 text-center leading-tight px-0.5';
-        label.textContent = brand.label;
+        label.textContent = brandLabel(brand);
 
         card.appendChild(iconWrap);
         card.appendChild(label);
@@ -484,7 +503,7 @@
         label.className =
           'text-[11px] font-medium text-gray-700 mt-2 text-center leading-tight px-0.5';
         label.setAttribute('data-i18n', 'home.all_brands');
-        label.textContent = window.CarfoxI18n ? CarfoxI18n.t('home.all_brands') : 'All Brands';
+        label.textContent = tx('home.all_brands', 'All Brands');
 
         card.appendChild(iconWrap);
         card.appendChild(label);
@@ -502,7 +521,7 @@
           '<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">' +
           '<path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>' +
           '</svg></div></div>' +
-          '<span class="text-[11px] font-medium text-gray-700 mt-2 text-center leading-tight">All Cars</span>';
+          '<span class="text-[11px] font-medium text-gray-700 mt-2 text-center leading-tight" data-i18n="home.all_cars">' + escapeHtml(tx('home.all_cars', 'All Cars')) + '</span>';
         return card;
       }
 
@@ -542,8 +561,11 @@
 
         toggleBtn.classList.add('md:block');
         let expanded = false;
+        toggleBtn.setAttribute('data-i18n', 'home.show_all_brands');
+        toggleBtn.setAttribute('aria-expanded', 'false');
+        toggleBtn.textContent = tx('home.show_all_brands', 'Show all brands');
 
-        toggleBtn.addEventListener('click', function () {
+        toggleBtn.onclick = function () {
           expanded = !expanded;
           grid.querySelectorAll('.brand-grid-extra').forEach(function (el) {
             el.classList.toggle('hidden', !expanded);
@@ -552,9 +574,9 @@
             'data-i18n',
             expanded ? 'home.show_less' : 'home.show_all_brands'
           );
-          if (window.CarfoxI18n) CarfoxI18n.apply();
+          toggleBtn.textContent = tx(expanded ? 'home.show_less' : 'home.show_all_brands', expanded ? 'Show less' : 'Show all brands');
           toggleBtn.setAttribute('aria-expanded', String(expanded));
-        });
+        };
       }
 
       function initBrandGrid() {
@@ -600,7 +622,9 @@
         else if (digits.indexOf('0') === 0) digits = '20' + digits.slice(1);
         var title = [car.year, car.make, car.model].filter(Boolean).join(' ');
         var url = window.location.origin + '/cars/' + car.id;
-        var text = "Hi, I'm interested in the " + title + ' listed on CarFox: ' + url;
+        var text = window.CarfoxI18n && CarfoxI18n.has('card.whatsapp_text')
+          ? CarfoxI18n.t('card.whatsapp_text', { title: title, url: url })
+          : "Hi, I'm interested in the " + title + ' listed on CarFox: ' + url;
         return 'https://wa.me/' + digits + '?text=' + encodeURIComponent(text);
       }
 
@@ -632,11 +656,12 @@
         var specs = [];
         var mileage = formatMileage(car.mileage);
         if (mileage) specs.push(specItem('mileage', mileage));
-        if (car.fuel_type) specs.push(specItem('fuel', car.fuel_type));
-        if (car.transmission) specs.push(specItem('transmission', car.transmission));
-        if (car.exterior_color) specs.push(specItem('color', car.exterior_color));
+        if (car.fuel_type) specs.push(specItem('fuel', trv('fuel', car.fuel_type)));
+        if (car.transmission) specs.push(specItem('transmission', trv('transmission', car.transmission)));
+        if (car.exterior_color) specs.push(specItem('color', trv('color', car.exterior_color)));
 
         var location = listingLocation(car);
+        if (isArabic() && GOV_AR[location]) location = GOV_AR[location];
         var dealerName = listingDealerName(car);
         var metaParts = [];
         if (location) metaParts.push('<span class="inline-flex items-center gap-1 min-w-0"><span class="text-gray-400">' + SPEC_ICONS.pin + '</span><span class="truncate">' + escapeHtml(location) + '</span></span>');
@@ -646,9 +671,9 @@
         var buttons =
           '<div class="mt-3 flex gap-2">' +
           (wa
-            ? '<a href="' + escapeHtml(wa) + '" target="_blank" rel="noopener" data-track="whatsapp" class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-semibold py-2">' + SPEC_ICONS.whatsapp + 'WhatsApp</a>'
+            ? '<a href="' + escapeHtml(wa) + '" target="_blank" rel="noopener" data-track="whatsapp" class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-semibold py-2">' + SPEC_ICONS.whatsapp + escapeHtml(tx('card.whatsapp', 'WhatsApp')) + '</a>'
             : '') +
-          '<a href="' + detailHref + '?openInquiry=1" data-track="message" class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-blue-700 text-blue-700 hover:bg-blue-50 text-sm font-semibold py-2">' + SPEC_ICONS.message + 'Message</a>' +
+          '<a href="' + detailHref + '?openInquiry=1" data-track="message" class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-blue-700 text-blue-700 hover:bg-blue-50 text-sm font-semibold py-2">' + SPEC_ICONS.message + escapeHtml(tx('card.message', 'Message')) + '</a>' +
           '</div>';
 
         card.innerHTML =
@@ -674,13 +699,16 @@
         var prev = wrap.querySelector('[data-scroll="prev"]');
         var next = wrap.querySelector('[data-scroll="next"]');
         if (!prev || !next) return;
+        // In RTL the row starts at its right edge and scrollLeft runs negative toward the end.
+        function rtl() { return getComputedStyle(row).direction === 'rtl'; }
         function update() {
           var max = row.scrollWidth - row.clientWidth - 2;
-          prev.disabled = row.scrollLeft <= 2;
-          next.disabled = row.scrollLeft >= max;
+          var pos = Math.abs(row.scrollLeft);
+          prev.disabled = pos <= 2;
+          next.disabled = pos >= max;
         }
-        prev.onclick = function () { row.scrollBy({ left: -row.clientWidth * 0.9, behavior: 'smooth' }); };
-        next.onclick = function () { row.scrollBy({ left: row.clientWidth * 0.9, behavior: 'smooth' }); };
+        prev.onclick = function () { row.scrollBy({ left: (rtl() ? 1 : -1) * row.clientWidth * 0.9, behavior: 'smooth' }); };
+        next.onclick = function () { row.scrollBy({ left: (rtl() ? -1 : 1) * row.clientWidth * 0.9, behavior: 'smooth' }); };
         row.addEventListener('scroll', update, { passive: true });
         window.addEventListener('resize', update);
         update();
@@ -690,7 +718,11 @@
         return renderRichCard(car, 'scroll');
       }
 
-      var FALLBACK_NOTICE = 'No listings in this area yet — showing all Egypt instead';
+      function fallbackNotice() {
+        return tx('home.fallback_notice', 'No listings in this area yet — showing all Egypt instead');
+      }
+      var lastArrivals = null;
+      var lastLatest = null;
 
       function buildListingsUrl(city, limit) {
         let url = '/api/vehicles?status=active&limit=' + limit;
@@ -710,42 +742,46 @@
           });
       }
 
+      function renderArrivals(cars, showFallback) {
+        const row = document.getElementById('newArrivalsRow');
+        if (!row) return;
+        lastArrivals = { cars: cars, showFallback: showFallback };
+        if (!cars.length) {
+          row.innerHTML =
+            '<p class="text-sm text-gray-500 py-2 shrink-0">' + escapeHtml(tx('home.no_new_listings', 'No new listings yet.')) + '</p>';
+          return;
+        }
+        row.innerHTML = '';
+        if (showFallback) {
+          const note = document.createElement('p');
+          note.className = 'text-xs text-amber-700 py-2 px-2 shrink-0 self-center whitespace-normal w-44';
+          note.textContent = fallbackNotice();
+          row.appendChild(note);
+        }
+        cars.forEach(function (car) {
+          row.appendChild(renderNewArrivalCard(car));
+        });
+        initScrollArrows('newArrivalsRow');
+      }
+
       function loadNewArrivals(city) {
         const row = document.getElementById('newArrivalsRow');
         if (!row) return;
         const useCity = city || selectedCity || 'All Egypt';
 
-        function render(cars, showFallback) {
-          if (!cars.length) {
-            row.innerHTML =
-              '<p class="text-sm text-gray-500 py-2 shrink-0">No new listings yet.</p>';
-            return;
-          }
-          row.innerHTML = '';
-          if (showFallback) {
-            const note = document.createElement('p');
-            note.className = 'text-xs text-amber-700 py-2 px-2 shrink-0 self-center whitespace-normal w-44';
-            note.textContent = FALLBACK_NOTICE;
-            row.appendChild(note);
-          }
-          cars.forEach(function (car) {
-            row.appendChild(renderNewArrivalCard(car));
-          });
-          initScrollArrows('newArrivalsRow');
-        }
-
         fetchVehicles(useCity, 15)
           .then(function (cars) {
             if (!cars.length && useCity !== 'All Egypt') {
               return fetchVehicles('All Egypt', 15).then(function (allCars) {
-                render(allCars, true);
+                renderArrivals(allCars, true);
               });
             }
-            render(cars, false);
+            renderArrivals(cars, false);
           })
           .catch(function () {
+            lastArrivals = null;
             row.innerHTML =
-              '<p class="text-sm text-gray-500 py-2 shrink-0">Could not load new arrivals.</p>';
+              '<p class="text-sm text-gray-500 py-2 shrink-0">' + escapeHtml(tx('home.load_error_arrivals', 'Could not load new arrivals.')) + '</p>';
           });
       }
 
@@ -754,42 +790,51 @@
       }
 
 
+      function renderLatest(cars, showFallback) {
+        const list = document.getElementById('latestCarsList');
+        if (!list) return;
+        lastLatest = { cars: cars, showFallback: showFallback };
+        if (!cars.length) {
+          list.innerHTML =
+            '<p class="text-sm text-gray-500 py-4 text-center">' + escapeHtml(tx('home.no_listings', 'No listings yet.')) + '</p>';
+          return;
+        }
+        list.innerHTML = '';
+        if (showFallback) {
+          const note = document.createElement('p');
+          note.className =
+            'col-span-full text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2';
+          note.textContent = fallbackNotice();
+          list.appendChild(note);
+        }
+        cars.forEach(function (car) {
+          list.appendChild(renderLatestCarCard(car));
+        });
+      }
+
+      function rerenderListings() {
+        if (lastArrivals) renderArrivals(lastArrivals.cars, lastArrivals.showFallback);
+        if (lastLatest) renderLatest(lastLatest.cars, lastLatest.showFallback);
+      }
+
       function loadLatestListings(city) {
         const list = document.getElementById('latestCarsList');
         if (!list) return;
         const useCity = city || selectedCity || 'All Egypt';
 
-        function render(cars, showFallback) {
-          if (!cars.length) {
-            list.innerHTML =
-              '<p class="text-sm text-gray-500 py-4 text-center">No listings yet.</p>';
-            return;
-          }
-          list.innerHTML = '';
-          if (showFallback) {
-            const note = document.createElement('p');
-            note.className =
-              'col-span-full text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2';
-            note.textContent = FALLBACK_NOTICE;
-            list.appendChild(note);
-          }
-          cars.forEach(function (car) {
-            list.appendChild(renderLatestCarCard(car));
-          });
-        }
-
         fetchVehicles(useCity, 8)
           .then(function (cars) {
             if (!cars.length && useCity !== 'All Egypt') {
               return fetchVehicles('All Egypt', 8).then(function (allCars) {
-                render(allCars, true);
+                renderLatest(allCars, true);
               });
             }
-            render(cars, false);
+            renderLatest(cars, false);
           })
           .catch(function () {
+            lastLatest = null;
             list.innerHTML =
-              '<p class="text-sm text-gray-500 py-4 text-center">Could not load listings.</p>';
+              '<p class="text-sm text-gray-500 py-4 text-center">' + escapeHtml(tx('home.load_error_listings', 'Could not load listings.')) + '</p>';
           });
       }
 
@@ -937,19 +982,27 @@
       var langToggle = document.getElementById('langToggle');
       if (langToggle && window.CarfoxI18n) {
         langToggle.addEventListener('click', function () {
-          var next = CarfoxI18n.getLang() === 'en' ? 'ar' : 'en';
-          CarfoxI18n.setLang(next);
-          updateLangToggleLabel();
+          langToggle.disabled = true;
+          CarfoxI18n.setLang(CarfoxI18n.getLang() === 'en' ? 'ar' : 'en').then(function () { langToggle.disabled = false; });
         });
-        CarfoxI18n.applyDir();
-        CarfoxI18n.apply();
         updateLangToggleLabel();
       }
 
-      window.addEventListener('carfox:langchange', function () {
+      // Everything rendered by script (city chips, brand tiles, listing cards, account menu) is rebuilt
+      // in the active language; static markup is handled by CarfoxI18n.apply().
+      function onLanguageApplied() {
         updateLangToggleLabel();
         renderCityChips();
-      });
+        initBrandGrid();
+        rerenderListings();
+        if (window.CarfoxI18n) CarfoxI18n.apply();
+      }
+      window.addEventListener('carfox:langchange', onLanguageApplied);
+      if (window.CarfoxI18n) {
+        CarfoxI18n.ready(function () {
+          if (CarfoxI18n.getLang() !== 'en') onLanguageApplied();
+        });
+      }
 
       renderCityChips();
       // Re-render from the catalog once it arrives (no-op when it matches the fallback).

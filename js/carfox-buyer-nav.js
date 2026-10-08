@@ -196,21 +196,23 @@
     function cls(active) {
       return 'flex flex-col items-center justify-center ' + (active ? 'text-blue-700' : 'text-gray-600 hover:text-gray-900');
     }
-    var label = function (t) { return '<span class="text-[11px] leading-tight mt-1">' + t + '</span>'; };
+    // Labels carry data-i18n keys: pages that load /js/i18n/i18n.js translate them, others stay English.
+    var label = function (t, key) { return '<span class="text-[11px] leading-tight mt-1" data-i18n="' + key + '">' + t + '</span>'; };
     var nav = document.createElement('nav');
     nav.id = 'cfBottomNav';
     nav.className = 'fixed bottom-0 left-0 right-0 z-[100] md:hidden border-t border-gray-200 bg-white h-16';
     nav.style.paddingBottom = 'env(safe-area-inset-bottom)';
     nav.setAttribute('aria-label', 'Main');
     nav.innerHTML =
-      '<div class="mx-auto max-w-7xl grid grid-cols-4 h-full">' +
-      '<a href="/" class="' + cls(isHome) + '">' + NAV_ICONS.home + label('Home') + '</a>' +
-      '<a href="/quick-search.html" data-quick-search class="' + cls(isSearch) + '">' + NAV_ICONS.search + label('Search') + '</a>' +
-      '<a href="/buyer/saved-cars.html" class="' + cls(isFav) + '">' + NAV_ICONS.heart + label('Favorites') + '</a>' +
+      '<div class="mx-auto max-w-7xl grid grid-cols-4 h-full" dir="ltr">' +
+      '<a href="/" class="' + cls(isHome) + '">' + NAV_ICONS.home + label('Home', 'bottomnav.home') + '</a>' +
+      '<a href="/quick-search.html" data-quick-search class="' + cls(isSearch) + '">' + NAV_ICONS.search + label('Search', 'bottomnav.search') + '</a>' +
+      '<a href="/buyer/saved-cars.html" class="' + cls(isFav) + '">' + NAV_ICONS.heart + label('Favorites', 'bottomnav.favorites') + '</a>' +
       '<a href="/more.html" class="' + cls(isMore) + '"><span class="relative inline-flex">' + NAV_ICONS.more +
-      '<span data-messages-unread-dot class="hidden absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-red-500" aria-hidden="true"></span></span>' + label('More') + '</a>' +
+      '<span data-messages-unread-dot class="hidden absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-red-500" aria-hidden="true"></span></span>' + label('More', 'bottomnav.more') + '</a>' +
       '</div>';
     document.body.appendChild(nav);
+    if (global.CarfoxI18n && CarfoxI18n.isReady && CarfoxI18n.isReady()) CarfoxI18n.apply(nav);
     // The Search tab opens the quick-search page; the helper script carries current filters over.
     if (!global.CarfoxQuickSearch && !document.querySelector('script[src="/js/carfox-quick-search.js"]')) {
       var s = document.createElement('script');

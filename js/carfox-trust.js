@@ -61,20 +61,27 @@
     return isNaN(d.getTime()) ? '' : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
   }
 
+  // Tier label in the page language when an i18n dictionary is loaded (trust.<key>), else English.
+  function tierLabel(t) {
+    var k = 'trust.' + t.key;
+    return global.CarfoxI18n && CarfoxI18n.has && CarfoxI18n.has(k) ? CarfoxI18n.t(k) : t.label;
+  }
+
   function badge(score, opts) {
     opts = opts || {};
     var s = clamp(score);
     var t = tier(s);
+    var label = tierLabel(t);
     var interactive = !!opts.vehicleId;
     var tag = interactive ? 'button' : 'span';
     var size = opts.compact ? ' text-[11px] px-1.5 py-0.5' : ' text-sm px-3 py-1';
     var attrs = interactive
       ? ' type="button" data-trust-open="' + esc(opts.vehicleId) + '" aria-label="Car Trust Score ' + s + ' out of 100, ' + t.label + '. Show breakdown"'
-      : ' title="Car Trust Score ' + s + '/100 · ' + t.label + '"';
+      : ' title="Car Trust Score ' + s + '/100 · ' + esc(label) + '"';
     return '<' + tag + attrs + ' class="inline-flex items-center gap-1 rounded-full border font-semibold whitespace-nowrap ' + t.cls + size + (interactive ? ' hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-blue-300' : '') + '">' +
       shield(opts.compact ? 'h-3.5 w-3.5' : 'h-4 w-4') +
       '<span>' + s + '</span>' +
-      (opts.compact ? '' : '<span class="font-medium">' + esc(t.label) + '</span>') +
+      (opts.compact ? '' : '<span class="font-medium">' + esc(label) + '</span>') +
       (interactive ? '<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M12 11v5M12 8h.01"/></svg>' : '') +
       '</' + tag + '>';
   }

@@ -119,6 +119,18 @@
       else if (n.offsetTop + n.offsetHeight > box.scrollTop + box.clientHeight) box.scrollTop = n.offsetTop + n.offsetHeight - box.clientHeight;
     }
 
+    function sg(key, fallback) {
+      return global.CarfoxI18n && CarfoxI18n.has && CarfoxI18n.has(key) ? CarfoxI18n.t(key) : fallback;
+    }
+    function carCount(n) {
+      if (global.CarfoxI18n && CarfoxI18n.has && CarfoxI18n.has('suggest.car_count')) {
+        var key = n === 1 ? 'suggest.car_count_one' : n === 2 ? 'suggest.car_count_two' : n >= 3 && n <= 10 ? 'suggest.car_count_few' : 'suggest.car_count';
+        if (!CarfoxI18n.has(key)) key = 'suggest.car_count';
+        return CarfoxI18n.t(key, { n: n });
+      }
+      return n + ' ' + (n === 1 ? 'car' : 'cars');
+    }
+
     function render(data, q) {
       items = [];
       var html = '';
@@ -131,23 +143,23 @@
           html += '<button type="button" class="cf-sg-i" role="option" aria-selected="false" data-i="' + (items.length - 1) + '">' + m.html + '</button>';
         });
       }
-      group('Brands', data.makes, function (m) {
+      group(esc(sg('suggest.brands', 'Brands')), data.makes, function (m) {
         return {
           href: '/cars.html?make=' + encodeURIComponent(m.name),
           html: '<img src="' + esc(m.logo_url || brandLogoUrl(m.name)) + '" alt="" loading="lazy" onerror="this.outerHTML=\'<span class=&quot;cf-sg-fb&quot;>' + esc(m.name.charAt(0)) + '</span>\'" />' +
             '<span class="cf-sg-t"><span>' + highlight(m.name, q) + '</span></span>' +
-            '<span class="cf-sg-c">' + m.count + ' ' + (m.count === 1 ? 'car' : 'cars') + '</span>'
+            '<span class="cf-sg-c">' + esc(carCount(m.count)) + '</span>'
         };
       });
-      group('Models', data.models, function (m) {
+      group(esc(sg('suggest.models', 'Models')), data.models, function (m) {
         return {
           href: '/cars.html?make=' + encodeURIComponent(m.make) + '&model=' + encodeURIComponent(m.model),
           html: '<span class="cf-sg-fb">' + esc(m.make.charAt(0)) + '</span>' +
             '<span class="cf-sg-t"><span>' + highlight(m.make + ' ' + m.model, q) + '</span></span>' +
-            '<span class="cf-sg-c">' + m.count + ' ' + (m.count === 1 ? 'car' : 'cars') + '</span>'
+            '<span class="cf-sg-c">' + esc(carCount(m.count)) + '</span>'
         };
       });
-      group('Cars', data.cars, function (c) {
+      group(esc(sg('suggest.cars', 'Cars')), data.cars, function (c) {
         var title = [c.year, c.make, c.model].filter(Boolean).join(' ') + (c.trim ? ' ' + c.trim : '');
         return {
           href: '/cars/' + c.id,
@@ -156,7 +168,11 @@
             '<span class="cf-sg-p">' + esc(fmtPrice(c.price)) + '</span>'
         };
       });
-      if (!items.length) html = '<div class="cf-sg-e">No matches for “' + esc(q) + '”. Press Enter to search everything.</div>';
+      if (!items.length) {
+        html = '<div class="cf-sg-e">' + (global.CarfoxI18n && CarfoxI18n.has && CarfoxI18n.has('suggest.no_matches')
+          ? esc(CarfoxI18n.t('suggest.no_matches', { q: q }))
+          : 'No matches for “' + esc(q) + '”. Press Enter to search everything.') + '</div>';
+      }
       box.innerHTML = html;
       active = -1;
       position();

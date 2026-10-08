@@ -44,11 +44,17 @@
     return Math.round(Number(piasters) / 100).toLocaleString('en-EG') + ' EGP';
   }
 
+  // Rating label in the page language when an i18n dictionary is loaded (value.<rating>), else English.
+  function ratingLabel(rating, st) {
+    var k = 'value.' + rating;
+    return global.CarfoxI18n && CarfoxI18n.has && CarfoxI18n.has(k) ? CarfoxI18n.t(k) : st.label;
+  }
+
   function badge(car, opts) {
     opts = opts || {};
     var cv = car && car.car_value;
     if (!cv || !cv.rating || !STYLES[cv.rating]) return '';
-    var st = STYLES[cv.rating];
+    var st = Object.assign({}, STYLES[cv.rating], { label: ratingLabel(cv.rating, STYLES[cv.rating]) });
     var interactive = !!opts.vehicleId;
     var t = interactive ? 'button' : 'span';
     var size = opts.compact ? ' text-[11px] px-1.5 py-0.5' : ' text-sm px-3 py-1';
