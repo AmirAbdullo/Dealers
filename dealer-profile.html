@@ -7,10 +7,12 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/carfox-brand.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-      tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] } } } };
+      tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'], display: ['Nunito', 'Cairo', 'ui-sans-serif', 'system-ui', 'sans-serif'] }, colors: { navy: { DEFAULT: '#0f1f3d', 700: '#162c57', 900: '#0b1830' } } } } };
     </script>
     <style>
       #dealerMap { height: 220px; }
@@ -106,6 +108,7 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
     <script src="/js/carfox-trust.js"></script>
+    <script src="/js/carfox-card.js"></script>
     <script src="/js/carfox-value.js"></script>
     <script src="/js/carfox-track.js"></script>
     <script src="/js/carfox-auth.js"></script>
@@ -127,23 +130,7 @@
         }
 
         function renderCard(car) {
-          const title = [car.year, car.make, car.model].filter(Boolean).join(' ');
-          const subtitle = (car.trim && String(car.trim).trim()) || car.body_type || '';
-          const photo = car.primary_photo_url
-            ? '<div class="aspect-[4/3] overflow-hidden bg-gray-100"><img src="' + esc(car.primary_photo_url) + '" alt="" class="w-full h-full object-cover" loading="lazy" /></div>'
-            : '<div class="aspect-[4/3] bg-gray-100 flex items-center justify-center text-3xl" aria-hidden="true">🚗</div>';
-          const a = document.createElement('a');
-          a.href = '/cars/' + car.id;
-          a.setAttribute('data-car-id', String(car.id));
-          a.className = 'block bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow';
-          a.innerHTML = photo +
-            '<div class="p-3">' +
-            '<h3 class="text-sm font-semibold text-gray-900 truncate">' + esc(title) + '</h3>' +
-            (subtitle ? '<p class="text-xs text-gray-500 mt-0.5 truncate">' + esc(subtitle) + '</p>' : '') +
-            '<div class="mt-2 flex flex-wrap items-center justify-between gap-2"><p class="text-lg font-bold text-blue-700 shrink-0">' + esc(fmtPrice(car.price)) + '</p>' + '<span class="flex items-center gap-1 flex-wrap justify-end">' + (window.CarfoxValue ? CarfoxValue.badge(car, { compact: true }) : '') + (window.CarfoxTrust ? CarfoxTrust.badge(car.trust_score, { compact: true }) : '') + '</span>' + '</div>' +
-            '<div class="flex items-center justify-between text-xs text-gray-500 mt-2"><span>' + esc(fmtMileage(car.mileage)) + '</span><span class="truncate ml-2">' + esc(car.governorate || '') + '</span></div>' +
-            '</div>';
-          return a;
+          return CarfoxCard.render(car, { variant: 'grid', actions: false });
         }
 
         function renderMap(dealer) {

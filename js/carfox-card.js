@@ -1,22 +1,29 @@
 /**
  * CarFox listing card (vertical) — the one card design used by the home page rows, the detail page's
- * Similar Cars grid, and anywhere else a vertical listing card is needed.
+ * Similar Cars grid, saved cars, dealer profiles, and anywhere else a vertical listing card is needed.
  *
  *   CarfoxCard.render(car, opts) -> <article> element
  *     opts.variant       'grid' (default) | 'scroll' (fixed width inside a horizontal snap row)
  *     opts.actions       false to omit the WhatsApp / Message buttons (default true)
  *     opts.featureTrust  true to feature the Trust Score badge large (Top Trust Scores row)
+ *     opts.sold          true for a sold listing (muted photo + price, "Sold" tag)
  *     opts.className     extra classes for the article
+ *   Interior helpers shared with the browse page's horizontal card:
+ *     CarfoxCard.priceHtml(piasters, { className, muted })   navy price, small muted unit
+ *     CarfoxCard.specGridHtml(car, { year, className })      2-column icon + text spec grid
+ *     CarfoxCard.dealerRowHtml(car, { className, linkClass }) location · dealer logo + name
  *   CarfoxCard.setGovernorateNames({ Cairo: 'القاهرة', ... }) -> Arabic location labels
  *
- * Identity: badges sit on the photo (top start), price is orange in the display font, big radius and a
- * soft shadow (css/carfox-brand.css). The Trust badge shows from 40 points up (featured rows always);
- * numbers stay Western digits and only unit words translate when CarfoxI18n is on the page.
+ * Identity: badges sit on the photo (top start, Trust shield featured), price is navy in the display font
+ * with a small muted unit, specs are a quiet 2x2 icon grid, the dealer row shows the dealer's logo.
+ * The Trust badge shows from 40 points up (featured rows always); numbers stay Western digits and only
+ * unit words translate when CarfoxI18n is on the page.
  */
 (function (global) {
   'use strict';
 
   var GOV_NAMES = {};
+  var NAVY = '#0f1f3d';
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -44,7 +51,19 @@
     return Number(km).toLocaleString('en-US') + ' ' + tx('card.km', 'km');
   }
 
+  // Navy price with the currency small and muted (never the competitor-blue price).
+  function priceHtml(piasters, opts) {
+    opts = opts || {};
+    var cls = 'font-display font-extrabold leading-tight ' + (opts.className || 'text-xl') + ' ' + (opts.muted ? 'text-slate-400' : 'text-[' + NAVY + ']');
+    if (!piasters || piasters <= 0) {
+      return '<p class="' + cls + '">' + esc(tx('card.price_on_request', 'Price on request')) + '</p>';
+    }
+    return '<p class="' + cls + '">' + Math.round(Number(piasters) / 100).toLocaleString('en-EG') +
+      '<span class="ms-1 text-xs font-semibold text-slate-400 align-baseline">' + esc(tx('card.egp', 'EGP')) + '</span></p>';
+  }
+
   var ICONS = {
+    year: '<svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path stroke-linecap="round" d="M3 10h18M8 3v4M16 3v4"/></svg>',
     mileage: '<svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3a9 9 0 0 0-9 9c0 2.5 1 4.7 2.6 6.3M12 3a9 9 0 0 1 9 9c0 2.5-1 4.7-2.6 6.3M12 12l4-3"/><circle cx="12" cy="12" r="1.5"/></svg>',
     fuel: '<svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M5 21h10M8 8h4M15 9h2a2 2 0 0 1 2 2v5a1.5 1.5 0 0 0 3 0V9l-3-3"/></svg>',
     transmission: '<svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="6" cy="6" r="2"/><circle cx="12" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="12" cy="18" r="2"/><path stroke-linecap="round" d="M6 8v8M12 8v8M18 8v4H6"/></svg>',
@@ -76,8 +95,22 @@
     if (global.CarfoxTrack) CarfoxTrack.engagement(type, { vehicleId: carId });
   }
 
-  function spec(icon, text) {
-    return '<span class="inline-flex items-center gap-1 min-w-0"><span class="text-slate-400">' + ICONS[icon] + '</span><span class="truncate">' + esc(text) + '</span></span>';
+  function specItem(icon, text) {
+    return '<span class="inline-flex items-center gap-1.5 min-w-0"><span class="text-slate-400">' + ICONS[icon] + '</span><span class="truncate">' + esc(text) + '</span></span>';
+  }
+
+  // Quiet 2-column icon + text grid (year optional, mileage, fuel, transmission, colour).
+  function specGridHtml(car, opts) {
+    opts = opts || {};
+    var items = [];
+    if (opts.year && car.year) items.push(specItem('year', car.year));
+    var mileage = formatMileage(car.mileage);
+    if (mileage) items.push(specItem('mileage', mileage));
+    if (car.fuel_type) items.push(specItem('fuel', trv('fuel', car.fuel_type)));
+    if (car.transmission) items.push(specItem('transmission', trv('transmission', car.transmission)));
+    if (!opts.year && car.exterior_color) items.push(specItem('color', trv('color', car.exterior_color)));
+    if (!items.length) return '';
+    return '<div class="' + (opts.className || 'mt-2') + ' grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-slate-600">' + items.join('') + '</div>';
   }
 
   function location(car) {
@@ -88,12 +121,39 @@
   function dealerName(car) {
     return car.dealer_name || car.business_name || (car.dealer && car.dealer.business_name) || '';
   }
+  function dealerLogoHtml(car, name) {
+    var logo = car.dealer && car.dealer.logo_url;
+    if (logo) {
+      return '<img src="' + esc(logo) + '" alt="" loading="lazy" class="h-5 w-5 rounded-full object-cover bg-white ring-1 ring-slate-200 shrink-0" />';
+    }
+    var initial = String(name || '?').trim().charAt(0).toUpperCase() || '?';
+    return '<span class="h-5 w-5 rounded-full bg-[' + NAVY + '] text-white text-[10px] font-bold flex items-center justify-center shrink-0" aria-hidden="true">' + esc(initial) + '</span>';
+  }
+
+  // Location pin + dealer (logo thumbnail + name, linked to the dealer profile when we know the id).
+  function dealerRowHtml(car, opts) {
+    opts = opts || {};
+    var loc = location(car);
+    var name = dealerName(car);
+    var dealerId = car.dealer && car.dealer.id;
+    if (!loc && !name) return '';
+    var parts = [];
+    if (loc) parts.push('<span class="inline-flex items-center gap-1 min-w-0"><span class="text-slate-400">' + ICONS.pin + '</span><span class="truncate">' + esc(loc) + '</span></span>');
+    if (name) {
+      var inner = dealerLogoHtml(car, name) + '<span class="truncate">' + esc(name) + '</span>';
+      parts.push(dealerId
+        ? '<a href="/dealer-profile.html?id=' + encodeURIComponent(dealerId) + '" class="inline-flex items-center gap-1.5 min-w-0 hover:text-slate-900 ' + (opts.linkClass || '') + '" title="' + esc(name) + '">' + inner + '</a>'
+        : '<span class="inline-flex items-center gap-1.5 min-w-0">' + inner + '</span>');
+    }
+    return '<div class="' + (opts.className || 'mt-2') + ' flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-slate-500 min-w-0">' + parts.join('') + '</div>';
+  }
 
   function render(car, opts) {
     opts = opts || {};
     var variant = opts.variant || 'grid';
     var showActions = opts.actions !== false;
     var featureTrust = !!opts.featureTrust;
+    var sold = !!opts.sold || car.status === 'sold';
 
     var el = document.createElement('article');
     el.className =
@@ -108,7 +168,7 @@
     var trust = Number(car.trust_score) || 0;
 
     var badges = '';
-    if (global.CarfoxValue) badges += CarfoxValue.badge(car, { size: 'md', className: 'shadow-md' });
+    if (global.CarfoxValue && !sold) badges += CarfoxValue.badge(car, { size: 'md', className: 'shadow-md' });
     if (global.CarfoxTrust && (featureTrust || trust >= 40)) {
       badges += CarfoxTrust.badge(trust, { size: featureTrust ? 'lg' : 'md', className: 'shadow-md' });
     }
@@ -117,26 +177,14 @@
     var photo =
       '<a href="' + href + '" class="block relative aspect-[4/3] bg-slate-100 overflow-hidden" tabindex="-1" aria-hidden="true">' +
       (car.primary_photo_url
-        ? '<img src="' + esc(car.primary_photo_url) + '" alt="" class="absolute inset-0 w-full h-full object-cover" loading="lazy" />'
+        ? '<img src="' + esc(car.primary_photo_url) + '" alt="" class="absolute inset-0 w-full h-full object-cover' + (sold ? ' opacity-60' : '') + '" loading="lazy" />'
         : '<div class="absolute inset-0 flex items-center justify-center">' + ICONS.car + '</div>') +
       (badges ? '<div class="absolute top-2.5 start-2.5 flex flex-wrap gap-1.5 max-w-[calc(100%-1.25rem)]">' + badges + '</div>' : '') +
+      (sold ? '<span class="absolute bottom-2 start-2 rounded-md bg-slate-900/85 text-white text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5">Sold</span>' : '') +
       (photoCount > 1
         ? '<span class="absolute bottom-2 end-2 inline-flex items-center gap-1 rounded-md bg-black/55 text-white text-[11px] font-medium px-1.5 py-0.5">' + ICONS.camera + photoCount + '</span>'
         : '') +
       '</a>';
-
-    var specs = [];
-    var mileage = formatMileage(car.mileage);
-    if (mileage) specs.push(spec('mileage', mileage));
-    if (car.fuel_type) specs.push(spec('fuel', trv('fuel', car.fuel_type)));
-    if (car.transmission) specs.push(spec('transmission', trv('transmission', car.transmission)));
-    if (car.exterior_color) specs.push(spec('color', trv('color', car.exterior_color)));
-
-    var loc = location(car);
-    var dealer = dealerName(car);
-    var meta = [];
-    if (loc) meta.push('<span class="inline-flex items-center gap-1 min-w-0"><span class="text-slate-400">' + ICONS.pin + '</span><span class="truncate">' + esc(loc) + '</span></span>');
-    if (dealer) meta.push('<span class="truncate">' + esc(dealer) + '</span>');
 
     var wa = showActions ? whatsappHref(car) : '';
     var actions = showActions
@@ -144,7 +192,7 @@
         (wa
           ? '<a href="' + esc(wa) + '" target="_blank" rel="noopener" data-track="whatsapp" class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-semibold py-2">' + ICONS.whatsapp + esc(tx('card.whatsapp', 'WhatsApp')) + '</a>'
           : '') +
-        '<a href="' + href + '?openInquiry=1" data-track="message" class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#0f1f3d] hover:bg-[#162c57] text-white text-sm font-semibold py-2">' + ICONS.message + esc(tx('card.message', 'Message')) + '</a>' +
+        '<a href="' + href + '?openInquiry=1" data-track="message" class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-[' + NAVY + '] hover:bg-[#162c57] text-white text-sm font-semibold py-2">' + ICONS.message + esc(tx('card.message', 'Message')) + '</a>' +
         '</div>'
       : '';
 
@@ -153,9 +201,9 @@
       '<div class="p-3.5 flex flex-col flex-1">' +
       '<a href="' + href + '" class="block font-display font-bold text-[15px] md:text-base text-slate-900 leading-snug truncate hover:text-orange-600">' + esc(title) + '</a>' +
       (subtitle ? '<p class="text-xs text-slate-500 mt-0.5 truncate">' + esc(subtitle) + '</p>' : '') +
-      (specs.length ? '<div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-600">' + specs.join('') + '</div>' : '') +
-      '<p class="mt-2.5 font-display font-extrabold text-xl text-orange-600 leading-none">' + esc(formatPrice(car.price)) + '</p>' +
-      (meta.length ? '<div class="mt-2 flex items-center gap-2 text-xs text-slate-500 min-w-0">' + meta.join('<span class="text-slate-300">·</span>') + '</div>' : '') +
+      priceHtml(car.price, { className: 'text-xl mt-2', muted: sold }) +
+      specGridHtml(car, { className: 'mt-2.5' }) +
+      dealerRowHtml(car, { className: 'mt-2.5' }) +
       actions +
       '</div>';
 
@@ -167,9 +215,13 @@
 
   global.CarfoxCard = {
     render: render,
+    priceHtml: priceHtml,
+    specGridHtml: specGridHtml,
+    dealerRowHtml: dealerRowHtml,
     setGovernorateNames: function (map) { GOV_NAMES = map || {}; },
     formatPrice: formatPrice,
     formatMileage: formatMileage,
-    whatsappHref: whatsappHref
+    whatsappHref: whatsappHref,
+    escape: esc
   };
 })(typeof window !== 'undefined' ? window : this);

@@ -79,7 +79,7 @@
       ? ' type="button" data-trust-open="' + esc(opts.vehicleId) + '" aria-label="Car Trust Score ' + s + ' out of 100, ' + t.label + '. Show breakdown"'
       : ' title="Car Trust Score ' + s + '/100 · ' + esc(label) + '"';
     return '<' + tag + attrs + ' class="inline-flex items-center gap-1 rounded-full border font-semibold whitespace-nowrap ' + t.cls + size + (interactive ? ' hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-blue-300' : '') + (opts.className ? ' ' + opts.className : '') + '">' +
-      shield(opts.compact ? 'h-3.5 w-3.5' : opts.size === 'lg' ? 'h-5 w-5' : 'h-4 w-4') +
+      shield(opts.compact ? 'h-3.5 w-3.5' : opts.size === 'lg' ? 'h-6 w-6' : opts.size === 'md' ? 'h-[18px] w-[18px]' : 'h-4 w-4') +
       '<span>' + s + '</span>' +
       (opts.compact ? '' : '<span class="font-medium">' + esc(label) + '</span>') +
       (interactive ? '<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M12 11v5M12 8h.01"/></svg>' : '') +

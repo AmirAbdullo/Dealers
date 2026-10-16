@@ -333,6 +333,7 @@
 
     <script src="/js/carfox-trust.js"></script>
     <script src="/js/carfox-value.js"></script>
+    <script src="/js/carfox-card.js"></script>
     <script src="/js/carfox-track.js"></script>
     <script src="/js/carfox-suggest.js"></script>
     <script src="/js/carfox-auth.js"></script>
@@ -1191,10 +1192,6 @@
         function renderCard(car) {
           const title = [car.year, car.make, car.model].filter(Boolean).join(' ');
           const subtitle = [car.trim && String(car.trim).trim(), car.body_type].filter(Boolean).join(' · ');
-          const location = car.governorate || (car.dealer && car.dealer.city) || '';
-          const dealerId = car.dealer && car.dealer.id;
-          const dealerName = (car.dealer && car.dealer.business_name) || car.dealer_name || '';
-          const specs = [car.year, formatMileage(car.mileage), car.fuel_type, car.transmission].filter(Boolean);
           const photoCount = Number(car.photo_count) || (car.primary_photo_url ? 1 : 0);
           const preview = Array.isArray(car.features_preview) ? car.features_preview : [];
           const moreFeatures = Math.max(0, (Number(car.feature_count) || preview.length) - preview.length);
@@ -1230,20 +1227,9 @@
                 '</div>' +
                 '<button type="button" class="save-btn relative z-[2] shrink-0 rounded-full p-1.5 bg-white border border-gray-200 shadow-sm hover:bg-gray-50" data-id="' + car.id + '" aria-label="Save car"></button>' +
               '</div>' +
-              '<div class="mt-2 flex flex-wrap items-center gap-2">' +
-                '<p class="font-display text-xl md:text-2xl font-extrabold text-orange-600 leading-tight">' + escapeHtml(formatPrice(car.price)) + '</p>' +
-              '</div>' +
-              (specs.length ? '<p class="mt-2 text-sm text-gray-700">' + specs.map(escapeHtml).join(' <span class="text-gray-300">·</span> ') + '</p>' : '') +
-              '<p class="mt-1 text-sm text-gray-500 flex items-center gap-1.5 min-w-0">' +
-                '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21s-6-5.3-6-10a6 6 0 1112 0c0 4.7-6 10-6 10z"/><circle cx="12" cy="11" r="2"/></svg>' +
-                (location ? '<span class="truncate">' + escapeHtml(location) + '</span>' : '') +
-                (location && dealerName ? '<span class="text-gray-300">·</span>' : '') +
-                (dealerName
-                  ? (dealerId
-                    ? '<a href="/dealer-profile.html?id=' + encodeURIComponent(dealerId) + '" class="relative z-[2] text-blue-600 hover:underline truncate" title="' + escapeHtml(dealerName) + '">' + escapeHtml(dealerName) + '</a>'
-                    : '<span class="truncate">' + escapeHtml(dealerName) + '</span>')
-                  : '') +
-              '</p>' +
+              CarfoxCard.priceHtml(car.price, { className: 'text-xl md:text-2xl mt-2' }) +
+              CarfoxCard.specGridHtml(car, { year: true, className: 'mt-2.5 max-w-sm' }) +
+              CarfoxCard.dealerRowHtml(car, { className: 'mt-2.5', linkClass: 'relative z-[2]' }) +
               (preview.length
                 ? '<div class="mt-2 flex flex-wrap items-center gap-1.5">' +
                     preview.map(function (f) { return '<span class="inline-flex items-center rounded-md bg-gray-100 text-gray-700 text-xs px-2 py-0.5">' + escapeHtml(f) + '</span>'; }).join('') +

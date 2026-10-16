@@ -3573,7 +3573,8 @@ function mapPublicCarRow(row) {
       city: row.dealer_city,
       state: row.dealer_state,
       governorate: governorate,
-      whatsapp: row.dealer_whatsapp || null
+      whatsapp: row.dealer_whatsapp || null,
+      logo_url: row.dealer_logo_url || null
     },
     published_at: row.published_at,
     status: row.status || 'active'
@@ -3919,7 +3920,8 @@ app.get('/api/cars', function (req, res) {
         d.city AS dealer_city,
         d.state AS dealer_state,
         d.governorate AS dealer_governorate,
-        d.whatsapp AS dealer_whatsapp
+        d.whatsapp AS dealer_whatsapp,
+        d.logo_url AS dealer_logo_url
       ${PUBLIC_CARS_FROM_SQL}
       LEFT JOIN vehicle_photos p ON p.vehicle_id = v.id AND p.is_primary = 1
       WHERE ${filter.whereSql}
@@ -3956,6 +3958,7 @@ app.get('/api/vehicles', function (req, res) {
         d.state AS dealer_state,
         d.governorate AS dealer_governorate,
         d.whatsapp AS dealer_whatsapp,
+        d.logo_url AS dealer_logo_url,
         (SELECT COUNT(*) FROM vehicle_photos ph WHERE ph.vehicle_id = v.id) AS photo_count
       ${PUBLIC_CARS_FROM_SQL}
       LEFT JOIN vehicle_photos p ON p.vehicle_id = v.id AND p.is_primary = 1
@@ -4068,7 +4071,8 @@ app.get('/api/cars/top-trust', function (req, res) {
         d.city AS dealer_city,
         d.state AS dealer_state,
         d.governorate AS dealer_governorate,
-        d.whatsapp AS dealer_whatsapp
+        d.whatsapp AS dealer_whatsapp,
+        d.logo_url AS dealer_logo_url
       ${PUBLIC_CARS_FROM_SQL}
       LEFT JOIN vehicle_photos p ON p.vehicle_id = v.id AND p.is_primary = 1
       WHERE ${PUBLIC_CARS_BASE_WHERE} AND COALESCE(v.trust_score, 0) >= 60
@@ -4116,7 +4120,8 @@ app.get('/api/cars/:id/similar', function (req, res) {
         d.city AS dealer_city,
         d.state AS dealer_state,
         d.governorate AS dealer_governorate,
-        d.whatsapp AS dealer_whatsapp
+        d.whatsapp AS dealer_whatsapp,
+        d.logo_url AS dealer_logo_url
       ${PUBLIC_CARS_FROM_SQL}
       LEFT JOIN vehicle_photos p ON p.vehicle_id = v.id AND p.is_primary = 1
       WHERE ${PUBLIC_CARS_BASE_WHERE} AND v.id != ? AND (${conds.join(' OR ')}) AND v.price BETWEEN ? AND ?

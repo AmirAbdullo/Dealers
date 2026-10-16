@@ -7,12 +7,18 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/carfox-brand.css" />
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
         theme: {
           extend: {
-            fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] }
+            fontFamily: {
+              sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+              display: ['Nunito', 'Cairo', 'ui-sans-serif', 'system-ui', 'sans-serif']
+            },
+            colors: { navy: { DEFAULT: '#0f1f3d', 700: '#162c57', 900: '#0b1830' } }
           }
         }
       };
@@ -40,12 +46,13 @@
         <p class="mt-2 text-sm text-gray-600 max-w-xs mx-auto">Browse cars and tap the heart to save them.</p>
         <a href="/cars.html" class="inline-block mt-6 rounded-lg bg-blue-700 hover:bg-blue-800 text-white font-semibold px-6 py-3">Browse cars</a>
       </div>
-      <div id="carGrid" class="grid grid-cols-2 gap-3"></div>
+      <div id="carGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
     </main>
 
 
     <script src="/js/carfox-trust.js"></script>
     <script src="/js/carfox-value.js"></script>
+    <script src="/js/carfox-card.js"></script>
     <script src="/js/carfox-auth.js"></script>
     <script src="/js/carfox-buyer-nav.js"></script>
     <script>
@@ -109,43 +116,15 @@
         }
 
         function renderCard(car) {
-          const title = vehTitle(car);
-          const subtitle = (car.trim && String(car.trim).trim()) || car.body_type || '';
-          const city = (car.dealer && car.dealer.city) ? car.dealer.city : '';
-          let photoHtml;
-          if (car.primary_photo_url) {
-            photoHtml =
-              '<div class="aspect-[4/3] overflow-hidden bg-gray-100">' +
-              '<img src="' + esc(car.primary_photo_url) + '" alt="" class="w-full h-full object-cover' + (car.status === 'sold' ? ' opacity-60' : '') + '" loading="lazy" />' +
-              '</div>';
-          } else {
-            photoHtml =
-              '<div class="aspect-[4/3] bg-gray-100 flex items-center justify-center overflow-hidden">' +
-              carIconSvg() +
-              '</div>';
-          }
-
           const isSold = car.status === 'sold';
           const wrapper = document.createElement('div');
           wrapper.className = 'relative';
-
-          const card = document.createElement('a');
-          card.href = '/cars/' + car.id;
-          card.className = 'block bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow';
-          card.innerHTML = photoHtml +
-            '<div class="p-3">' +
-            '<h2 class="text-sm font-semibold text-gray-900 truncate">' + esc(title) + '</h2>' +
-            (subtitle ? '<p class="text-xs text-gray-500 mt-0.5 truncate">' + esc(subtitle) + '</p>' : '') +
-            '<div class="mt-2 flex flex-wrap items-center justify-between gap-2"><p class="text-lg font-bold shrink-0 ' + (isSold ? 'text-gray-500' : 'text-blue-700') + '">' + esc(fmtPrice(car.price)) + '</p>' + '<span class="flex items-center gap-1 flex-wrap justify-end">' + (window.CarfoxValue ? CarfoxValue.badge(car, { compact: true }) : '') + (window.CarfoxTrust ? CarfoxTrust.badge(car.trust_score, { compact: true }) : '') + '</span>' + '</div>' +
-            '<div class="flex items-center justify-between text-xs text-gray-500 mt-2">' +
-            '<span>' + esc(formatMileage(car.mileage)) + '</span>' +
-            '<span class="truncate ml-2 text-right">' + esc(city) + '</span>' +
-            '</div></div>';
+          const card = CarfoxCard.render(car, { variant: 'grid', actions: false, sold: isSold });
 
           savedIds.add(car.id);
           const heartBtn = document.createElement('button');
           heartBtn.type = 'button';
-          heartBtn.className = 'save-btn absolute top-2 right-2 z-10 bg-white/90 rounded-full p-1.5 shadow';
+          heartBtn.className = 'save-btn absolute top-2 end-2 z-10 bg-white/90 rounded-full p-1.5 shadow';
           heartBtn.setAttribute('data-id', String(car.id));
           heartBtn.setAttribute('aria-label', 'Remove from saved');
           heartBtn.innerHTML = heartSvg(true);
@@ -156,12 +135,6 @@
           });
 
           wrapper.appendChild(card);
-          if (isSold) {
-            const badge = document.createElement('span');
-            badge.className = 'absolute top-2 left-2 z-10 rounded-md bg-gray-900/85 text-white text-xs font-semibold uppercase tracking-wide px-2 py-1 pointer-events-none';
-            badge.textContent = 'Sold';
-            wrapper.appendChild(badge);
-          }
           wrapper.appendChild(heartBtn);
           return wrapper;
         }
