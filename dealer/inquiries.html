@@ -34,7 +34,8 @@
 
     <div id="pageLoading" class="px-4 py-16 text-center text-sm text-gray-600">Loading inquiries…</div>
 
-    <main id="pageContent" class="hidden">
+    <main id="pageContent" class="hidden md:max-w-3xl md:mx-auto md:px-6 md:py-6">
+      <div class="md:bg-white md:border md:border-gray-200 md:rounded-xl md:overflow-hidden">
       <div class="px-4 py-4 bg-white border-b border-gray-100">
         <h2 class="text-2xl font-bold text-gray-900">Customer Inquiries</h2>
         <p id="convSubtitle" class="text-sm text-gray-600 mt-1">0 active conversations</p>
@@ -63,7 +64,8 @@
         No conversations match this filter.
       </div>
 
-      <div id="convList" class="px-2 bg-white"></div>
+      <div id="convList" class="px-2 md:px-3 bg-white"></div>
+      </div>
     </main>
 
     <div id="dealerBottomNav"></div>

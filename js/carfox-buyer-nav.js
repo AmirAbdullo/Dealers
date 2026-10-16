@@ -276,8 +276,44 @@
   if (document.body) initAutoHideHeader();
   else document.addEventListener('DOMContentLoaded', initAutoHideHeader);
 
+  // ---- Shared desktop site header (logo · nav · auth) for buyer pages whose own header is phone-only ----
+  // Renders the same header as the browse/home pages from md up; the page keeps its compact phone bar.
+  function buyerDesktopHeaderHtml() {
+    var links = [
+      ['/cars.html', 'Browse Cars', ''],
+      ['#', 'How It Works', ''],
+      ['#', 'Quick Search', ' data-quick-search'],
+      ['/pricing.html', 'For Dealers', '']
+    ].map(function (l) {
+      return '<a href="' + l[0] + '"' + l[2] + ' class="text-gray-700 hover:text-gray-900">' + l[1] + '</a>';
+    }).join('');
+    return (
+      '<header id="buyerDesktopHeader" class="hidden md:block shrink-0 sticky top-0 z-40 bg-white border-b border-gray-200">' +
+      '<nav class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">' +
+      '<a href="/" class="text-xl font-extrabold tracking-tight"><span class="text-blue-700">Car</span><span class="text-orange-500">Fox</span></a>' +
+      '<div class="flex items-center gap-6 text-sm font-medium">' + links + '</div>' +
+      '<div id="desktopAuth" class="flex items-center gap-3">' +
+      '<a href="/buyer/login.html" class="text-gray-700 hover:text-gray-900 text-sm font-semibold">Sign In</a>' +
+      '<a href="/dealer/signup.html" class="inline-flex items-center rounded-lg bg-blue-700 px-4 py-2 text-white text-sm font-semibold hover:bg-blue-800">Become a Dealer</a>' +
+      '</div></nav></header>'
+    );
+  }
+  function mountBuyerHeader() {
+    if (!document.body || document.getElementById('buyerDesktopHeader')) return;
+    var slot = document.querySelector('[data-buyer-header]');
+    if (slot) slot.outerHTML = buyerDesktopHeaderHtml();
+    else document.body.insertAdjacentHTML('afterbegin', buyerDesktopHeaderHtml());
+    if (global.CarfoxAuth && CarfoxAuth.initBuyerNav) CarfoxAuth.initBuyerNav();
+    if (!global.CarfoxQuickSearch && !document.querySelector('script[src="/js/carfox-quick-search.js"]')) {
+      var s = document.createElement('script');
+      s.src = '/js/carfox-quick-search.js';
+      document.body.appendChild(s);
+    }
+  }
+
   global.CarfoxBuyerNav = {
     mountBuyerBottomNav: mountBuyerBottomNav,
+    mountBuyerHeader: mountBuyerHeader,
     escapeHtml: escapeHtml,
     formatPriceCents: formatPriceCents,
     formatRelativeTime: formatRelativeTime,

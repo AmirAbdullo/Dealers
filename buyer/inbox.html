@@ -19,7 +19,8 @@
     </script>
   </head>
   <body class="bg-gray-50 text-gray-900 font-sans min-h-screen pb-20">
-    <header class="sticky top-0 z-40 bg-white border-b border-gray-200 h-16">
+    <div data-buyer-header></div>
+    <header class="md:hidden sticky top-0 z-40 bg-white border-b border-gray-200 h-16">
       <div class="mx-auto max-w-lg px-4 h-full grid grid-cols-3 items-center">
         <a href="/" class="text-lg font-extrabold tracking-tight justify-self-start">
           <span class="text-blue-700">Car</span><span class="text-orange-500">Fox</span>
@@ -31,12 +32,13 @@
 
     <div id="pageLoading" class="px-4 py-16 text-center text-sm text-gray-600">Loading messages…</div>
 
-    <main id="pageContent" class="hidden">
-      <div class="px-4 py-4">
+    <main id="pageContent" class="hidden md:max-w-3xl md:mx-auto md:px-6 md:py-6">
+      <div class="px-4 py-4 md:px-0 md:pt-0">
         <h2 class="text-2xl font-bold text-gray-900">Your messages</h2>
         <p id="convSubtitle" class="text-sm text-gray-600 mt-1">0 active conversations</p>
       </div>
 
+      <div class="md:bg-white md:border md:border-gray-200 md:rounded-xl md:overflow-hidden">
       <div id="emptyState" class="hidden px-4 py-16 text-center">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-300 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 0 1-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
@@ -46,7 +48,8 @@
         <a href="/cars.html" class="inline-block mt-6 rounded-lg bg-blue-700 hover:bg-blue-800 text-white font-semibold px-6 py-3">Browse cars</a>
       </div>
 
-      <div id="convList" class="px-2"></div>
+      <div id="convList" class="px-2 md:px-3"></div>
+      </div>
     </main>
 
 
@@ -54,6 +57,7 @@
     <script src="/js/carfox-buyer-nav.js"></script>
     <script>
       (function () {
+        CarfoxBuyerNav.mountBuyerHeader();
         const esc = CarfoxBuyerNav.escapeHtml;
         const relTime = CarfoxBuyerNav.formatRelativeTime;
         const vehTitle = CarfoxBuyerNav.vehicleTitle;

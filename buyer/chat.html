@@ -43,8 +43,9 @@
     </style>
   </head>
   <body class="bg-gray-50 text-gray-900 font-sans h-[100dvh] flex flex-col overflow-hidden">
+    <div id="chatShell" class="flex-1 flex flex-col min-h-0 w-full md:max-w-3xl md:mx-auto md:my-6 md:rounded-xl md:border md:border-gray-200 md:bg-white md:shadow-sm md:overflow-hidden">
     <header class="sticky top-0 z-40 bg-white border-b border-gray-200 h-16 shrink-0">
-      <div class="h-full flex items-center px-4 gap-2 max-w-lg mx-auto w-full">
+      <div class="h-full flex items-center px-4 gap-2 max-w-lg md:max-w-none mx-auto w-full">
         <a href="/buyer/inbox.html" class="p-1 -ml-1 text-gray-700 hover:text-gray-900 shrink-0" aria-label="Back to inbox">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
             <path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
@@ -82,19 +83,19 @@
     <div id="pageLoading" class="flex-1 flex items-center justify-center text-sm text-gray-600">Loading conversation…</div>
 
     <div id="chatMain" class="hidden flex-1 flex flex-col min-h-0 relative">
-      <div id="messagesScroll" class="flex-1 overflow-y-auto px-4 py-4 pb-24">
+      <div id="messagesScroll" class="flex-1 overflow-y-auto px-4 py-4 pb-24 md:pb-4">
         <div id="messagesList" class="space-y-2"></div>
       </div>
 
       <button
         type="button"
         id="newMessagesBtn"
-        class="hidden absolute bottom-28 left-1/2 -translate-x-1/2 z-20 bg-white border border-gray-300 shadow-md text-sm font-semibold text-blue-700 px-4 py-2 rounded-full"
+        class="hidden absolute bottom-28 md:bottom-24 left-1/2 -translate-x-1/2 z-20 bg-white border border-gray-300 shadow-md text-sm font-semibold text-blue-700 px-4 py-2 rounded-full"
       >
         ↓ New messages
       </button>
 
-      <div class="fixed bottom-0 left-0 right-0 border-t bg-white z-30" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom));">
+      <div class="fixed bottom-0 left-0 right-0 md:static md:shrink-0 border-t bg-white z-30" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom));">
         <div id="attachPreview" class="hidden px-3 pt-2 pb-1 border-b border-gray-100">
           <div id="attachPreviewList" class="flex gap-2 overflow-x-auto"></div>
         </div>
@@ -132,6 +133,7 @@
         </div>
       </div>
     </div>
+    </div>
 
     <div id="lightbox" class="hidden fixed inset-0 z-50 bg-black/90 flex items-center justify-center" role="dialog" aria-modal="true">
       <button id="lightboxClose" class="absolute top-4 right-4 p-2 text-white text-3xl leading-none" aria-label="Close">&times;</button>
@@ -142,6 +144,7 @@
     <script src="/js/carfox-buyer-nav.js"></script>
     <script>
       (function () {
+        CarfoxBuyerNav.mountBuyerHeader();
         const esc = CarfoxBuyerNav.escapeHtml;
         const fmtBubbleTime = CarfoxBuyerNav.formatBubbleTime;
         const fmtPrice = CarfoxBuyerNav.formatPriceCents;

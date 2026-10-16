@@ -329,7 +329,7 @@
     const initials = initialsFromName(name);
 
     return (
-      '<header id="dealerDesktopHeader" class="hidden md:block sticky top-0 z-40 bg-[#0f1f3d]">' +
+      '<header id="dealerDesktopHeader" class="hidden md:block shrink-0 sticky top-0 z-40 bg-[#0f1f3d]">' +
       '<div class="mx-auto max-w-7xl px-4 h-16 flex items-center justify-between gap-6">' +
       '<div class="flex items-center gap-8">' +
       '<a href="/dealer/dashboard.html" class="text-xl font-extrabold tracking-tight">' +
