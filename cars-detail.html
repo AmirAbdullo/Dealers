@@ -76,7 +76,7 @@
       <a href="/cars.html" class="inline-block mt-6 rounded-lg bg-blue-700 hover:bg-blue-800 text-white font-semibold px-6 py-3">Back to browse</a>
     </div>
 
-    <div id="pageContent" class="hidden pb-36 md:pb-32">
+    <div id="pageContent" class="hidden pb-32">
       <div class="md:mx-auto md:max-w-6xl md:px-6 md:pt-6 md:grid md:grid-cols-12 md:gap-8 md:items-start">
       <!-- Left column on desktop: gallery -->
       <div class="md:col-span-7 md:sticky md:top-20">
@@ -127,6 +127,25 @@
         <p id="listingPrice" class="text-3xl font-bold text-blue-700 mt-2"></p>
         <div id="trustBadgeWrap" class="hidden mt-3 flex items-center gap-2 flex-wrap"></div>
       </section>
+      <!-- Phones: contact actions sit in the page flow; a slim bar takes over once these scroll away -->
+      <section id="contactInline" class="hidden md:!hidden px-4 pb-4 bg-white">
+        <div class="grid grid-cols-2 gap-3">
+          <button type="button" id="contactDealerBtnInline"
+                  class="col-span-2 w-full bg-blue-700 hover:bg-blue-800 text-white px-4 py-3.5 rounded-xl font-semibold text-base">
+            Contact Dealer
+          </button>
+          <a id="whatsappDealerBtnInline" href="#" target="_blank" rel="noopener noreferrer"
+             class="hidden bg-green-500 hover:bg-green-600 text-white rounded-xl py-3 font-semibold flex items-center justify-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.882 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+            WhatsApp
+          </a>
+          <a id="callDealerBtnInline" href="#"
+             class="hidden bg-white border border-blue-700 text-blue-700 hover:bg-blue-50 rounded-xl py-3 font-semibold flex items-center justify-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 0 1 2-2h2.6a1 1 0 0 1 .95.68l1.2 3.6a1 1 0 0 1-.25 1.02L8.1 9.7a12.05 12.05 0 0 0 6.2 6.2l1.4-1.4a1 1 0 0 1 1.02-.25l3.6 1.2a1 1 0 0 1 .68.95V19a2 2 0 0 1-2 2h-1C9.7 21 3 14.3 3 6V5z"/></svg>
+            Call
+          </a>
+        </div>
+      </section>
 
       <section class="mx-4 mb-4 bg-white border border-gray-200 rounded-lg p-4 md:mx-0 md:rounded-xl">
         <p class="text-xs text-gray-500 uppercase tracking-wider">Listed by</p>
@@ -175,7 +194,19 @@
       </section>
     </div>
 
-    <div id="contactBar" class="hidden fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 p-4 z-30 md:bottom-0">
+    <!-- Phones: slim sticky bar directly above the bottom nav; slides in once the in-page buttons scroll out of view -->
+    <div id="contactSlim" class="md:hidden fixed bottom-16 left-0 right-0 z-30 h-14 bg-white border-t border-gray-200 px-4 flex items-center justify-between gap-3 translate-y-full transition-transform duration-200 ease-out will-change-transform" aria-hidden="true">
+      <p id="slimPrice" class="text-lg font-bold text-blue-700 truncate"></p>
+      <div class="flex items-center gap-2 shrink-0">
+        <a id="whatsappDealerBtnSlim" href="#" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp"
+           class="hidden h-10 w-10 rounded-full bg-green-500 hover:bg-green-600 text-white flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.882 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        </a>
+        <button type="button" id="contactDealerBtnSlim" class="h-10 rounded-lg bg-blue-700 hover:bg-blue-800 text-white px-4 text-sm font-semibold">Contact</button>
+      </div>
+    </div>
+
+    <div id="contactBar" class="hidden max-md:!hidden fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 p-4 z-30 md:bottom-0">
       <div class="mx-auto max-w-3xl">
         <div id="contactActions" class="grid grid-cols-2 gap-3">
           <button type="button" id="contactDealerBtn"
@@ -277,31 +308,47 @@
           return 'https://wa.me/' + digits + '?text=' + encodeURIComponent(text);
         }
 
+        function setLinkOrHide(id, href) {
+          const el = document.getElementById(id);
+          if (!el) return;
+          if (href) {
+            el.href = href;
+            el.classList.remove('hidden');
+          } else {
+            el.classList.add('hidden');
+            el.removeAttribute('href');
+          }
+        }
+
+        // Desktop block, phone in-page block and phone slim bar all follow the same dealer data.
         function updateContactActions(vehicle) {
           const dealer = (vehicle && vehicle.dealer) || {};
           const waUrl = buildWhatsAppUrl(dealer, vehicle);
-          const contactBtn = document.getElementById('contactDealerBtn');
-          const waBtn = document.getElementById('whatsappDealerBtn');
-          const callBtn = document.getElementById('callDealerBtn');
           const phoneDigits = dealer.phone ? String(dealer.phone).replace(/[^0-9+]/g, '') : '';
 
-          if (waUrl) {
-            waBtn.href = waUrl;
-            waBtn.classList.remove('hidden');
-          } else {
-            waBtn.classList.add('hidden');
-            waBtn.removeAttribute('href');
-          }
-          if (phoneDigits) {
-            callBtn.href = 'tel:' + phoneDigits;
-            callBtn.classList.remove('hidden');
-          } else {
-            callBtn.classList.add('hidden');
-            callBtn.removeAttribute('href');
-          }
+          ['whatsappDealerBtn', 'whatsappDealerBtnInline', 'whatsappDealerBtnSlim'].forEach(function (id) { setLinkOrHide(id, waUrl); });
+          ['callDealerBtn', 'callDealerBtnInline'].forEach(function (id) { setLinkOrHide(id, phoneDigits ? 'tel:' + phoneDigits : ''); });
           // One extra button sits beside "Contact Dealer"; two go on their own row beneath it.
           const extras = (waUrl ? 1 : 0) + (phoneDigits ? 1 : 0);
-          contactBtn.classList.toggle('col-span-2', extras !== 1);
+          ['contactDealerBtn', 'contactDealerBtnInline'].forEach(function (id) {
+            document.getElementById(id).classList.toggle('col-span-2', extras !== 1);
+          });
+        }
+
+        // Slim bar: shown only while the in-page buttons are scrolled above the viewport (never for sold cars).
+        const contactInline = document.getElementById('contactInline');
+        const contactSlim = document.getElementById('contactSlim');
+        let slimAllowed = false;
+        function setSlimVisible(show) {
+          contactSlim.classList.toggle('translate-y-full', !show);
+          contactSlim.setAttribute('aria-hidden', show ? 'false' : 'true');
+        }
+        if ('IntersectionObserver' in window) {
+          new IntersectionObserver(function (entries) {
+            const entry = entries[0];
+            const scrolledPast = !entry.isIntersecting && entry.boundingClientRect.bottom < 0;
+            setSlimVisible(slimAllowed && scrolledPast);
+          }, { threshold: 0 }).observe(contactInline);
         }
 
         function track(type) {
@@ -597,6 +644,10 @@
           document.getElementById('soldBanner').classList.toggle('hidden', !isSold);
           document.getElementById('soldBannerMobile').classList.toggle('hidden', !isSold);
           contactBar.classList.toggle('hidden', isSold);
+          contactInline.classList.toggle('hidden', isSold);
+          slimAllowed = !isSold;
+          if (isSold) setSlimVisible(false);
+          document.getElementById('slimPrice').textContent = formatPrice(v.price);
 
         }
 
@@ -638,13 +689,13 @@
           fetch('/api/cars/' + vehicleId + '/view', { method: 'POST' }).catch(function () {});
         }
 
-        async function startConversationAndGoToChat() {
+        async function startConversationAndGoToChat(sourceBtn) {
           const v = currentVehicle;
           if (!v || !v.dealer || !v.dealer.id) {
             alert('Could not contact dealer for this listing.');
             return;
           }
-          const btn = document.getElementById('contactDealerBtn');
+          const btn = sourceBtn || document.getElementById('contactDealerBtn');
           btn.disabled = true;
           const orig = btn.textContent;
           btn.textContent = 'Opening chat…';
@@ -681,7 +732,7 @@
           }
         }
 
-        function handleContactClick() {
+        function handleContactClick(e) {
           track('message');
           if (!isSignedInBuyer()) {
             const returnPath = '/cars/' + vehicleId;
@@ -692,7 +743,7 @@
               '/buyer/login.html?returnTo=' + encodeURIComponent(returnPath) + '&action=contact';
             return;
           }
-          startConversationAndGoToChat();
+          startConversationAndGoToChat(e && e.currentTarget);
         }
 
         ['backLink', 'mobBackBtn'].forEach(function (id) {
@@ -704,9 +755,15 @@
           });
         });
 
-        document.getElementById('contactDealerBtn').addEventListener('click', handleContactClick);
-        document.getElementById('whatsappDealerBtn').addEventListener('click', function () { track('whatsapp'); });
-        document.getElementById('callDealerBtn').addEventListener('click', function () { track('call'); });
+        ['contactDealerBtn', 'contactDealerBtnInline', 'contactDealerBtnSlim'].forEach(function (id) {
+          document.getElementById(id).addEventListener('click', handleContactClick);
+        });
+        ['whatsappDealerBtn', 'whatsappDealerBtnInline', 'whatsappDealerBtnSlim'].forEach(function (id) {
+          document.getElementById(id).addEventListener('click', function () { track('whatsapp'); });
+        });
+        ['callDealerBtn', 'callDealerBtnInline'].forEach(function (id) {
+          document.getElementById(id).addEventListener('click', function () { track('call'); });
+        });
         document.getElementById('detailShareBtn').addEventListener('click', shareListing);
         document.getElementById('mobShareBtn').addEventListener('click', shareListing);
 
