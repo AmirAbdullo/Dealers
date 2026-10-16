@@ -46,6 +46,13 @@
   "home.scroll_left": "تمرير لليسار",
   "home.scroll_right": "تمرير لليمين",
   "home.all_egypt": "كل مصر",
+  "hero.title": "كل سيارة من تاجر موثّق.",
+  "hero.subtitle": "بدون بائعين أفراد وبدون مفاجآت. تصفح إعلانات مفحوصة بدرجة ثقة وتقييم عادل للسعر.",
+  "hero.trust_dealers": "تجار موثّقون فقط",
+  "hero.trust_score": "درجة ثقة لكل سيارة",
+  "hero.trust_price": "تقييم عادل للأسعار",
+  "home.top_trust": "أعلى درجات الثقة",
+  "home.top_trust_sub": "أعلى السيارات تقييماً بعد فحص كارفوكس.",
 
   "card.whatsapp": "واتساب",
   "card.message": "رسالة",

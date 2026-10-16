@@ -1,0 +1,71 @@
+/* CarFox visual identity — shared by the home, browse and detail pages.
+   Navy + orange, Nunito display headings (Cairo in Arabic), soft rounded cards with badges on the photo. */
+:root {
+  --cf-navy: #0f1f3d;
+  --cf-navy-700: #162c57;
+  --cf-navy-900: #0b1830;
+  --cf-orange: #f97316;
+  --cf-orange-600: #ea580c;
+}
+
+.font-display { font-family: 'Nunito', 'Inter', ui-sans-serif, system-ui, sans-serif; }
+html[lang="ar"] .font-display { font-family: 'Cairo', ui-sans-serif, system-ui, sans-serif; }
+
+/* Hero: navy gradient with a warm glow top-end and a cool glow bottom-start. */
+.cf-hero {
+  background:
+    radial-gradient(900px 340px at 88% -30%, rgba(249, 115, 22, 0.32), transparent 62%),
+    radial-gradient(700px 320px at -12% 115%, rgba(59, 130, 246, 0.28), transparent 60%),
+    linear-gradient(135deg, var(--cf-navy) 0%, var(--cf-navy-700) 55%, var(--cf-navy-900) 100%);
+}
+
+/* Section heading with the orange mark (mirrors in RTL). */
+.cf-section-title { position: relative; display: inline-block; padding-bottom: 0.55rem; }
+.cf-section-title::after {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0;
+  bottom: 0;
+  width: 2.25rem;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--cf-orange);
+}
+
+/* Listing card: big radius, soft shadow, lifts on hover. */
+.cf-card {
+  position: relative;
+  background: #fff;
+  border-radius: 1.5rem;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(15, 31, 61, 0.06), 0 14px 34px -22px rgba(15, 31, 61, 0.4);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+@media (hover: hover) {
+  .cf-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 1px 2px rgba(15, 31, 61, 0.06), 0 26px 46px -24px rgba(15, 31, 61, 0.5);
+  }
+}
+.cf-card:focus-within { box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.35); }
+
+/* Brand tiles: borderless circular logos. */
+.cf-brand-circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 4rem;
+  width: 4rem;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 6px 16px -8px rgba(15, 31, 61, 0.35);
+  box-shadow: 0 6px 16px -8px rgba(15, 31, 61, 0.35), 0 0 0 1px rgba(15, 23, 42, 0.05);
+  transition: box-shadow 0.18s ease, transform 0.18s ease;
+}
+.cf-brand-tile:hover .cf-brand-circle {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 22px -10px rgba(249, 115, 22, 0.55), 0 0 0 2px rgba(249, 115, 22, 0.6);
+}
+
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }

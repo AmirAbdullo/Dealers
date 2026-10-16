@@ -57,13 +57,13 @@
     var st = Object.assign({}, STYLES[cv.rating], { label: ratingLabel(cv.rating, STYLES[cv.rating]) });
     var interactive = !!opts.vehicleId;
     var t = interactive ? 'button' : 'span';
-    var size = opts.compact ? ' text-[11px] px-1.5 py-0.5' : ' text-sm px-3 py-1';
+    var size = opts.compact ? ' text-[11px] px-1.5 py-0.5' : opts.size === 'lg' ? ' text-sm px-3 py-1.5' : opts.size === 'md' ? ' text-xs px-2.5 py-1' : ' text-sm px-3 py-1';
     var pctText = cv.pct != null ? (Math.abs(cv.pct) < 0.5 ? 'at the market median' : Math.abs(Math.round(cv.pct)) + '% ' + (cv.pct < 0 ? 'below' : 'above') + ' the median') : '';
     var attrs = interactive
       ? ' type="button" data-value-open="' + esc(opts.vehicleId) + '" aria-label="' + esc(st.label) + (pctText ? ', priced ' + pctText : '') + '. How is this rated?"'
       : ' title="' + esc(st.label) + (pctText ? ' · ' + pctText + ' of ' + cv.comparables + ' similar cars' : '') + '"';
-    return '<' + t + attrs + ' class="inline-flex items-center gap-1 rounded-full border font-semibold whitespace-nowrap ' + st.cls + size + (interactive ? ' hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-blue-300' : '') + '">' +
-      tag(opts.compact ? 'h-3.5 w-3.5' : 'h-4 w-4') + '<span>' + esc(st.label) + '</span>' +
+    return '<' + t + attrs + ' class="inline-flex items-center gap-1 rounded-full border font-semibold whitespace-nowrap ' + st.cls + size + (interactive ? ' hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-blue-300' : '') + (opts.className ? ' ' + opts.className : '') + '">' +
+      tag(opts.compact ? 'h-3.5 w-3.5' : opts.size === 'lg' ? 'h-5 w-5' : 'h-4 w-4') + '<span>' + esc(st.label) + '</span>' +
       (interactive ? '<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M12 11v5M12 8h.01"/></svg>' : '') +
       '</' + t + '>';
   }

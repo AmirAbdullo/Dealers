@@ -3955,7 +3955,8 @@ app.get('/api/vehicles', function (req, res) {
         d.city AS dealer_city,
         d.state AS dealer_state,
         d.governorate AS dealer_governorate,
-        d.whatsapp AS dealer_whatsapp
+        d.whatsapp AS dealer_whatsapp,
+        (SELECT COUNT(*) FROM vehicle_photos ph WHERE ph.vehicle_id = v.id) AS photo_count
       ${PUBLIC_CARS_FROM_SQL}
       LEFT JOIN vehicle_photos p ON p.vehicle_id = v.id AND p.is_primary = 1
       WHERE ${filter.whereSql}
@@ -4047,6 +4048,36 @@ app.get('/api/cars/:id/value', function (req, res) {
       great_below_pct: carValueSettings.great_below_pct, good_below_pct: carValueSettings.good_below_pct, fair_band_pct: carValueSettings.fair_band_pct
     }
   });
+});
+
+// Highest-scoring verified listings for the home page "Top Trust Scores" row (score 60+ only).
+app.get('/api/cars/top-trust', function (req, res) {
+  let limit = Number(req.query.limit);
+  if (!limit || isNaN(limit) || limit < 1) limit = 10;
+  if (limit > 24) limit = 24;
+  const rows = db
+    .prepare(
+      `SELECT
+        v.id, v.year, v.make, v.model, v.trim, v.mileage, v.price,
+        v.body_type, v.transmission, v.fuel_type, v.exterior_color,
+        v.published_at,
+        p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score, v.value_rating, v.value_pct, v.value_median, v.value_comparables,
+        (SELECT COUNT(*) FROM vehicle_photos ph WHERE ph.vehicle_id = v.id) AS photo_count,
+        d.id AS dealer_id,
+        d.business_name AS dealer_business_name,
+        d.city AS dealer_city,
+        d.state AS dealer_state,
+        d.governorate AS dealer_governorate,
+        d.whatsapp AS dealer_whatsapp
+      ${PUBLIC_CARS_FROM_SQL}
+      LEFT JOIN vehicle_photos p ON p.vehicle_id = v.id AND p.is_primary = 1
+      WHERE ${PUBLIC_CARS_BASE_WHERE} AND COALESCE(v.trust_score, 0) >= 60
+      ORDER BY v.trust_score DESC, COALESCE(v.published_at, v.created_at) DESC, v.id DESC
+      LIMIT ?`
+    )
+    .all(limit);
+  res.set('Cache-Control', 'no-store');
+  return res.json({ vehicles: rows.map(mapPublicCarRow) });
 });
 
 // Similar cars for the detail page: same make OR same body type, price within ±30%, active only,
