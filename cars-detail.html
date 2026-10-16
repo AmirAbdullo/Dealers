@@ -21,6 +21,9 @@
       .gallery-arrow[disabled] { opacity:.35; cursor:default; }
       @media (min-width: 768px) and (hover: hover) { .gallery-arrow { display:flex; } }
       #vehicle-gallery .gallery-slide img { cursor: zoom-in; }
+      /* Floating controls over the full-bleed photo (phones only). */
+      .cf-overlay-btn { display:flex; align-items:center; justify-content:center; width:2.5rem; height:2.5rem; border-radius:999px; background:rgba(15,23,42,.55); color:#fff; box-shadow:0 2px 8px rgba(0,0,0,.3); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); }
+      .cf-overlay-btn:active { background:rgba(15,23,42,.75); }
     </style>
     <script>
       tailwind.config = {
@@ -37,7 +40,7 @@
     </script>
   </head>
   <body class="bg-gray-50 text-gray-900 font-sans">
-    <header class="sticky top-0 z-40 bg-white border-b border-gray-200 h-16">
+    <header class="hidden md:block sticky top-0 z-40 bg-white border-b border-gray-200 h-16">
       <div class="mx-auto max-w-3xl px-4 h-full flex items-center justify-between">
         <a id="backLink" href="/cars.html" class="p-2 -ml-2 text-gray-700 hover:text-gray-900" aria-label="Back">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
@@ -61,10 +64,10 @@
 
     <div id="pageLoading" class="px-4 py-16 text-center text-gray-600">Loading listing…</div>
 
-    <div id="soldBanner" class="hidden mx-4 mt-3 md:mx-auto md:max-w-6xl md:px-6 md:mt-6">
+    <div id="soldBanner" class="hidden max-md:!hidden md:mx-auto md:max-w-6xl md:px-6 md:mt-6">
       <div class="rounded-lg border border-gray-300 bg-gray-100 px-4 py-3 text-sm text-gray-800">
         <span class="inline-block rounded bg-gray-900 text-white text-xs font-semibold uppercase tracking-wide px-2 py-0.5 mr-2">Sold</span>
-        This car has been sold. <a id="soldSimilarLink" href="/cars.html" class="font-semibold text-blue-700 hover:underline">Browse similar cars</a>
+        This car has been sold. <a data-sold-similar href="/cars.html" class="font-semibold text-blue-700 hover:underline">Browse similar cars</a>
       </div>
     </div>
 
@@ -77,23 +80,48 @@
       <div class="md:mx-auto md:max-w-6xl md:px-6 md:pt-6 md:grid md:grid-cols-12 md:gap-8 md:items-start">
       <!-- Left column on desktop: gallery -->
       <div class="md:col-span-7 md:sticky md:top-20">
-      <div class="px-4 py-3 bg-white md:px-0 md:py-0 md:bg-transparent">
-        <div class="relative rounded-lg overflow-hidden -mx-0 md:rounded-xl">
-          <div id="vehicle-gallery" class="flex overflow-x-auto aspect-[4/3] bg-gray-100"></div>
+      <div class="bg-white md:bg-transparent">
+        <div class="relative overflow-hidden md:rounded-xl">
+          <div id="vehicle-gallery" class="flex overflow-x-auto h-[48vh] min-h-[260px] md:h-auto md:min-h-0 md:aspect-[4/3] bg-gray-100"></div>
+          <!-- Phone controls floating over the photo (the page header is hidden below md) -->
+          <div class="md:hidden absolute inset-x-0 top-0 z-20 flex items-start justify-between p-3 pointer-events-none" style="padding-top: max(0.75rem, env(safe-area-inset-top));">
+            <a id="mobBackBtn" href="/cars.html" class="cf-overlay-btn pointer-events-auto" aria-label="Back">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+            </a>
+            <div class="flex items-center gap-2 pointer-events-none">
+              <button type="button" id="mobShareBtn" class="cf-overlay-btn pointer-events-auto" aria-label="Share listing">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.7 10.7l6.6-3.4M8.7 13.3l6.6 3.4"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="18" r="3"/></svg>
+              </button>
+              <button type="button" id="mobSaveBtn" class="cf-overlay-btn pointer-events-auto" aria-label="Save for later">
+                <svg id="mobSaveIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
           <button type="button" id="galleryPrev" class="gallery-arrow left-3" aria-label="Previous photo">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 6-6 6 6 6"/></svg>
           </button>
           <button type="button" id="galleryNext" class="gallery-arrow right-3" aria-label="Next photo">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
           </button>
-          <span id="photoCounter" class="absolute bottom-3 right-3 rounded-md bg-black/70 text-white text-xs px-2 py-1 pointer-events-none z-10">0 / 0</span>
+          <span id="photoCounter" class="absolute bottom-8 md:bottom-3 right-3 rounded-md bg-black/70 text-white text-xs px-2 py-1 pointer-events-none z-10">0 / 0</span>
         </div>
-        <div id="thumbStrip" class="flex gap-2 overflow-x-auto mt-2 pb-1"></div>
+        <!-- On phones the content sheet overlaps the photo's bottom edge with rounded top corners -->
+        <div class="relative z-10 -mt-5 rounded-t-3xl bg-white px-4 pt-4 md:mt-2 md:rounded-none md:bg-transparent md:px-0 md:pt-0">
+          <div id="thumbStrip" class="flex gap-2 overflow-x-auto pb-1 empty:hidden"></div>
+        </div>
       </div>
       </div>
 
       <!-- Right column on desktop: price, badges, dealer, specs, features, description -->
       <div class="md:col-span-5 md:min-w-0">
+      <div id="soldBannerMobile" class="hidden md:!hidden bg-white px-4 pt-2">
+        <div class="rounded-lg border border-gray-300 bg-gray-100 px-4 py-3 text-sm text-gray-800">
+          <span class="inline-block rounded bg-gray-900 text-white text-xs font-semibold uppercase tracking-wide px-2 py-0.5 mr-2">Sold</span>
+          This car has been sold. <a data-sold-similar href="/cars.html" class="font-semibold text-blue-700 hover:underline">Browse similar cars</a>
+        </div>
+      </div>
       <section class="px-4 py-4 bg-white md:rounded-xl md:border md:border-gray-200 md:mb-4">
         <h1 id="listingTitle" class="text-2xl md:text-3xl font-bold text-gray-900"></h1>
         <p id="listingPrice" class="text-3xl font-bold text-blue-700 mt-2"></p>
@@ -466,7 +494,7 @@
             link.href = p.url;
             link.setAttribute('data-pswp-width', '1600');
             link.setAttribute('data-pswp-height', '1200');
-            link.className = 'block w-full aspect-[4/3]';
+            link.className = 'block w-full h-full';
             const img = document.createElement('img');
             img.src = p.url;
             img.alt = 'Vehicle photo ' + (i + 1);
@@ -567,6 +595,7 @@
           pageContent.classList.remove('hidden');
           const isSold = v.status === 'sold';
           document.getElementById('soldBanner').classList.toggle('hidden', !isSold);
+          document.getElementById('soldBannerMobile').classList.toggle('hidden', !isSold);
           contactBar.classList.toggle('hidden', isSold);
 
         }
@@ -579,11 +608,12 @@
         function loadSimilarCars(v) {
           const section = document.getElementById('similarSection');
           const grid = document.getElementById('similarGrid');
-          const soldLink = document.getElementById('soldSimilarLink');
+          const soldLinks = Array.prototype.slice.call(document.querySelectorAll('[data-sold-similar]'));
           const browseLink = document.getElementById('similarBrowseLink');
           section.classList.add('hidden');
-          soldLink.href = v.make ? '/cars.html?make=' + encodeURIComponent(v.make) : '/cars.html';
-          browseLink.href = soldLink.href;
+          const browseHref = v.make ? '/cars.html?make=' + encodeURIComponent(v.make) : '/cars.html';
+          soldLinks.forEach(function (a) { a.href = browseHref; a.onclick = null; });
+          browseLink.href = browseHref;
           fetch('/api/cars/' + v.id + '/similar')
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (data) {
@@ -593,11 +623,13 @@
               cars.forEach(function (car) { grid.appendChild(renderSimilarCard(car)); });
               section.classList.remove('hidden');
               // The sold banner's "Browse similar cars" scrolls down to this section.
-              soldLink.href = '#similarSection';
-              soldLink.onclick = function (e) {
-                e.preventDefault();
-                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              };
+              soldLinks.forEach(function (a) {
+                a.href = '#similarSection';
+                a.onclick = function (e) {
+                  e.preventDefault();
+                  section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                };
+              });
             })
             .catch(function () {});
         }
@@ -663,17 +695,20 @@
           startConversationAndGoToChat();
         }
 
-        document.getElementById('backLink').addEventListener('click', function (e) {
-          if (window.history.length > 1) {
-            e.preventDefault();
-            window.history.back();
-          }
+        ['backLink', 'mobBackBtn'].forEach(function (id) {
+          document.getElementById(id).addEventListener('click', function (e) {
+            if (window.history.length > 1) {
+              e.preventDefault();
+              window.history.back();
+            }
+          });
         });
 
         document.getElementById('contactDealerBtn').addEventListener('click', handleContactClick);
         document.getElementById('whatsappDealerBtn').addEventListener('click', function () { track('whatsapp'); });
         document.getElementById('callDealerBtn').addEventListener('click', function () { track('call'); });
         document.getElementById('detailShareBtn').addEventListener('click', shareListing);
+        document.getElementById('mobShareBtn').addEventListener('click', shareListing);
 
         if (window.CarfoxAuth) CarfoxAuth.initBuyerNav();
         if (window.CarfoxBuyerNav) CarfoxBuyerNav.initMessagesUnreadBadge();
@@ -682,21 +717,24 @@
         var detailIsSaved = false;
         var detailBuyerToken = null;
 
+        // Header heart (desktop) and the floating heart over the photo (phones) share one state.
         function updateDetailSaveIcon() {
-          var icon = document.getElementById('detailSaveIcon');
-          var btn = document.getElementById('detailSaveBtn');
-          if (!icon || !btn) return;
-          if (detailIsSaved) {
-            icon.setAttribute('fill', '#ef4444');
-            icon.setAttribute('stroke', 'none');
-            icon.innerHTML = '<path d="M12 21s-6.7-4.9-9.3-7.6C.7 11.4.5 8.5 2.2 6.8 3.3 5.7 4.8 5.3 6.2 5.6c.9.2 1.8.8 2.5 1.5.7-.7 1.6-1.3 2.5-1.5 1.4-.3 2.9.1 4 1.2 1.7 1.7 1.5 4.6-.5 6.6C18.7 16.1 12 21 12 21z"/>';
-            btn.setAttribute('aria-label', 'Remove from saved');
-          } else {
-            icon.setAttribute('fill', 'none');
-            icon.setAttribute('stroke', 'currentColor');
-            icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>';
-            btn.setAttribute('aria-label', 'Save for later');
-          }
+          [['detailSaveIcon', 'detailSaveBtn'], ['mobSaveIcon', 'mobSaveBtn']].forEach(function (pair) {
+            var icon = document.getElementById(pair[0]);
+            var btn = document.getElementById(pair[1]);
+            if (!icon || !btn) return;
+            if (detailIsSaved) {
+              icon.setAttribute('fill', '#ef4444');
+              icon.setAttribute('stroke', 'none');
+              icon.innerHTML = '<path d="M12 21s-6.7-4.9-9.3-7.6C.7 11.4.5 8.5 2.2 6.8 3.3 5.7 4.8 5.3 6.2 5.6c.9.2 1.8.8 2.5 1.5.7-.7 1.6-1.3 2.5-1.5 1.4-.3 2.9.1 4 1.2 1.7 1.7 1.5 4.6-.5 6.6C18.7 16.1 12 21 12 21z"/>';
+              btn.setAttribute('aria-label', 'Remove from saved');
+            } else {
+              icon.setAttribute('fill', 'none');
+              icon.setAttribute('stroke', 'currentColor');
+              icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>';
+              btn.setAttribute('aria-label', 'Save for later');
+            }
+          });
         }
 
         var detailSaveBound = false;
@@ -730,7 +768,7 @@
 
           if (detailSaveBound) return;
           detailSaveBound = true;
-          document.getElementById('detailSaveBtn').addEventListener('click', function () {
+          function onSaveClick() {
             if (!detailBuyerToken) {
               window.location.href = '/buyer/login.html?returnTo=' + encodeURIComponent(window.location.href);
               return;
@@ -745,6 +783,10 @@
               detailIsSaved = wasSaved;
               updateDetailSaveIcon();
             });
+          }
+          ['detailSaveBtn', 'mobSaveBtn'].forEach(function (id) {
+            var b = document.getElementById(id);
+            if (b) b.addEventListener('click', onSaveClick);
           });
         }
 
