@@ -223,6 +223,59 @@
   if (document.body) mountBuyerBottomNav();
   else document.addEventListener('DOMContentLoaded', mountBuyerBottomNav);
 
+  // ---- Auto-hiding header on phones ----
+  // Below md the sticky page header slides up (translateY, 200ms) while the user scrolls down and
+  // slides back the moment they scroll up; it is always visible at the very top. The header keeps
+  // its place in the flow (it is only transformed), so nothing jumps. Bars that stick right under the
+  // header use the --cf-header-offset variable (class .cf-under-header) so they follow it.
+  // Desktop keeps the plain sticky behaviour. The chat page manages its own layout and is skipped.
+  function initAutoHideHeader() {
+    var header = document.querySelector('header.sticky');
+    if (!header || /\/buyer\/chat\.html$/.test(location.pathname)) return;
+    var mq = global.matchMedia('(max-width: 767px)');
+    var style = document.createElement('style');
+    style.textContent =
+      'header.cf-autohide{transition:transform 200ms ease;will-change:transform}' +
+      'header.cf-autohide.cf-header-hidden{transform:translateY(-100%)}' +
+      '.cf-under-header{top:var(--cf-header-offset,4rem) !important;transition:top 200ms ease}';
+    document.head.appendChild(style);
+    header.classList.add('cf-autohide');
+
+    var lastY = Math.max(0, global.scrollY || 0);
+    var hidden = false;
+
+    function setOffset() {
+      document.documentElement.style.setProperty('--cf-header-offset', hidden ? '0px' : header.offsetHeight + 'px');
+    }
+    function setHidden(next) {
+      if (next === hidden) return;
+      hidden = next;
+      header.classList.toggle('cf-header-hidden', hidden);
+      setOffset();
+    }
+    function update() {
+      if (!mq.matches) { setHidden(false); return; }
+      var y = Math.max(0, global.scrollY || 0);
+      var menuOpen = !!header.querySelector('[aria-expanded="true"]');
+      if (y <= 0 || menuOpen) setHidden(false);
+      else if (y > lastY && y > header.offsetHeight) setHidden(true);
+      else if (y < lastY) setHidden(false);
+      lastY = y;
+    }
+    // Scroll events are already frame-aligned; updating directly keeps the header in step even when
+    // the tab is throttled and animation frames stall.
+    global.addEventListener('scroll', update, { passive: true });
+    mq.addEventListener('change', function () {
+      lastY = Math.max(0, global.scrollY || 0);
+      setHidden(false);
+      setOffset();
+    });
+    global.addEventListener('resize', setOffset);
+    setOffset();
+  }
+  if (document.body) initAutoHideHeader();
+  else document.addEventListener('DOMContentLoaded', initAutoHideHeader);
+
   global.CarfoxBuyerNav = {
     mountBuyerBottomNav: mountBuyerBottomNav,
     escapeHtml: escapeHtml,
