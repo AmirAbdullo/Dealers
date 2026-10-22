@@ -88,7 +88,9 @@
         <div id="vehicle-gallery" class="flex overflow-x-auto aspect-[4/3] bg-gray-200"></div>
         <span id="photoCounter" class="absolute bottom-3 right-3 rounded-md bg-black/70 text-white text-xs px-2 py-1 pointer-events-none z-10">0 / 0</span>
       </div>
-      <div id="thumbStrip" class="flex gap-2 overflow-x-auto mt-2 pb-1 -mx-1 px-1"></div>
+      <div class="relative mt-2">
+        <div id="thumbStrip" class="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1"></div>
+      </div>
 
       <div>
         <h1 id="listingTitle" class="text-2xl font-bold text-gray-900">—</h1>
@@ -173,6 +175,7 @@
       const vehicleGallery = document.getElementById('vehicle-gallery');
       const photoCounter = document.getElementById('photoCounter');
       const thumbStrip = document.getElementById('thumbStrip');
+      if (window.CarfoxScrollRow) CarfoxScrollRow.attach(thumbStrip, { size: 'sm', fade: '#f9fafb', step: 264 });
       const backEdit = document.getElementById('backEdit');
       let galleryObserver = null;
       let mainIndex = 0;
@@ -730,6 +733,7 @@
       })();
     </script>
     <div id="dealerBottomNav"></div>
+    <script src="/js/carfox-scroll-row.js"></script>
     <script src="/js/carfox-dealer-nav.js"></script>
     <script>
       CarfoxDealerNav.mountDealerBottomNav(document.getElementById('dealerBottomNav'), 'inventory');
