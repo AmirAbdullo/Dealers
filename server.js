@@ -3523,6 +3523,12 @@ function buildPublicCarsFilter(query) {
     params.push.apply(params, colors.map(function (c) { return c.toLowerCase(); }));
   }
 
+  const minTrust = parseOptionalNumber(query.min_trust);
+  if (minTrust != null && minTrust > 0) {
+    whereParts.push('COALESCE(v.trust_score, 0) >= ?');
+    params.push(Math.round(minTrust));
+  }
+
   const q = String(query.q || '').trim();
   if (q) {
     const like = '%' + q.replace(/[%_]/g, function (ch) { return '\\' + ch; }) + '%';
@@ -3561,6 +3567,7 @@ function mapPublicCarRow(row) {
     exterior_color: row.exterior_color,
     primary_photo_url: row.primary_photo_url || null,
     photo_count: row.photo_count != null ? Number(row.photo_count) : undefined,
+    photos: row.photo_urls != null ? String(row.photo_urls).split('\u001f').filter(Boolean) : undefined,
     feature_count: row.feature_count != null ? Number(row.feature_count) : undefined,
     features_preview: row.feature_count == null ? undefined : !row.feature_preview ? [] : String(row.feature_preview).split('\u001f').filter(Boolean),
     trust_score: row.trust_score != null ? Number(row.trust_score) : 0,
@@ -3913,6 +3920,7 @@ app.get('/api/cars', function (req, res) {
         v.published_at,
         p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score, v.value_rating, v.value_pct, v.value_median, v.value_comparables,
         (SELECT COUNT(*) FROM vehicle_photos ph WHERE ph.vehicle_id = v.id) AS photo_count,
+        (SELECT GROUP_CONCAT(url, char(31)) FROM (SELECT ph.url FROM vehicle_photos ph WHERE ph.vehicle_id = v.id ORDER BY ph.is_primary DESC, ph.display_order ASC, ph.id ASC LIMIT 5)) AS photo_urls,
         (SELECT COUNT(*) FROM vehicle_features vf WHERE vf.vehicle_id = v.id) AS feature_count,
         (SELECT GROUP_CONCAT(name, char(31)) FROM (SELECT f.name FROM vehicle_features vf JOIN features f ON f.id = vf.feature_id WHERE vf.vehicle_id = v.id ORDER BY${FEATURE_ORDER_SQL} LIMIT 3)) AS feature_preview,
         d.id AS dealer_id,

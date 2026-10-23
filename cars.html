@@ -27,6 +27,11 @@
     <style>
       /* Below lg the filter panel is a bottom sheet; from lg it is a static sidebar. */
       #filterPanel { transition: transform 250ms ease-out; }
+      .cat-pill.is-active { background:#0f1f3d; border-color:#0f1f3d; color:#fff; }
+      .cat-pill.is-active .cat-pill-chevron { color:rgba(255,255,255,.7); }
+      .quick-chip.is-active { background:#e8edf7; border-color:#0f1f3d; color:#0f1f3d; font-weight:600; }
+      .card-photos { scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+      .card-photos::-webkit-scrollbar { display:none; }
       #filterPanel.filter-panel-open { transform: translateY(0); }
       @media (min-width: 1024px) {
         #filterPanel { transform: none !important; }
@@ -73,8 +78,8 @@
     </header>
 
     <div class="bg-white px-4 py-3 border-b border-gray-200">
-      <div class="mx-auto max-w-7xl">
-        <form id="topSearchForm" class="relative" role="search">
+      <div class="mx-auto max-w-7xl flex items-center gap-2">
+        <form id="topSearchForm" class="relative flex-1 min-w-0" role="search">
           <button type="submit" id="topSearchBtn" aria-label="Search"
                   class="absolute left-0 top-0 h-full flex items-center pl-4 pr-2 text-gray-400 hover:text-gray-600 focus:outline-none">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -92,20 +97,34 @@
             </svg>
           </button>
         </form>
+        <button type="button" id="openFiltersBtn" class="lg:hidden relative shrink-0 h-11 w-11 inline-flex items-center justify-center rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50" aria-label="Filters">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 5h18M6 12h12M10 19h4"/>
+          </svg>
+          <span id="filtersBtnBadge" class="hidden absolute -top-1 -end-1 min-w-[1.1rem] h-[1.1rem] rounded-full bg-navy text-white text-[10px] font-bold flex items-center justify-center px-1"></span>
+        </button>
+      </div>
+      <!-- Phones: category pills open the sheet at that section; quick picks apply with one tap -->
+      <div class="lg:hidden mx-auto max-w-7xl">
+        <div id="catPills" class="mt-3 -mx-4 px-4 flex gap-2 overflow-x-auto scrollbar-hide">
+          <button type="button" data-open-section="price" class="cat-pill shrink-0 inline-flex items-center gap-1 rounded-full border border-gray-300 bg-white ps-3.5 pe-2.5 py-2 text-sm font-semibold text-gray-800">Price <svg class="cat-pill-chevron h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button>
+          <button type="button" data-open-section="make" class="cat-pill shrink-0 inline-flex items-center gap-1 rounded-full border border-gray-300 bg-white ps-3.5 pe-2.5 py-2 text-sm font-semibold text-gray-800">Make/Model <svg class="cat-pill-chevron h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button>
+          <button type="button" data-open-section="body_type" data-filter-section="body_type" class="cat-pill shrink-0 inline-flex items-center gap-1 rounded-full border border-gray-300 bg-white ps-3.5 pe-2.5 py-2 text-sm font-semibold text-gray-800">Body Type <svg class="cat-pill-chevron h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button>
+          <button type="button" data-open-section="year" class="cat-pill shrink-0 inline-flex items-center gap-1 rounded-full border border-gray-300 bg-white ps-3.5 pe-2.5 py-2 text-sm font-semibold text-gray-800">Year <svg class="cat-pill-chevron h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button>
+        </div>
+        <div id="quickPicks" class="mt-2 -mx-4 px-4 flex gap-2 overflow-x-auto scrollbar-hide">
+          <button type="button" data-quick="max_price" data-value="500000" class="quick-chip shrink-0 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-700">Under 500k EGP</button>
+          <button type="button" data-quick="max_mileage" data-value="100000" data-filter-section="mileage" class="quick-chip shrink-0 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-700">Under 100,000 km</button>
+          <button type="button" data-quick="min_year" data-value="2020" class="quick-chip shrink-0 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-700">2020 or newer</button>
+          <button type="button" data-quick="transmission" data-value="Automatic" data-filter-section="transmission" class="quick-chip shrink-0 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-700">Automatic</button>
+        </div>
       </div>
     </div>
 
-    <!-- Mobile / tablet toolbar: Filters button + compact sort. Hidden from lg where the sidebar and header bar take over. -->
+    <!-- Phones: slim results bar (count · sort). Hidden from lg where the sidebar and header bar take over. -->
     <div class="cf-under-header lg:hidden sticky top-16 z-30 bg-white border-b border-gray-200 py-2.5 px-4">
       <div class="mx-auto max-w-7xl flex justify-between items-center gap-3">
-        <button type="button" id="openFiltersBtn"
-                class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3 4h18M7 8h10M10 12h4M12 16h0"/>
-          </svg>
-          Filters
-          <span id="filtersBtnBadge" class="hidden ml-1 rounded-full bg-blue-700 text-white text-xs px-1.5 py-0.5"></span>
-        </button>
+        <p id="resultsCountMobile" class="font-display text-base font-extrabold text-slate-900 truncate">Loading…</p>
         <label class="flex items-center gap-2 text-sm text-gray-700">
           <span class="sr-only">Sort</span>
           <select data-sort-select aria-label="Sort results" class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none">
@@ -125,8 +144,8 @@
 
       <!-- Filter panel: bottom sheet below lg, persistent sidebar from lg -->
       <aside id="filterPanel" aria-label="Filters"
-             class="fixed bottom-0 left-0 right-0 z-50 max-h-[90vh] flex flex-col bg-white rounded-t-2xl translate-y-full lg:static lg:z-auto lg:translate-y-0 lg:rounded-xl lg:border lg:border-gray-200 lg:w-[280px] lg:shrink-0 lg:max-h-[calc(100vh-6rem)] lg:sticky lg:top-20">
-        <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between gap-2 sticky top-0 bg-white rounded-t-2xl lg:rounded-t-xl z-10">
+             class="fixed inset-0 z-[110] flex flex-col bg-white translate-y-full lg:static lg:z-auto lg:translate-y-0 lg:rounded-xl lg:border lg:border-gray-200 lg:w-[280px] lg:shrink-0 lg:max-h-[calc(100vh-6rem)] lg:sticky lg:top-20">
+        <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between gap-2 sticky top-0 bg-white lg:rounded-t-xl z-10">
           <div class="min-w-0">
             <h2 class="font-bold text-base leading-tight">Filters</h2>
             <p id="filterSummary" class="text-xs text-gray-500 truncate">No filters applied</p>
@@ -141,6 +160,17 @@
           </div>
         </div>
 
+        <!-- Verified-only toggle (Trust Score 60+) -->
+        <label class="px-4 py-3 border-b border-gray-200 flex items-center justify-between gap-3 cursor-pointer select-none">
+          <span class="flex items-center gap-2 text-sm font-semibold text-slate-900 min-w-0">
+            <svg class="h-5 w-5 shrink-0 text-orange-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 5 5.6v5.2c0 4.6 3 8.7 7 9.8 4-1.1 7-5.2 7-9.8V5.6L12 3z"/><path d="m9.2 12.2 2 2 3.8-4.2"/></svg>
+            <span class="leading-tight">Only verified cars<span class="block text-xs font-normal text-slate-500">Trust Score 60+</span></span>
+          </span>
+          <span class="relative inline-flex shrink-0">
+            <input type="checkbox" id="verifiedOnlyToggle" class="peer sr-only" />
+            <span class="h-6 w-11 rounded-full bg-gray-300 peer-checked:bg-navy transition-colors after:content-[''] after:absolute after:top-0.5 after:start-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5 rtl:peer-checked:after:-translate-x-5"></span>
+          </span>
+        </label>
         <div id="filterSheetBody" class="flex-1 overflow-y-auto px-4">
           <section class="filter-section" data-section-key="region" data-open="true">
             <button type="button" class="filter-section-toggle w-full flex items-center justify-between py-3 text-left" aria-expanded="true">
@@ -155,7 +185,7 @@
 
           <section class="filter-section" data-section-key="make" data-open="true">
             <button type="button" class="filter-section-toggle w-full flex items-center justify-between py-3 text-left" aria-expanded="true">
-              <span class="text-sm font-semibold text-gray-900 inline-flex items-center gap-1.5">Make / Model <span class="filter-section-count hidden rounded-full bg-blue-100 text-blue-800 text-[11px] font-semibold px-1.5 py-0.5"></span></span>
+              <span class="text-sm font-semibold text-gray-900 inline-flex items-center gap-1.5">Make &amp; Model <span class="filter-section-count hidden rounded-full bg-blue-100 text-blue-800 text-[11px] font-semibold px-1.5 py-0.5"></span></span>
               <svg xmlns="http://www.w3.org/2000/svg" class="filter-chevron h-4 w-4 text-gray-500 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
             </button>
             <div class="filter-section-body pb-4">
@@ -164,29 +194,6 @@
               <div id="modelSection" class="hidden mt-3 pt-3 border-t border-gray-100">
                 <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Model</p>
                 <div id="modelCheckboxes" class="space-y-1.5"></div>
-              </div>
-            </div>
-          </section>
-
-          <section class="filter-section" data-section-key="year" data-open="true">
-            <button type="button" class="filter-section-toggle w-full flex items-center justify-between py-3 text-left" aria-expanded="true">
-              <span class="text-sm font-semibold text-gray-900 inline-flex items-center gap-1.5">Year <span class="filter-section-count hidden rounded-full bg-blue-100 text-blue-800 text-[11px] font-semibold px-1.5 py-0.5"></span></span>
-              <svg xmlns="http://www.w3.org/2000/svg" class="filter-chevron h-4 w-4 text-gray-500 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-            </button>
-            <div class="filter-section-body pb-4">
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label for="minYearSelect" class="text-xs text-gray-500">From</label>
-                  <select id="minYearSelect" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white">
-                    <option value="">Any</option>
-                  </select>
-                </div>
-                <div>
-                  <label for="maxYearSelect" class="text-xs text-gray-500">To</label>
-                  <select id="maxYearSelect" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white">
-                    <option value="">Any</option>
-                  </select>
-                </div>
               </div>
             </div>
           </section>
@@ -214,16 +221,33 @@
             </div>
           </section>
 
-          <section class="filter-section" data-section-key="mileage" data-filter-section="mileage" data-open="false">
-            <button type="button" class="filter-section-toggle w-full flex items-center justify-between py-3 text-left" aria-expanded="false">
-              <span class="text-sm font-semibold text-gray-900 inline-flex items-center gap-1.5">Mileage <span class="filter-section-count hidden rounded-full bg-blue-100 text-blue-800 text-[11px] font-semibold px-1.5 py-0.5"></span></span>
+          <section class="filter-section" data-section-key="year" data-open="true">
+            <button type="button" class="filter-section-toggle w-full flex items-center justify-between py-3 text-left" aria-expanded="true">
+              <span class="text-sm font-semibold text-gray-900 inline-flex items-center gap-1.5">Year &amp; Mileage <span class="filter-section-count hidden rounded-full bg-blue-100 text-blue-800 text-[11px] font-semibold px-1.5 py-0.5"></span></span>
               <svg xmlns="http://www.w3.org/2000/svg" class="filter-chevron h-4 w-4 text-gray-500 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
             </button>
             <div class="filter-section-body pb-4">
-              <div id="mileagePicks" class="space-y-1.5 mb-3"></div>
-              <label for="maxMileageInput" class="text-xs text-gray-500">Maximum mileage (km)</label>
-              <input id="maxMileageInput" type="text" inputmode="numeric" placeholder="e.g. 100,000"
-                     class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label for="minYearSelect" class="text-xs text-gray-500">From</label>
+                  <select id="minYearSelect" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white">
+                    <option value="">Any</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="maxYearSelect" class="text-xs text-gray-500">To</label>
+                  <select id="maxYearSelect" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white">
+                    <option value="">Any</option>
+                  </select>
+                </div>
+              </div>
+              <div data-filter-section="mileage" class="mt-4 pt-4 border-t border-gray-100">
+                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Mileage</p>
+                <div id="mileagePicks" class="space-y-1.5 mb-3"></div>
+                <label for="maxMileageInput" class="text-xs text-gray-500">Maximum mileage (km)</label>
+                <input id="maxMileageInput" type="text" inputmode="numeric" placeholder="e.g. 100,000"
+                       class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+              </div>
             </div>
           </section>
 
@@ -289,7 +313,8 @@
       </aside>
 
       <main id="browseMain" class="flex-1 min-w-0 scroll-mt-32 lg:scroll-mt-24">
-        <div class="bg-white border border-gray-200 rounded-xl px-4 py-3 mb-4">
+        <div id="filterChipsMobile" class="lg:hidden hidden mb-3 flex flex-wrap gap-2 items-center"></div>
+        <div class="hidden lg:block bg-white border border-gray-200 rounded-xl px-4 py-3 mb-4">
           <div class="flex items-center justify-between gap-3">
             <div class="min-w-0">
               <h1 id="resultsCount" class="font-display text-lg lg:text-2xl font-extrabold text-slate-900 truncate">Loading cars…</h1>
@@ -413,10 +438,14 @@
             min_mileage: null,
             color: [],
             features: [],
+            min_trust: null,
             q: ''
           };
         }
         const filters = emptyFilters();
+        const verifiedOnlyToggle = document.getElementById('verifiedOnlyToggle');
+        const resultsCountMobile = document.getElementById('resultsCountMobile');
+        const filterChipsMobile = document.getElementById('filterChipsMobile');
 
         function isDesktop() {
           return DESKTOP_MQ.matches;
@@ -430,9 +459,9 @@
           return {
             region: filters.city.length,
             make: filters.make.length + (filters.model ? 1 : 0),
-            year: (filters.min_year != null ? 1 : 0) + (filters.max_year != null ? 1 : 0),
+            year: (filters.min_year != null ? 1 : 0) + (filters.max_year != null ? 1 : 0) + (filters.max_mileage != null ? 1 : 0) + (filters.min_mileage != null ? 1 : 0),
             price: (filters.min_price != null ? 1 : 0) + (filters.max_price != null ? 1 : 0),
-            mileage: (filters.max_mileage != null ? 1 : 0) + (filters.min_mileage != null ? 1 : 0),
+            verified: filters.min_trust != null ? 1 : 0,
             body_type: filters.body_type.length,
             transmission: filters.transmission ? 1 : 0,
             fuel_type: filters.fuel_type.length,
@@ -516,6 +545,7 @@
           if (filters.min_mileage != null) p.set('min_mileage', String(filters.min_mileage));
           if (filters.color.length) p.set('color', filters.color.join(','));
           if (filters.features.length) p.set('features', filters.features.join(','));
+          if (filters.min_trust != null) p.set('min_trust', String(filters.min_trust));
           if (filters.q) p.set('q', filters.q);
           return p;
         }
@@ -555,6 +585,7 @@
           if (p.has('min_mileage')) next.min_mileage = intOrNull(p, 'min_mileage');
           if (p.has('color')) next.color = csv(p, 'color');
           if (p.has('features')) next.features = p.get('features').split(',').map(function (s) { return parseInt(s, 10); }).filter(function (n) { return Number.isInteger(n) && n > 0; });
+          if (p.has('min_trust')) next.min_trust = intOrNull(p, 'min_trust');
           if (p.has('q')) next.q = p.get('q').trim();
           Object.assign(filters, next);
           if (filters.make.length !== 1) filters.model = '';
@@ -629,6 +660,7 @@
           minYearSelect.value = filters.min_year != null ? String(filters.min_year) : '';
           maxYearSelect.value = filters.max_year != null ? String(filters.max_year) : '';
           if (filters.max_mileage != null) setFormattedNumberInput(maxMileageInput, filters.max_mileage); else maxMileageInput.value = '';
+          if (verifiedOnlyToggle) verifiedOnlyToggle.checked = filters.min_trust != null;
         }
 
         function renderCheckboxList(containerId, key, dataAttr, selected, showAllBtnId) {
@@ -863,7 +895,23 @@
           if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
         }
 
+        // Phone category pills: highlighted when their section has active filters.
+        function updatePills() {
+          const counts = sectionCounts();
+          document.querySelectorAll('[data-open-section]').forEach(function (pill) {
+            pill.classList.toggle('is-active', (counts[pill.dataset.openSection] || 0) > 0);
+          });
+          document.querySelectorAll('[data-quick]').forEach(function (chip) {
+            const key = chip.dataset.quick;
+            const val = chip.dataset.value;
+            const active = key === 'transmission' ? filters.transmission === val : filters[key] != null && String(filters[key]) === val;
+            chip.classList.toggle('is-active', active);
+            chip.setAttribute('aria-pressed', active ? 'true' : 'false');
+          });
+        }
+
         function updateSectionBadges() {
+          updatePills();
           const counts = sectionCounts();
           document.querySelectorAll('.filter-section').forEach(function (section) {
             const key = section.getAttribute('data-section-key');
@@ -932,7 +980,7 @@
         function updateApplyButton() {
           if (countLoading) {
             applyFiltersBtn.disabled = true;
-            applyFiltersBtn.textContent = 'Loading...';
+            applyFiltersBtn.textContent = 'View Results (…)';
             return;
           }
           if (previewCount === 0) {
@@ -941,7 +989,7 @@
             return;
           }
           applyFiltersBtn.disabled = false;
-          applyFiltersBtn.textContent = 'Show ' + previewCount.toLocaleString('en-US') + ' car' + (previewCount === 1 ? '' : 's');
+          applyFiltersBtn.textContent = 'View Results (' + previewCount.toLocaleString('en-US') + ')';
         }
 
         async function fetchPreviewCount() {
@@ -990,6 +1038,10 @@
         }
 
         function renderFilterChips() {
+          renderChipsInto(filterChips, filterChipsWrap);
+          renderChipsInto(filterChipsMobile, filterChipsMobile);
+        }
+        function renderChipsInto(filterChips, filterChipsWrap) {
           filterChips.innerHTML = '';
           if (activeFilterCount() === 0) {
             filterChipsWrap.classList.add('hidden');
@@ -1027,6 +1079,7 @@
           listChips('fuel_type');
           listChips('color');
           listChips('features', featureName);
+          if (filters.min_trust != null) valueChip('min_trust', 'Verified only (' + filters.min_trust + '+)');
 
           const clearAll = document.createElement('button');
           clearAll.type = 'button';
@@ -1048,12 +1101,20 @@
         }
 
         // ---- Bottom sheet (below lg) ----
-        function openFilterSheet() {
+        function openFilterSheet(sectionKey) {
           filterBackdrop.classList.remove('hidden');
           filterPanel.classList.remove('translate-y-full');
           filterPanel.classList.add('filter-panel-open');
           document.body.classList.add('overflow-hidden', 'lg:overflow-auto');
           fetchPreviewCount();
+          if (typeof sectionKey !== 'string') return;
+          const section = document.querySelector('.filter-section[data-section-key="' + sectionKey + '"]');
+          if (!section) return;
+          setSectionOpen(section, true);
+          const body = document.getElementById('filterSheetBody');
+          setTimeout(function () {
+            body.scrollTo({ top: section.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop - 4, behavior: 'smooth' });
+          }, 280);
         }
 
         function closeFilterSheet() {
@@ -1193,6 +1254,7 @@
           const title = [car.year, car.make, car.model].filter(Boolean).join(' ');
           const subtitle = [car.trim && String(car.trim).trim(), car.body_type].filter(Boolean).join(' · ');
           const photoCount = Number(car.photo_count) || (car.primary_photo_url ? 1 : 0);
+          const photos = Array.isArray(car.photos) && car.photos.length ? car.photos.slice(0, 5) : (car.primary_photo_url ? [car.primary_photo_url] : []);
           const preview = Array.isArray(car.features_preview) ? car.features_preview : [];
           const moreFeatures = Math.max(0, (Number(car.feature_count) || preview.length) - preview.length);
           const waUrl = buildWhatsAppUrl(car);
@@ -1208,11 +1270,21 @@
 
           card.innerHTML =
             '<a href="/cars/' + car.id + '" class="absolute inset-0 z-[1] rounded-3xl" aria-label="' + escapeHtml(title) + '"></a>' +
-            '<div class="relative bg-slate-100 aspect-[4/3] md:aspect-auto md:w-[40%] md:shrink-0 md:min-h-[210px]">' +
+            '<div class="relative z-[2] bg-slate-100 aspect-[4/3] md:aspect-auto md:w-[40%] md:shrink-0 md:min-h-[210px]">' +
               (badges ? '<div class="absolute top-2.5 start-2.5 z-[2] pointer-events-none flex flex-wrap gap-1.5 max-w-[calc(100%-1.25rem)]">' + badges + '</div>' : '') +
-              (car.primary_photo_url
-                ? '<img src="' + escapeHtml(car.primary_photo_url) + '" alt="" class="absolute inset-0 w-full h-full object-cover" loading="lazy" />'
+              (photos.length
+                ? '<div class="card-photos absolute inset-0 flex overflow-x-auto snap-x snap-mandatory" data-car-photos>' +
+                    photos.map(function (u, i) {
+                      return '<a href="/cars/' + car.id + '" class="block w-full h-full shrink-0 snap-center" tabindex="-1" aria-hidden="true">' +
+                        '<img src="' + escapeHtml(u) + '" alt="" class="w-full h-full object-cover" loading="' + (i ? 'lazy' : 'eager') + '" draggable="false" /></a>';
+                    }).join('') +
+                  '</div>'
                 : '<div class="absolute inset-0 flex items-center justify-center">' + carIconSvg('w-14 h-14 text-gray-400') + '</div>') +
+              (photos.length > 1
+                ? '<div class="absolute bottom-2 inset-x-0 z-[2] flex justify-center gap-1 pointer-events-none" data-car-dots>' +
+                    photos.map(function (_, i) { return '<span class="h-1.5 w-1.5 rounded-full shadow ' + (i ? 'bg-white/50' : 'bg-white') + '"></span>'; }).join('') +
+                  '</div>'
+                : '') +
               (photoCount > 0
                 ? '<span class="absolute bottom-2 left-2 z-[2] pointer-events-none inline-flex items-center gap-1 rounded-md bg-black/60 text-white text-xs font-medium px-1.5 py-0.5">' +
                   '<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8a2 2 0 012-2h2l1.5-2h7L17 6h2a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/><circle cx="12" cy="12.5" r="3.5"/></svg>' +
@@ -1258,6 +1330,18 @@
           });
           const waBtn = card.querySelector('[data-wa]');
           if (waBtn) waBtn.addEventListener('click', function () { track('whatsapp', car.id); });
+          // Swiping the photo cycles the first five photos; the dots follow the scroll position.
+          const gallery = card.querySelector('[data-car-photos]');
+          const dots = card.querySelectorAll('[data-car-dots] span');
+          if (gallery && dots.length) {
+            gallery.addEventListener('scroll', function () {
+              const idx = Math.min(dots.length - 1, Math.max(0, Math.round(Math.abs(gallery.scrollLeft) / Math.max(1, gallery.clientWidth))));
+              dots.forEach(function (d, k) {
+                d.classList.toggle('bg-white', k === idx);
+                d.classList.toggle('bg-white/50', k !== idx);
+              });
+            }, { passive: true });
+          }
           card.querySelector('[data-msg]').addEventListener('click', function (e) {
             e.preventDefault();
             messageDealer(car, e.currentTarget);
@@ -1268,6 +1352,7 @@
         // ---- Results ----
         function updateResultsCount() {
           resultsCount.textContent = total.toLocaleString('en-US') + ' car' + (total === 1 ? '' : 's') + ' found';
+          if (resultsCountMobile) resultsCountMobile.textContent = total.toLocaleString('en-US') + ' car' + (total === 1 ? '' : 's');
         }
 
         function renderPagination() {
@@ -1375,6 +1460,7 @@
             if (err.name === 'AbortError') return;
             console.error(err);
             resultsCount.textContent = 'Could not load listings. Please try again.';
+            if (resultsCountMobile) resultsCountMobile.textContent = 'Could not load';
           } finally {
             loading = false;
           }
@@ -1397,7 +1483,26 @@
           });
         }
 
-        openFiltersBtn.addEventListener('click', openFilterSheet);
+        openFiltersBtn.addEventListener('click', function () { openFilterSheet(); });
+        document.querySelectorAll('[data-open-section]').forEach(function (pill) {
+          pill.addEventListener('click', function () { openFilterSheet(pill.dataset.openSection); });
+        });
+        // Quick picks apply (or clear) one filter with a tap.
+        document.querySelectorAll('[data-quick]').forEach(function (chip) {
+          chip.addEventListener('click', function () {
+            const key = chip.dataset.quick;
+            const val = chip.dataset.value;
+            if (key === 'transmission') filters.transmission = filters.transmission === val ? '' : val;
+            else filters[key] = filters[key] != null && String(filters[key]) === val ? null : parseInt(val, 10);
+            applyFilterRemoval();
+          });
+        });
+        if (verifiedOnlyToggle) {
+          verifiedOnlyToggle.addEventListener('change', function () {
+            filters.min_trust = verifiedOnlyToggle.checked ? 60 : null;
+            onFilterChange(true);
+          });
+        }
         closeFiltersBtn.addEventListener('click', closeFilterSheet);
         filterBackdrop.addEventListener('click', closeFilterSheet);
         applyFiltersBtn.addEventListener('click', applyFilters);
@@ -1487,6 +1592,7 @@
         })();
 
         loadFilterOptions().then(function () {
+          if (!isDesktop()) document.querySelectorAll('.filter-section').forEach(function (s) { setSectionOpen(s, false); });
           openSectionsWithFilters();
           updateFilterUiState();
           refreshFacets();
