@@ -206,14 +206,14 @@
     nav.innerHTML =
       '<div class="mx-auto max-w-7xl grid grid-cols-4 h-full" dir="ltr">' +
       '<a href="/" class="' + cls(isHome) + '">' + NAV_ICONS.home + label('Home', 'bottomnav.home') + '</a>' +
-      '<a href="/quick-search.html" data-quick-search class="' + cls(isSearch) + '">' + NAV_ICONS.search + label('Search', 'bottomnav.search') + '</a>' +
+      '<a href="/cars.html" data-quick-search class="' + cls(isSearch) + '">' + NAV_ICONS.search + label('Search', 'bottomnav.search') + '</a>' +
       '<a href="/buyer/saved-cars.html" class="' + cls(isFav) + '">' + NAV_ICONS.heart + label('Favorites', 'bottomnav.favorites') + '</a>' +
       '<a href="/more.html" class="' + cls(isMore) + '"><span class="relative inline-flex">' + NAV_ICONS.more +
       '<span data-messages-unread-dot class="hidden absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-red-500" aria-hidden="true"></span></span>' + label('More', 'bottomnav.more') + '</a>' +
       '</div>';
     document.body.appendChild(nav);
     if (global.CarfoxI18n && CarfoxI18n.isReady && CarfoxI18n.isReady()) CarfoxI18n.apply(nav);
-    // The Search tab opens the quick-search page; the helper script carries current filters over.
+    // The Search tab opens the results page; the helper script carries current filters over.
     if (!global.CarfoxQuickSearch && !document.querySelector('script[src="/js/carfox-quick-search.js"]')) {
       var s = document.createElement('script');
       s.src = '/js/carfox-quick-search.js';
@@ -282,7 +282,7 @@
     var links = [
       ['/cars.html', 'Browse Cars', ''],
       ['#', 'How It Works', ''],
-      ['#', 'Quick Search', ' data-quick-search'],
+      ['/cars.html', 'Quick Search', ''],
       ['/pricing.html', 'For Dealers', '']
     ].map(function (l) {
       return '<a href="' + l[0] + '"' + l[2] + ' class="text-gray-700 hover:text-gray-900">' + l[1] + '</a>';
