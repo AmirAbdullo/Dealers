@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CarFox — You're offline</title>
+    <meta name="theme-color" content="#0f1f3d" />
+    <style>
+      html, body { height: 100%; margin: 0; }
+      body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; background: #f6f7fb; color: #0f172a; display: flex; align-items: center; justify-content: center; padding: 24px; box-sizing: border-box; }
+      .card { max-width: 360px; width: 100%; text-align: center; background: #fff; border-radius: 24px; padding: 32px 24px; box-shadow: 0 14px 34px -22px rgba(15,31,61,.4); }
+      .logo { font-weight: 800; font-size: 24px; letter-spacing: -0.02em; margin-bottom: 20px; }
+      .logo b { color: #1d4ed8; } .logo i { color: #f97316; font-style: normal; }
+      .mark { width: 72px; height: 72px; margin: 0 auto 16px; border-radius: 999px; background: #0f1f3d; display: flex; align-items: center; justify-content: center; }
+      h1 { font-size: 22px; margin: 0 0 8px; }
+      p { margin: 0 0 20px; color: #475569; line-height: 1.5; font-size: 15px; }
+      button { background: #0f1f3d; color: #fff; border: 0; border-radius: 12px; padding: 12px 20px; font-size: 15px; font-weight: 600; cursor: pointer; }
+      button:hover { background: #162c57; }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <div class="logo"><b>Car</b><i>Fox</i></div>
+      <div class="mark" aria-hidden="true">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l22 22"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.58 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><path d="M12 20h.01"/></svg>
+      </div>
+      <h1>You're offline</h1>
+      <p>CarFox needs a connection to show live listings. Check your network and try again.</p>
+      <button type="button" onclick="location.reload()">Try again</button>
+    </main>
+  </body>
+</html>

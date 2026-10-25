@@ -1,0 +1,20 @@
+{
+  "id": "/",
+  "name": "CarFox — Verified Dealers Only",
+  "short_name": "CarFox",
+  "description": "Buy cars from verified dealers in Egypt, with a Trust Score and a fair-price rating on every listing.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f1f3d",
+  "theme_color": "#0f1f3d",
+  "lang": "en",
+  "categories": ["shopping", "business"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

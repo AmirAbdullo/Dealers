@@ -5379,6 +5379,17 @@ app.get('/cars/:id(\\d+)', function (req, res) {
   res.sendFile(path.join(__dirname, 'cars-detail.html'));
 });
 
+// Service worker: the deploy version is baked in (Render's git commit, else the server start time) so
+// every deploy installs a fresh worker and cache; the browser must never cache the worker file itself.
+const SW_VERSION = String(process.env.RENDER_GIT_COMMIT || '').slice(0, 12) || String(Date.now());
+app.get('/sw.js', function (req, res) {
+  const src = require('fs').readFileSync(require('path').join(__dirname, 'sw.js'), 'utf8');
+  res.set('Content-Type', 'application/javascript; charset=utf-8');
+  res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.set('Service-Worker-Allowed', '/');
+  res.send(src.split('__CACHE_VERSION__').join(SW_VERSION));
+});
+
 app.use(express.static(__dirname));
 
 const server = http.createServer(app);

@@ -41,6 +41,17 @@
       #attachPreviewList::-webkit-scrollbar { display: none; }
       #attachPreviewList { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
+      <!-- PWA -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#0f1f3d" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="CarFox" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+    <script src="/js/carfox-pwa.js" defer></script>
   </head>
   <body class="bg-gray-50 text-gray-900 font-sans h-[100dvh] flex flex-col overflow-hidden">
     <div id="chatShell" class="flex-1 flex flex-col min-h-0 w-full md:max-w-3xl md:mx-auto md:my-6 md:rounded-xl md:border md:border-gray-200 md:bg-white md:shadow-sm md:overflow-hidden">
