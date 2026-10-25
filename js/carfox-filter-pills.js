@@ -1,11 +1,12 @@
 /**
  * CarFox filter pills + quick picks — one component for the browse page and the home hero.
  *
- *   CarfoxFilterPills.mount(container, { onPill, onQuick })
+ *   CarfoxFilterPills.mount(container, { onPill, onQuick, quick })
  *     Renders the category pills (Price · Make/Model · Body Type · Year, each with a chevron) and the
  *     quick-pick chips (Under 500k EGP · Under 100,000 km · 2020 or newer · Automatic).
  *     - onPill(sectionKey)       called when a pill is tapped (omit to wire clicks yourself)
  *     - onQuick(filterKey, value) called when a quick pick is tapped
+ *     - quick: false             renders the pills row only (home hero)
  *     Returns { update(isActive) } where isActive(kind, key, value) -> bool toggles .is-active.
  *
  * Markup contract (used by cars.html's own state code): pills are [data-open-section=key], quick
@@ -62,12 +63,12 @@
           ' class="' + PILL_CLS + '">' + esc(tx(p.i18n, p.label)) + ' ' + CHEVRON + '</button>';
       }).join('') +
       '</div>' +
-      '<div class="cf-pill-row mt-2 -mx-4 px-4 flex gap-2 overflow-x-auto" data-cf-quick>' +
+      (opts.quick === false ? '' : '<div class="cf-pill-row mt-2 -mx-4 px-4 flex gap-2 overflow-x-auto" data-cf-quick>' +
       QUICK.map(function (q) {
         return '<button type="button" data-quick="' + q.key + '" data-value="' + esc(q.value) + '"' + (q.section ? ' data-filter-section="' + q.section + '"' : '') +
           ' aria-pressed="false" class="' + QUICK_CLS + '">' + esc(tx(q.i18n, q.label)) + '</button>';
       }).join('') +
-      '</div>';
+      '</div>');
     if (opts.onPill) {
       container.querySelectorAll('[data-open-section]').forEach(function (b) {
         b.addEventListener('click', function () { opts.onPill(b.getAttribute('data-open-section')); });

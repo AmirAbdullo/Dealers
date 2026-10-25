@@ -7,6 +7,8 @@
  *     opts.actions       false to omit the WhatsApp / Message buttons (default true)
  *     opts.featureTrust  true to feature the Trust Score badge large (Top Trust Scores row)
  *     opts.sold          true for a sold listing (muted photo + price, "Sold" tag)
+ *     opts.compact       home rows: photo (badges + count), title, price and one muted mileage · governorate
+ *                        line; the whole card is a link (no specs, dealer row or buttons)
  *     opts.className     extra classes for the article
  *   Interior helpers shared with the browse page's horizontal card:
  *     CarfoxCard.priceHtml(piasters, { className, muted })   navy price, small muted unit
@@ -155,7 +157,8 @@
     var featureTrust = !!opts.featureTrust;
     var sold = !!opts.sold || car.status === 'sold';
 
-    var el = document.createElement('article');
+    var compact = !!opts.compact;
+    var el = document.createElement(compact ? 'a' : 'article');
     el.className =
       'cf-card flex flex-col ' +
       (variant === 'scroll' ? 'snap-start shrink-0 w-[280px] sm:w-[300px] ' : '') +
@@ -163,6 +166,7 @@
     el.setAttribute('data-car-id', String(car.id));
 
     var href = '/cars/' + encodeURIComponent(car.id);
+    if (compact) el.href = href;
     var title = [car.year, car.make, car.model].filter(Boolean).join(' ');
     var subtitle = [car.trim && String(car.trim).trim(), car.body_type].filter(Boolean).join(' · ');
     var trust = Number(car.trust_score) || 0;
@@ -174,8 +178,11 @@
     }
     var photoCount = Number(car.photo_count) || 0;
 
+    // Inside a compact card (itself a link) the photo is a plain box; otherwise it links to the listing.
     var photo =
-      '<a href="' + href + '" class="block relative aspect-[4/3] bg-slate-100 overflow-hidden" tabindex="-1" aria-hidden="true">' +
+      (compact
+        ? '<div class="block relative aspect-[4/3] bg-slate-100 overflow-hidden">'
+        : '<a href="' + href + '" class="block relative aspect-[4/3] bg-slate-100 overflow-hidden" tabindex="-1" aria-hidden="true">') +
       (car.primary_photo_url
         ? '<img src="' + esc(car.primary_photo_url) + '" alt="" class="absolute inset-0 w-full h-full object-cover' + (sold ? ' opacity-60' : '') + '" loading="lazy" />'
         : '<div class="absolute inset-0 flex items-center justify-center">' + ICONS.car + '</div>') +
@@ -184,7 +191,19 @@
       (photoCount > 1
         ? '<span class="absolute bottom-2 end-2 inline-flex items-center gap-1 rounded-md bg-black/55 text-white text-[11px] font-medium px-1.5 py-0.5">' + ICONS.camera + photoCount + '</span>'
         : '') +
-      '</a>';
+      (compact ? '</div>' : '</a>');
+
+    if (compact) {
+      var line = [formatMileage(car.mileage), location(car)].filter(Boolean).join(' · ');
+      el.innerHTML =
+        photo +
+        '<div class="p-3">' +
+        '<p class="font-display font-bold text-[15px] text-slate-900 leading-snug truncate">' + esc(title) + '</p>' +
+        priceHtml(car.price, { className: 'text-lg mt-1', muted: sold }) +
+        (line ? '<p class="mt-1 text-xs text-slate-500 truncate">' + esc(line) + '</p>' : '') +
+        '</div>';
+      return el;
+    }
 
     var wa = showActions ? whatsappHref(car) : '';
     var actions = showActions
