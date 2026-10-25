@@ -142,6 +142,8 @@
             <span class="hidden sm:inline" data-i18n="search.button">Search</span>
           </button>
         </form>
+        <!-- Filter pills + quick picks (shared with the browse page); they open the browse page -->
+        <div id="heroFilters" class="mt-4 max-w-3xl lg:max-w-2xl"></div>
         <ul class="mt-5 md:mt-6 flex flex-wrap items-center gap-x-6 gap-y-2.5 text-xs md:text-sm text-white/85">
           <li class="inline-flex items-center gap-2">
             <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-orange-400">
@@ -165,12 +167,6 @@
       </div>
     </section>
 
-    <!-- City filter: a slim, quiet row under the hero -->
-    <div class="bg-white border-b border-slate-200">
-      <div class="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div id="cityChipsRow" class="py-2 flex gap-1.5 overflow-x-auto scrollbar-hide"></div>
-      </div>
-    </div>
 
     <!-- Top Trust Scores (hidden unless at least one active car scores 60+) -->
     <section id="topTrustSection" class="hidden px-4 pt-6 pb-6">
@@ -292,6 +288,7 @@
     <script src="/js/carfox-track.js"></script>
     <script src="/js/carfox-card.js"></script>
     <script src="/js/carfox-scroll-row.js"></script>
+    <script src="/js/carfox-filter-pills.js"></script>
     <script src="/js/carfox-suggest.js"></script>
     <script src="/js/carfox-auth.js"></script>
     <script src="/js/carfox-buyer-nav.js"></script>
@@ -421,8 +418,6 @@
         'Land Rover', 'Porsche', 'Subaru', 'BAIC', 'Geely',
         'BYD', 'Haval', 'JAC', 'Lifan', 'Isuzu', 'Lexus'
       ].map(function (n) { return { name: n, label: n === 'Mercedes-Benz' ? 'Mercedes' : n, logo: null }; });
-      let CITIES_EN = [];
-      let CITIES_AR = [];
       const GOV_AR = {};
 
       const BRAND_LOGOS = {};
@@ -433,17 +428,15 @@
         if (brands.length) ALL_BRANDS = brands;
         (c.governorates || []).forEach(function (g) { if (g.name_ar) GOV_AR[g.name] = g.name_ar; });
         if (window.CarfoxCard) CarfoxCard.setGovernorateNames(GOV_AR);
-        const govs = (c.governorates || []).filter(function (g) { return g.featured; });
-        const en = ['All Egypt'].concat(govs.map(function (g) { return g.name; }));
-        const ar = ['كل مصر'].concat(govs.map(function (g) { return g.name_ar || g.name; }));
-        const citiesChanged = govs.length > 0 && JSON.stringify(en) !== JSON.stringify(CITIES_EN);
-        if (govs.length) { CITIES_EN = en; CITIES_AR = ar; }
-        return { brandsChanged: brandsChanged && brands.length > 0, citiesChanged: citiesChanged };
+        // Admin filter toggles also hide the matching hero pills / quick picks.
+        const sections = (c.search && c.search.sections) || {};
+        document.querySelectorAll('[data-filter-section]').forEach(function (el) { el.classList.toggle('hidden', sections[el.dataset.filterSection] === false); });
+        return { brandsChanged: brandsChanged && brands.length > 0 };
       }
       const catalogReady = fetch('/api/catalog')
         .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (c) { return c ? applyCatalog(c) : { brandsChanged: false, citiesChanged: false }; })
-        .catch(function () { return { brandsChanged: false, citiesChanged: false }; });
+        .then(function (c) { return c ? applyCatalog(c) : { brandsChanged: false }; })
+        .catch(function () { return { brandsChanged: false }; });
 
       function brandLogoUrl(brand) {
         if (BRAND_LOGOS[brand]) return BRAND_LOGOS[brand];
@@ -789,129 +782,8 @@
           });
       }
 
-      // Fallback until /api/catalog answers (the catalog's featured governorates replace this).
-      if (!CITIES_EN.length) {
-        CITIES_EN = [
-          'All Egypt', 'Cairo', 'Giza', 'Alexandria', 'Qalyubia', 'Sharqia', 'Dakahlia', 'Gharbia',
-          'Monufia', 'Port Said', 'Ismailia', 'Suez', 'Faiyum', 'Beni Suef', 'Minya', 'Asyut',
-          'Sohag', 'Qena', 'Luxor', 'Aswan'
-        ];
-        CITIES_AR = [
-          'كل مصر', 'القاهرة', 'الجيزة', 'الإسكندرية', 'القليوبية', 'الشرقية', 'الدقهلية', 'الغربية',
-          'المنوفية', 'بورسعيد', 'الإسماعيلية', 'السويس', 'الفيوم', 'بني سويف', 'المنيا', 'أسيوط',
-          'سوهاج', 'قنا', 'الأقصر', 'أسوان'
-        ];
-      }
-
-      const CITY_CHIP_BASE =
-        'city-chip shrink-0 rounded-full px-3 py-1 text-xs font-medium cursor-pointer border transition-colors';
-
-      var selectedCity = 'All Egypt';
-
-      function applyCityChipStyling(city) {
-        document.querySelectorAll('.city-chip').forEach(function (chip) {
-          const isActive = chip.dataset.city === city;
-          chip.classList.toggle('bg-navy', isActive);
-          chip.classList.toggle('border-navy', isActive);
-          chip.classList.toggle('text-white', isActive);
-          chip.classList.toggle('bg-white', !isActive);
-          chip.classList.toggle('border-slate-200', !isActive);
-          chip.classList.toggle('text-slate-600', !isActive);
-          chip.classList.toggle('hover:bg-slate-50', !isActive);
-        });
-      }
-
-      function scrollCityChipIntoView(city) {
-        const row = document.getElementById('cityChipsRow');
-        if (!row) return;
-        const chips = row.querySelectorAll('.city-chip');
-        for (var i = 0; i < chips.length; i++) {
-          if (chips[i].dataset.city === city) {
-            chips[i].scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
-            return;
-          }
-        }
-      }
-
-      function onCityClick(city) {
-        selectedCity = city;
-        applyCityChipStyling(city);
-        loadNewArrivals(city);
-        loadLatestListings(city);
-        try {
-          localStorage.setItem('carfox_city', city);
-        } catch (_) {}
-      }
-
-      function renderCityChips() {
-        const row = document.getElementById('cityChipsRow');
-        if (!row) return;
-
-        const lang = window.CarfoxI18n ? CarfoxI18n.getLang() : 'en';
-        const labels = lang === 'ar' ? CITIES_AR : CITIES_EN;
-
-        row.innerHTML = '';
-        CITIES_EN.forEach(function (governorateEn, index) {
-          const chip = document.createElement('button');
-          chip.type = 'button';
-          chip.textContent = labels[index];
-          chip.className = CITY_CHIP_BASE;
-          chip.dataset.city = governorateEn;
-          chip.setAttribute('data-city-chip', governorateEn);
-
-          chip.addEventListener('click', function () {
-            onCityClick(governorateEn);
-            scrollCityChipIntoView(governorateEn);
-          });
-
-          row.appendChild(chip);
-        });
-
-        applyCityChipStyling(selectedCity);
-      }
-
-      function getCityFromCoords(lat, lng) {
-        if (lat >= 29.5 && lat <= 31.5 && lng >= 29.5 && lng <= 32.5) return 'Cairo';
-        if (lat >= 29.5 && lat <= 31.0 && lng >= 30.5 && lng <= 31.5) return 'Giza';
-        if (lat >= 30.8 && lat <= 31.5 && lng >= 29.5 && lng <= 30.5) return 'Alexandria';
-        if (lat >= 30.0 && lat <= 31.5 && lng >= 31.5 && lng <= 32.5) return 'Sharqia';
-        if (lat >= 30.5 && lat <= 31.5 && lng >= 31.0 && lng <= 32.0) return 'Dakahlia';
-        if (lat >= 30.0 && lat <= 30.8 && lng >= 31.0 && lng <= 31.8) return 'Qalyubia';
-        if (lat >= 31.0 && lat <= 32.0 && lng >= 32.0 && lng <= 33.0) return 'Port Said';
-        if (lat >= 29.5 && lat <= 30.5 && lng >= 32.0 && lng <= 33.0) return 'Suez';
-        if (lat >= 30.5 && lat <= 31.0 && lng >= 32.0 && lng <= 32.5) return 'Ismailia';
-        return null;
-      }
-
-      function requestLocation() {
-        if (!navigator.geolocation) return;
-        navigator.geolocation.getCurrentPosition(
-          function (pos) {
-            var city = getCityFromCoords(pos.coords.latitude, pos.coords.longitude);
-            if (city) {
-              onCityClick(city);
-              scrollCityChipIntoView(city);
-            }
-          },
-          function () {}
-        );
-      }
-
-      function initCityFromStorageOrLocation() {
-        var saved = null;
-        try {
-          saved = localStorage.getItem('carfox_city');
-        } catch (_) {}
-        if (saved && CITIES_EN.indexOf(saved) !== -1) {
-          onCityClick(saved);
-          scrollCityChipIntoView(saved);
-          return true;
-        }
-        if (!saved) {
-          requestLocation();
-        }
-        return false;
-      }
+      // Home rows show all Egypt; region filtering lives in the browse page filters.
+      const selectedCity = 'All Egypt';
 
       const homeSearchForm = document.getElementById('homeSearchForm');
       const homeSearchInput = document.getElementById('homeSearchInput');
@@ -946,7 +818,6 @@
       // in the active language; static markup is handled by CarfoxI18n.apply().
       function onLanguageApplied() {
         updateLangToggleLabel();
-        renderCityChips();
         initBrandGrid();
         rerenderListings();
         if (window.CarfoxI18n) CarfoxI18n.apply();
@@ -958,18 +829,19 @@
         });
       }
 
-      renderCityChips();
-      // Desktop: arrow buttons + edge fades for the chips row (touch scrolling on phones is unchanged).
-      if (window.CarfoxScrollRow) CarfoxScrollRow.attach(document.getElementById('cityChipsRow'), { size: 'sm', fade: '#ffffff', step: 260 });
-      // Re-render from the catalog once it arrives (no-op when it matches the fallback).
+      // Hero filter pills / quick picks (shared with the browse page): a pill opens the browse page at that
+      // filter section; a quick pick opens it with the filter already applied.
+      if (window.CarfoxFilterPills) {
+        CarfoxFilterPills.mount(document.getElementById('heroFilters'), {
+          onPill: function (key) { window.location.href = '/cars.html?open=' + encodeURIComponent(key); },
+          onQuick: function (key, value) { window.location.href = '/cars.html?' + encodeURIComponent(key) + '=' + encodeURIComponent(value); }
+        });
+      }
       catalogReady.then(function (changed) {
         if (changed.brandsChanged) initBrandGrid();
-        if (changed.citiesChanged) renderCityChips();
       });
-      if (!initCityFromStorageOrLocation()) {
-        loadNewArrivals(selectedCity);
-        loadLatestListings(selectedCity);
-      }
+      loadNewArrivals(selectedCity);
+      loadLatestListings(selectedCity);
       initBrandGrid();
       loadTopTrust();
     </script>

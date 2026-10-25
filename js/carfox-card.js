@@ -158,7 +158,7 @@
     var el = document.createElement('article');
     el.className =
       'cf-card flex flex-col ' +
-      (variant === 'scroll' ? 'snap-start shrink-0 w-[280px] sm:w-[300px] md:w-[calc((100%-1.5rem)/3)] lg:w-[calc((100%-2.25rem)/4)] ' : '') +
+      (variant === 'scroll' ? 'snap-start shrink-0 w-[280px] sm:w-[300px] ' : '') +
       (opts.className || '');
     el.setAttribute('data-car-id', String(car.id));
 
