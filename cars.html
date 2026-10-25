@@ -37,6 +37,14 @@
       .filter-section[data-open="false"] .filter-section-body { display: none; }
       .filter-section[data-open="false"] .filter-chevron { transform: rotate(-90deg); }
       .filter-option-zero { color: #9ca3af; }
+      /* Phones: Region, Make & Model, Year & Mileage and Features are drill-down rows (sub-page), not accordions. */
+      @media (max-width: 1023.98px) {
+        .filter-section[data-drill] > .filter-section-toggle,
+        .filter-section[data-drill] > .filter-section-body { display: none !important; }
+      }
+      #filterSubPage { transform: translateX(100%); visibility: hidden; transition: transform 220ms ease-out, visibility 0s linear 220ms; }
+      [dir="rtl"] #filterSubPage { transform: translateX(-100%); }
+      #filterSubPage.is-open { transform: none; visibility: visible; transition: transform 220ms ease-out; }
     </style>
       <!-- PWA -->
     <link rel="manifest" href="/manifest.webmanifest" />
@@ -167,7 +175,12 @@
           </span>
         </label>
         <div id="filterSheetBody" class="flex-1 overflow-y-auto px-4">
-          <section class="filter-section" data-section-key="region" data-open="true">
+          <section class="filter-section" data-section-key="region" data-open="true" data-drill>
+            <!-- Phones: drill-down row (the accordion below is desktop-only for this section) -->
+            <button type="button" class="drill-row lg:hidden w-full flex items-center gap-3 py-3.5 text-start" data-drill-open="region">
+              <span class="min-w-0 flex-1"><span class="block text-sm font-semibold text-gray-900">Region</span><span class="drill-sub block text-xs text-gray-500 truncate mt-0.5">All regions</span></span>
+              <svg class="h-5 w-5 shrink-0 text-gray-400 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+            </button>
             <button type="button" class="filter-section-toggle w-full flex items-center justify-between py-3 text-left" aria-expanded="true">
               <span class="text-sm font-semibold text-gray-900 inline-flex items-center gap-1.5">Region <span class="filter-section-count hidden rounded-full bg-blue-100 text-blue-800 text-[11px] font-semibold px-1.5 py-0.5"></span></span>
               <svg xmlns="http://www.w3.org/2000/svg" class="filter-chevron h-4 w-4 text-gray-500 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
@@ -178,7 +191,12 @@
             </div>
           </section>
 
-          <section class="filter-section" data-section-key="make" data-open="true">
+          <section class="filter-section" data-section-key="make" data-open="true" data-drill>
+            <!-- Phones: drill-down row (the accordion below is desktop-only for this section) -->
+            <button type="button" class="drill-row lg:hidden w-full flex items-center gap-3 py-3.5 text-start" data-drill-open="make">
+              <span class="min-w-0 flex-1"><span class="block text-sm font-semibold text-gray-900">Make &amp; Model</span><span class="drill-sub block text-xs text-gray-500 truncate mt-0.5">Any make or model</span></span>
+              <svg class="h-5 w-5 shrink-0 text-gray-400 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+            </button>
             <button type="button" class="filter-section-toggle w-full flex items-center justify-between py-3 text-left" aria-expanded="true">
               <span class="text-sm font-semibold text-gray-900 inline-flex items-center gap-1.5">Make &amp; Model <span class="filter-section-count hidden rounded-full bg-blue-100 text-blue-800 text-[11px] font-semibold px-1.5 py-0.5"></span></span>
               <svg xmlns="http://www.w3.org/2000/svg" class="filter-chevron h-4 w-4 text-gray-500 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
@@ -216,7 +234,12 @@
             </div>
           </section>
 
-          <section class="filter-section" data-section-key="year" data-open="true">
+          <section class="filter-section" data-section-key="year" data-open="true" data-drill>
+            <!-- Phones: drill-down row (the accordion below is desktop-only for this section) -->
+            <button type="button" class="drill-row lg:hidden w-full flex items-center gap-3 py-3.5 text-start" data-drill-open="year">
+              <span class="min-w-0 flex-1"><span class="block text-sm font-semibold text-gray-900">Year &amp; Mileage</span><span class="drill-sub block text-xs text-gray-500 truncate mt-0.5">Any year · Any mileage</span></span>
+              <svg class="h-5 w-5 shrink-0 text-gray-400 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+            </button>
             <button type="button" class="filter-section-toggle w-full flex items-center justify-between py-3 text-left" aria-expanded="true">
               <span class="text-sm font-semibold text-gray-900 inline-flex items-center gap-1.5">Year &amp; Mileage <span class="filter-section-count hidden rounded-full bg-blue-100 text-blue-800 text-[11px] font-semibold px-1.5 py-0.5"></span></span>
               <svg xmlns="http://www.w3.org/2000/svg" class="filter-chevron h-4 w-4 text-gray-500 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
@@ -286,7 +309,12 @@
             </div>
           </section>
 
-          <section class="filter-section" data-section-key="features" data-filter-section="features" data-open="false">
+          <section class="filter-section" data-section-key="features" data-filter-section="features" data-open="false" data-drill>
+            <!-- Phones: drill-down row (the accordion below is desktop-only for this section) -->
+            <button type="button" class="drill-row lg:hidden w-full flex items-center gap-3 py-3.5 text-start" data-drill-open="features">
+              <span class="min-w-0 flex-1"><span class="block text-sm font-semibold text-gray-900">Features</span><span class="drill-sub block text-xs text-gray-500 truncate mt-0.5">Any features</span></span>
+              <svg class="h-5 w-5 shrink-0 text-gray-400 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+            </button>
             <button type="button" class="filter-section-toggle w-full flex items-center justify-between py-3 text-left" aria-expanded="false">
               <span class="text-sm font-semibold text-gray-900 inline-flex items-center gap-1.5">Features <span class="filter-section-count hidden rounded-full bg-blue-100 text-blue-800 text-[11px] font-semibold px-1.5 py-0.5"></span></span>
               <svg xmlns="http://www.w3.org/2000/svg" class="filter-chevron h-4 w-4 text-gray-500 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
@@ -304,6 +332,23 @@
                   class="w-full bg-blue-700 text-white py-3 rounded-lg font-semibold hover:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed">
             Show cars
           </button>
+        </div>
+
+        <!-- Phones: drill-down sub-page (Region, Make & Model, Year & Mileage, Features). Slides over the sheet;
+             back / Android back / OK return to the main Filters screen and keep the selections. -->
+        <div id="filterSubPage" class="lg:hidden absolute inset-0 z-20 flex flex-col bg-white" aria-hidden="true">
+          <div class="h-14 px-2 border-b border-gray-200 flex items-center gap-1 shrink-0">
+            <button type="button" id="filterSubBack" class="p-2 text-gray-700 hover:text-gray-900" aria-label="Back to filters">
+              <svg class="h-6 w-6 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <h2 id="filterSubTitle" class="flex-1 min-w-0 truncate font-bold text-base">Filters</h2>
+            <button type="button" id="filterSubReset" class="hidden text-sm text-blue-700 font-semibold px-2 py-1 rounded hover:bg-blue-50">Reset</button>
+          </div>
+          <div id="filterSubBody" class="flex-1 overflow-y-auto overscroll-contain"></div>
+          <div class="border-t border-gray-200 p-4 bg-white flex items-center gap-3 shrink-0">
+            <p id="filterSubCount" class="text-sm font-semibold text-gray-600 shrink-0 min-w-[4.5rem]"></p>
+            <button type="button" id="filterSubOk" class="flex-1 bg-blue-700 text-white py-3 rounded-lg font-semibold hover:bg-blue-800">OK</button>
+          </div>
         </div>
       </aside>
 
@@ -355,6 +400,7 @@
     <script src="/js/carfox-value.js"></script>
     <script src="/js/carfox-card.js"></script>
     <script src="/js/carfox-filter-pills.js"></script>
+    <script src="/js/carfox-drill.js"></script>
     <script src="/js/carfox-track.js"></script>
     <script src="/js/carfox-suggest.js"></script>
     <script src="/js/carfox-auth.js"></script>
@@ -404,6 +450,8 @@
         let baseOptions = null;
         let facet = null;
         let featureOptions = [];
+        let catalogMakes = [];
+        let catalogSections = {};
         let showAllMakes = false;
         let showAllCities = false;
 
@@ -554,7 +602,7 @@
           if (page > 1) p.set('page', String(page));
           const qs = p.toString();
           const path = window.location.pathname;
-          history.replaceState(null, '', qs ? path + '?' + qs : path);
+          history.replaceState(history.state, '', qs ? path + '?' + qs : path);
         }
 
         function csv(p, key) {
@@ -819,6 +867,7 @@
           renderCheckboxList('colorCheckboxes', 'color', 'data-filter-color', filters.color, null);
           renderFeatureCheckboxes();
           updateSectionBadges();
+          if (subScreen) renderSub();
         }
 
         function buildFilterOptionsUi() {
@@ -858,7 +907,10 @@
           try {
             const cr = await fetch('/api/catalog');
             if (cr.ok) {
-              const sections = (((await cr.json()).search || {}).sections) || {};
+              const cat = await cr.json();
+              catalogMakes = cat.makes || [];
+              const sections = (cat.search || {}).sections || {};
+              catalogSections = sections;
               document.querySelectorAll('[data-filter-section]').forEach(function (el) { el.classList.toggle('hidden', sections[el.dataset.filterSection] === false); });
             }
           } catch (_) {}
@@ -910,6 +962,7 @@
 
         function updateSectionBadges() {
           updatePills();
+          updateDrillRows();
           const counts = sectionCounts();
           document.querySelectorAll('.filter-section').forEach(function (section) {
             const key = section.getAttribute('data-section-key');
@@ -976,6 +1029,8 @@
         }
 
         function updateApplyButton() {
+          const subCount = document.getElementById('filterSubCount');
+          if (subCount) subCount.textContent = countLoading ? '…' : previewCount.toLocaleString('en-US') + ' car' + (previewCount === 1 ? '' : 's');
           if (countLoading) {
             applyFiltersBtn.disabled = true;
             applyFiltersBtn.textContent = 'View Results (…)';
@@ -1099,13 +1154,38 @@
         }
 
         // ---- Bottom sheet (below lg) ----
-        function openFilterSheet(sectionKey) {
+        // The phone sheet lives in history: opening it pushes { cfSheet: 'main' }, a drill-down sub-page pushes
+        // { cfSheet: 'region'|'make'|'year'|'features' } and a make's model list { cfSheet: 'models' }, so the
+        // Android back button steps out one level at a time. SHEET_SID ignores entries left by an earlier page load.
+        const SHEET_SID = Math.random().toString(36).slice(2);
+        const DRILL_KEYS = ['region', 'make', 'year', 'features'];
+
+        function sheetDepthOf(st) {
+          if (!st || !st.cfSheet || st.sid !== SHEET_SID) return 0;
+          return st.cfSheet === 'main' ? 1 : st.cfSheet === 'models' ? 3 : 2;
+        }
+        function sheetIsOpen() {
+          return filterPanel.classList.contains('filter-panel-open');
+        }
+        function showFilterSheet() {
           filterBackdrop.classList.remove('hidden');
           filterPanel.classList.remove('translate-y-full');
           filterPanel.classList.add('filter-panel-open');
           document.body.classList.add('overflow-hidden', 'lg:overflow-auto');
           fetchPreviewCount();
+        }
+        // Close button, backdrop, View Results: close now and drop the sheet's history entries.
+        function requestCloseSheet() {
+          const depth = sheetDepthOf(history.state);
+          closeFilterSheet();
+          if (depth > 0) history.go(-depth);
+        }
+
+        function openFilterSheet(sectionKey) {
+          if (!isDesktop() && sheetDepthOf(history.state) === 0) history.pushState({ cfSheet: 'main', sid: SHEET_SID }, '', location.href);
+          showFilterSheet();
           if (typeof sectionKey !== 'string') return;
+          if (!isDesktop() && DRILL_KEYS.indexOf(sectionKey) !== -1) { openSub(sectionKey); return; }
           const section = document.querySelector('.filter-section[data-section-key="' + sectionKey + '"]');
           if (!section) return;
           setSectionOpen(section, true);
@@ -1116,10 +1196,331 @@
         }
 
         function closeFilterSheet() {
+          hideSub();
           filterBackdrop.classList.add('hidden');
           filterPanel.classList.remove('filter-panel-open');
           if (!isDesktop()) filterPanel.classList.add('translate-y-full');
           document.body.classList.remove('overflow-hidden');
+        }
+
+        // ---- Phone drill-down sub-pages ----
+        const filterSubPage = document.getElementById('filterSubPage');
+        const filterSubBody = document.getElementById('filterSubBody');
+        const filterSubTitle = document.getElementById('filterSubTitle');
+        const filterSubReset = document.getElementById('filterSubReset');
+        const SUB_TITLES = { region: 'Region', make: 'Make', models: 'Model', year: 'Year & Mileage', features: 'Features' };
+        let subScreen = null; // null = main Filters screen
+        const drillModelCache = {};
+
+        function openSub(screen) {
+          history.pushState({ cfSheet: screen, sid: SHEET_SID }, '', location.href);
+          showSub(screen);
+        }
+        function showSub(screen) {
+          const changed = subScreen !== screen;
+          subScreen = screen;
+          if (changed) { filterSubBody.innerHTML = ''; filterSubBody.scrollTop = 0; }
+          renderSub();
+          filterSubPage.classList.add('is-open');
+          filterSubPage.setAttribute('aria-hidden', 'false');
+          fetchPreviewCount();
+        }
+        function hideSub() {
+          subScreen = null;
+          filterSubPage.classList.remove('is-open');
+          filterSubPage.setAttribute('aria-hidden', 'true');
+        }
+
+        // A selection changed inside a sub-page: keep the desktop form in sync (the debounced side effects read
+        // it), refresh this page + the main screen subtitles, then recount.
+        function afterSubChange(debounced) {
+          syncFormFromFilters();
+          renderSub();
+          updateFilterUiState();
+          onFilterChange(!debounced);
+        }
+
+        function subList() {
+          const wrap = document.createElement('div');
+          wrap.className = 'bg-white';
+          return wrap;
+        }
+        function fillSub(node) {
+          filterSubBody.replaceChildren(node);
+        }
+
+        function renderSub() {
+          if (!subScreen) return;
+          const s = subScreen;
+          filterSubTitle.textContent = s === 'models' && filters.make.length === 1 ? filters.make[0] + ' models' : SUB_TITLES[s];
+          const counts = sectionCounts();
+          filterSubReset.classList.toggle('hidden', !(counts[s === 'models' ? 'make' : s] > 0));
+          if (s === 'region') renderRegionSub();
+          else if (s === 'make') renderMakeSub();
+          else if (s === 'models') renderModelsSub();
+          else if (s === 'year') renderYearSub();
+          else if (s === 'features') renderFeaturesSub();
+        }
+
+        function renderRegionSub() {
+          const list = subList();
+          const all = CarfoxDrill.item('All regions', filters.city.length === 0, { bold: true });
+          all.addEventListener('click', function () { filters.city = []; afterSubChange(); });
+          list.appendChild(all);
+          optionList('city').forEach(function (o) {
+            const on = filters.city.indexOf(o.name) !== -1;
+            const it = CarfoxDrill.item(o.name, on, { multi: true, count: o.count, zero: o.count === 0 });
+            it.addEventListener('click', function () {
+              filters.city = on ? filters.city.filter(function (v) { return v !== o.name; }) : filters.city.concat([o.name]);
+              afterSubChange();
+            });
+            list.appendChild(it);
+          });
+          fillSub(list);
+        }
+
+        function renderMakeSub() {
+          const list = subList();
+          const all = CarfoxDrill.item('All makes', filters.make.length === 0, { bold: true });
+          all.addEventListener('click', function () { filters.make = []; filters.model = ''; afterSubChange(); });
+          list.appendChild(all);
+          optionList('make').forEach(function (o) {
+            const on = filters.make.indexOf(o.name) !== -1;
+            const it = CarfoxDrill.item(o.name, on, { logo: CarfoxDrill.logoFor(o.name, catalogMakes), count: o.count, zero: o.count === 0, chevron: true });
+            it.addEventListener('click', function () {
+              if (!(filters.make.length === 1 && filters.make[0] === o.name)) { filters.make = [o.name]; filters.model = ''; }
+              afterSubChange();
+              openSub('models');
+            });
+            list.appendChild(it);
+          });
+          fillSub(list);
+        }
+
+        function renderModelsSub() {
+          if (filters.make.length !== 1) {
+            filterSubBody.innerHTML = '<p class="px-4 py-6 text-sm text-gray-500">Pick a make first.</p>';
+            return;
+          }
+          const make = filters.make[0];
+          const p = filtersToParams(true);
+          p.delete('model');
+          const key = p.toString();
+          const models = drillModelCache[key];
+          if (!models) {
+            if (!filterSubBody.querySelector('[data-sub-models]')) filterSubBody.innerHTML = '<p class="px-4 py-6 text-sm text-gray-500">Loading models…</p>';
+            // Faceted counts (respect the other filters) + every model of this make that has listings at all,
+            // so models ruled out by the other filters still show, greyed with 0 (same as the make list).
+            function get(qs) {
+              return fetch('/api/cars/filter-options?' + qs)
+                .then(function (r) { return r.ok ? r.json() : {}; })
+                .catch(function () { return {}; })
+                .then(function (d) { return d.models || []; });
+            }
+            Promise.all([get(key), get('make=' + encodeURIComponent(make))]).then(function (res) {
+              const counts = {};
+              res[0].forEach(function (m) { counts[m.name] = m.count; });
+              const names = res[0].map(function (m) { return m.name; });
+              res[1].forEach(function (m) { if (names.indexOf(m.name) === -1) names.push(m.name); });
+              drillModelCache[key] = names.map(function (n) { return { name: n, count: counts[n] || 0 }; })
+                .sort(function (x, y) { return y.count - x.count || x.name.localeCompare(y.name); });
+              if (subScreen === 'models') renderModelsSub();
+            });
+            return;
+          }
+          const list = subList();
+          list.setAttribute('data-sub-models', '');
+          const all = CarfoxDrill.item('All ' + make + ' models', !filters.model, { bold: true });
+          all.addEventListener('click', function () { filters.model = ''; afterSubChange(); });
+          list.appendChild(all);
+          const rows = models.slice();
+          if (filters.model && !rows.some(function (m) { return m.name === filters.model; })) rows.unshift({ name: filters.model, count: 0 });
+          rows.forEach(function (m) {
+            const it = CarfoxDrill.item(m.name, filters.model === m.name, { count: m.count, zero: m.count === 0 });
+            it.addEventListener('click', function () { filters.model = m.name; afterSubChange(); });
+            list.appendChild(it);
+          });
+          fillSub(list);
+        }
+
+        // Year quick ranges, clamped to the years that exist in the listings (the selects only hold those).
+        function yearPicks() {
+          if (!baseOptions) return [];
+          const yr = baseOptions.year_range;
+          return [['2020 or newer', 2020, null], ['2015 – 2019', 2015, 2019], ['2010 – 2014', 2010, 2014], ['Before 2010', null, 2009]]
+            .filter(function (r) { return !(r[1] != null && r[1] > yr.max) && !(r[2] != null && r[2] < yr.min); })
+            .map(function (r) {
+              return { label: r[0], min: r[1] != null && r[1] > yr.min ? r[1] : null, max: r[2] != null && r[2] < yr.max ? r[2] : null };
+            });
+        }
+
+        function renderYearSub() {
+          if (!filterSubBody.querySelector('[data-sub-year]')) buildYearSub();
+          const minSel = document.getElementById('subMinYear');
+          const maxSel = document.getElementById('subMaxYear');
+          minSel.value = filters.min_year != null ? String(filters.min_year) : '';
+          maxSel.value = filters.max_year != null ? String(filters.max_year) : '';
+          const minKm = document.getElementById('subMinMileage');
+          const maxKm = document.getElementById('subMaxMileage');
+          if (document.activeElement !== minKm) setFormattedNumberInput(minKm, filters.min_mileage);
+          if (document.activeElement !== maxKm) setFormattedNumberInput(maxKm, filters.max_mileage);
+
+          const yHost = document.getElementById('subYearPicks');
+          const yList = subList();
+          yearPicks().forEach(function (pk) {
+            const on = filters.min_year === pk.min && filters.max_year === pk.max;
+            const it = CarfoxDrill.item(pk.label, on);
+            it.addEventListener('click', function () {
+              filters.min_year = on ? null : pk.min;
+              filters.max_year = on ? null : pk.max;
+              afterSubChange();
+            });
+            yList.appendChild(it);
+          });
+          yHost.replaceChildren(yList);
+
+          const kHost = document.getElementById('subMileagePicks');
+          const kList = subList();
+          ((facet && facet.mileage_picks) || (baseOptions && baseOptions.mileage_picks) || []).forEach(function (pk) {
+            const on = filters.min_mileage === pk.min && filters.max_mileage === pk.max;
+            const it = CarfoxDrill.item(pk.label, on, { count: pk.count, zero: pk.count === 0 });
+            it.addEventListener('click', function () {
+              filters.min_mileage = on ? null : pk.min;
+              filters.max_mileage = on ? null : pk.max;
+              afterSubChange();
+            });
+            kList.appendChild(it);
+          });
+          kHost.replaceChildren(kList);
+        }
+
+        function buildYearSub() {
+          const field = 'mt-1 block w-full rounded-xl border border-gray-300 bg-white px-3 py-3 text-base text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500';
+          const label = 'block text-xs font-semibold text-gray-600';
+          const heading = 'text-xs font-semibold uppercase tracking-wide text-gray-500';
+          filterSubBody.innerHTML =
+            '<div data-sub-year class="p-4">' +
+              '<p class="' + heading + ' mb-2">Year</p>' +
+              '<div class="grid grid-cols-2 gap-3">' +
+                '<label class="' + label + '">Min<select id="subMinYear" class="' + field + '"></select></label>' +
+                '<label class="' + label + '">Max<select id="subMaxYear" class="' + field + '"></select></label>' +
+              '</div>' +
+              '<p class="' + heading + ' mt-5 mb-1">Quick ranges</p>' +
+            '</div>' +
+            '<div id="subYearPicks" class="border-y border-gray-100"></div>' +
+            '<div id="subMileageBlock">' +
+              '<div class="p-4 pt-6">' +
+                '<p class="' + heading + ' mb-2">Mileage (km)</p>' +
+                '<div class="grid grid-cols-2 gap-3">' +
+                  '<label class="' + label + '">Min<input id="subMinMileage" type="text" inputmode="numeric" placeholder="No min" class="' + field + '" /></label>' +
+                  '<label class="' + label + '">Max<input id="subMaxMileage" type="text" inputmode="numeric" placeholder="No max" class="' + field + '" /></label>' +
+                '</div>' +
+                '<p class="' + heading + ' mt-5 mb-1">Quick ranges</p>' +
+              '</div>' +
+              '<div id="subMileagePicks" class="border-y border-gray-100"></div>' +
+            '</div>' +
+            '<div class="h-6"></div>';
+          document.getElementById('subMileageBlock').classList.toggle('hidden', catalogSections.mileage === false);
+
+          const yr = baseOptions ? baseOptions.year_range : { min: new Date().getFullYear() - 15, max: new Date().getFullYear() };
+          ['subMinYear', 'subMaxYear'].forEach(function (id) {
+            const sel = document.getElementById(id);
+            sel.innerHTML = '<option value="">' + (id === 'subMinYear' ? 'No min' : 'No max') + '</option>';
+            for (let y = yr.max; y >= yr.min; y--) sel.insertAdjacentHTML('beforeend', '<option value="' + y + '">' + y + '</option>');
+            sel.addEventListener('change', function () {
+              const v = sel.value ? parseInt(sel.value, 10) : null;
+              if (id === 'subMinYear') filters.min_year = v; else filters.max_year = v;
+              afterSubChange();
+            });
+          });
+          const minKm = document.getElementById('subMinMileage');
+          const maxKm = document.getElementById('subMaxMileage');
+          function onKm() {
+            filters.min_mileage = parseNumberInput(minKm);
+            filters.max_mileage = parseNumberInput(maxKm);
+            afterSubChange(true);
+          }
+          attachFormattedNumberInput(minKm, onKm);
+          attachFormattedNumberInput(maxKm, onKm);
+        }
+
+        function renderFeaturesSub() {
+          const wrap = subList();
+          if (!featureOptions.length) {
+            wrap.innerHTML = '<p class="px-4 py-6 text-sm text-gray-500">No features available.</p>';
+            fillSub(wrap);
+            return;
+          }
+          const note = document.createElement('p');
+          note.className = 'px-4 pt-3 pb-1 text-xs text-gray-500';
+          note.textContent = 'Cars must have every selected feature.';
+          wrap.appendChild(note);
+          const src = (facet && facet.features) || (baseOptions && baseOptions.features) || [];
+          function countFor(id) {
+            for (let i = 0; i < src.length; i++) if (src[i].id === id) return src[i].count;
+            return 0;
+          }
+          const cats = [];
+          featureOptions.forEach(function (f) { if (cats.indexOf(f.category) === -1) cats.push(f.category); });
+          cats.forEach(function (cat) {
+            wrap.appendChild(CarfoxDrill.head(cat));
+            featureOptions.filter(function (f) { return f.category === cat; }).forEach(function (f) {
+              const on = filters.features.indexOf(f.id) !== -1;
+              const n = countFor(f.id);
+              const it = CarfoxDrill.item(f.name, on, { multi: true, count: n, zero: n === 0 });
+              it.addEventListener('click', function () {
+                filters.features = on ? filters.features.filter(function (v) { return v !== f.id; }) : filters.features.concat([f.id]);
+                afterSubChange();
+              });
+              wrap.appendChild(it);
+            });
+          });
+          fillSub(wrap);
+        }
+
+        function resetSub() {
+          const s = subScreen;
+          if (s === 'region') filters.city = [];
+          else if (s === 'make' || s === 'models') { filters.make = []; filters.model = ''; }
+          else if (s === 'year') { filters.min_year = null; filters.max_year = null; filters.min_mileage = null; filters.max_mileage = null; }
+          else if (s === 'features') filters.features = [];
+          afterSubChange();
+        }
+
+        // Main-screen rows: current selection as the subtitle.
+        function drillSummary(key) {
+          function listText(arr) {
+            return arr.length <= 2 ? arr.join(', ') : arr[0] + ', ' + arr[1] + ' +' + (arr.length - 2) + ' more';
+          }
+          if (key === 'region') return filters.city.length ? listText(filters.city) : 'All regions';
+          if (key === 'make') {
+            if (!filters.make.length) return 'Any make or model';
+            if (filters.make.length === 1) return filters.make[0] + ' · ' + (filters.model || 'All models');
+            return listText(filters.make);
+          }
+          if (key === 'year') {
+            const y1 = filters.min_year, y2 = filters.max_year;
+            const year = y1 != null && y2 != null ? (y1 === y2 ? String(y1) : y1 + ' – ' + y2)
+              : y1 != null ? y1 + ' or newer' : y2 != null ? 'Up to ' + y2 : 'Any year';
+            const k1 = filters.min_mileage, k2 = filters.max_mileage;
+            const km = k1 != null && k2 != null ? k1.toLocaleString('en-US') + ' – ' + k2.toLocaleString('en-US') + ' km'
+              : k2 != null ? 'Under ' + k2.toLocaleString('en-US') + ' km' : k1 != null ? 'Over ' + k1.toLocaleString('en-US') + ' km' : 'Any mileage';
+            return year + ' · ' + km;
+          }
+          if (key === 'features') return filters.features.length ? listText(filters.features.map(featureName)) : 'Any features';
+          return '';
+        }
+        function updateDrillRows() {
+          const counts = sectionCounts();
+          document.querySelectorAll('[data-drill-open]').forEach(function (row) {
+            const key = row.getAttribute('data-drill-open');
+            const sub = row.querySelector('.drill-sub');
+            const active = (counts[key] || 0) > 0;
+            sub.textContent = drillSummary(key);
+            sub.classList.toggle('text-blue-700', active);
+            sub.classList.toggle('font-medium', active);
+            sub.classList.toggle('text-gray-500', !active);
+          });
         }
 
         // ---- Cards ----
@@ -1474,7 +1875,7 @@
           clearTimeout(debounceTimer);
           readFiltersFromForm();
           if (filters.make.length !== 1) filters.model = '';
-          closeFilterSheet();
+          requestCloseSheet();
           refreshFacets();
           resetAndFetch().then(function () {
             document.getElementById('browseMain').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1501,8 +1902,31 @@
             onFilterChange(true);
           });
         }
-        closeFiltersBtn.addEventListener('click', closeFilterSheet);
-        filterBackdrop.addEventListener('click', closeFilterSheet);
+        closeFiltersBtn.addEventListener('click', requestCloseSheet);
+        filterBackdrop.addEventListener('click', requestCloseSheet);
+        // Drill-down rows, sub-page back / OK / reset, and the browser (Android) back button.
+        document.querySelectorAll('[data-drill-open]').forEach(function (row) {
+          row.addEventListener('click', function () { openSub(row.getAttribute('data-drill-open')); });
+        });
+        document.getElementById('filterSubBack').addEventListener('click', function () {
+          if (sheetDepthOf(history.state) > 1) history.back(); else hideSub();
+        });
+        document.getElementById('filterSubOk').addEventListener('click', function () {
+          const depth = sheetDepthOf(history.state);
+          if (depth > 1) history.go(-(depth - 1)); else hideSub();
+        });
+        filterSubReset.addEventListener('click', resetSub);
+        window.addEventListener('popstate', function (e) {
+          const depth = sheetDepthOf(e.state);
+          if (depth === 0) {
+            if (sheetIsOpen()) closeFilterSheet(); else hideSub();
+          } else {
+            if (!sheetIsOpen() && !isDesktop()) showFilterSheet();
+            if (depth === 1) hideSub(); else showSub(e.state.cfSheet);
+          }
+          // Popping restores that entry's old query string; the in-memory filters are the truth.
+          syncUrlFromFilters();
+        });
         applyFiltersBtn.addEventListener('click', applyFilters);
         sheetClearAll.addEventListener('click', function () { clearAllFilters(); });
         emptyClearBtn.addEventListener('click', function () { clearAllFilters(); });

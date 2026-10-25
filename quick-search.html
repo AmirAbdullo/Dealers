@@ -17,14 +17,6 @@
       .row:active { background:#f8fafc; }
       .row .ic { width:40px; height:40px; border-radius:12px; background:#eff6ff; color:#1d4ed8; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
       .row .chev { color:#94a3b8; flex-shrink:0; }
-      .item { display:flex; align-items:center; gap:14px; width:100%; padding:14px 18px; background:#fff; text-align:left; border-top:1px solid #f1f5f9; font-size:15px; }
-      .item:first-child { border-top:0; }
-      .item:active { background:#f8fafc; }
-      .item[aria-checked="true"] { background:#eff6ff; }
-      .item .check { margin-left:auto; color:#1d4ed8; flex-shrink:0; visibility:hidden; }
-      .item[aria-checked="true"] .check { visibility:visible; }
-      .item .count { margin-left:auto; font-size:12px; color:#94a3b8; }
-      .item[aria-checked="true"] .count { margin-right:8px; }
       .num { width:100%; border:1px solid #cbd5e1; border-radius:12px; padding:12px 14px; font-size:16px; background:#fff; }
       .num:focus { outline:2px solid #93c5fd; border-color:#3b82f6; }
       .pick { display:block; width:100%; text-align:left; padding:12px 16px; border-top:1px solid #f1f5f9; background:#fff; font-size:15px; }
@@ -130,6 +122,7 @@
     <script src="/js/carfox-auth.js"></script>
     <script src="/js/carfox-buyer-nav.js"></script>
     <script src="/js/carfox-quick-search.js"></script>
+    <script src="/js/carfox-drill.js"></script>
     <script>
       (function () {
         const $ = (id) => document.getElementById(id);
@@ -156,18 +149,12 @@
           if (c.search) { PRICE_PICKS = toPicks(c.search.price_picks, PRICE_PICKS); MILEAGE_PICKS = toPicks(c.search.mileage_picks, MILEAGE_PICKS); }
         }).catch(() => {});
         function logoFor(name) {
-          const m = catalog && catalog.makes.find((x) => x.name === name);
-          return (m && m.logo_url) || brandLogoUrl(name);
+          return CarfoxDrill.logoFor(name, catalog && catalog.makes);
         }
 
         let state = { city: '', make: '', model: '', min_price: null, max_price: null, min_mileage: null, max_mileage: null };
         let makesCache = null;
         const modelsCache = {};
-
-        function brandLogoUrl(brand) {
-          if (/^mercedes/i.test(brand)) return 'https://www.carlogos.org/car-logos/mercedes-benz-logo.png';
-          return 'https://www.carlogos.org/car-logos/' + String(brand).toLowerCase().replace(/\s+/g, '-') + '-logo.png';
-        }
 
         // ---------- state persistence ----------
         function save() { try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (_) {} }
@@ -241,24 +228,10 @@
           }, 150);
         }
 
+        // Rows come from the shared drill-down module (also used by the phone Filters sheet on cars.html).
         function listItem(label, checked, opts) {
-          opts = opts || {};
-          const b = document.createElement('button');
-          b.type = 'button';
-          b.className = 'item';
-          b.setAttribute('role', 'option');
-          b.setAttribute('aria-checked', checked ? 'true' : 'false');
-          let html = '';
-          if (opts.logo) {
-            html += '<span class="w-9 h-9 flex items-center justify-center shrink-0"><img src="' + esc(opts.logo) + '" alt="" width="36" height="36" loading="lazy" class="w-9 h-9 object-contain" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'w-9 h-9 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-sm font-bold\',textContent:\'' + esc(label.charAt(0)) + '\'}))" /></span>';
-          }
-          html += '<span class="' + (opts.bold ? 'font-semibold ' : '') + 'text-gray-900">' + esc(label) + '</span>';
-          if (opts.count != null) html += '<span class="count">' + fmt(opts.count) + '</span>';
-          html += '<svg class="check h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>';
-          b.innerHTML = html;
-          return b;
+          return CarfoxDrill.item(label, checked, opts);
         }
-
         function renderRegion() {
           const host = $('regionList');
           host.innerHTML = '';
