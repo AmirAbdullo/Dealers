@@ -154,6 +154,11 @@
     </section>
 
 
+    <!-- Category tiles: New / Used / Electric with live counts; a tile hides when its count is zero -->
+    <section id="categorySection" class="hidden mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-4">
+      <div id="categoryRow" class="grid grid-cols-3 gap-2.5 sm:gap-3 sm:max-w-2xl"></div>
+    </section>
+
     <!-- Featured: promoted listings (admin-set), hidden when none are live -->
     <section id="featuredSection" class="hidden mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-6 pb-2">
       <div class="mb-4">
@@ -683,6 +688,45 @@
         });
         section.classList.remove('hidden');
       }
+      // ---- Category tiles (New / Used / Electric). Counts come from /api/cars/categories; null = the filter
+      // section is switched off in admin, 0 = nothing to show — either way the tile is hidden.
+      var lastCategories = null;
+      const CATEGORY_ICONS = {
+        new: '<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 4.6L18.5 9l-4.6 1.9L12 15.5l-1.9-4.6L5.5 9l4.6-1.4z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>',
+        used: '<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l1.5-4.5A2 2 0 0 1 8.4 7h7.2a2 2 0 0 1 1.9 1.5L19 13M5 13h14M5 13v4a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1h8v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-4"/><circle cx="8" cy="15" r=".6" fill="currentColor"/><circle cx="16" cy="15" r=".6" fill="currentColor"/></svg>',
+        electric: '<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4.5 13.5H11L10 22l8.5-11.5H12z"/></svg>'
+      };
+      function renderCategories(c) {
+        const section = document.getElementById('categorySection');
+        const row = document.getElementById('categoryRow');
+        if (!section || !row) return;
+        lastCategories = c;
+        const tiles = [
+          { key: 'new', label: tx('home.cat_new', 'New Cars'), href: '/cars.html?condition=new', count: c && c.new },
+          { key: 'used', label: tx('home.cat_used', 'Used Cars'), href: '/cars.html?condition=used', count: c && c.used },
+          { key: 'electric', label: tx('home.cat_electric', 'Electric Cars'), href: '/cars.html?fuel_type=Electric', count: c && c.electric }
+        ].filter(function (t) { return Number(t.count) > 0; });
+        if (!tiles.length) { section.classList.add('hidden'); row.innerHTML = ''; return; }
+        row.innerHTML = tiles.map(function (t) {
+          const n = Number(t.count);
+          // Arabic: 1 سيارة · 2 سيارتان · 3–10 سيارات · 11+ سيارة
+          const unit = isArabic() ? (n === 2 ? 'سيارتان' : n >= 3 && n <= 10 ? 'سيارات' : 'سيارة') : (n === 1 ? 'car' : 'cars');
+          return '<a href="' + t.href + '" data-category="' + t.key + '" class="cf-cat-tile group flex flex-col sm:flex-row items-start sm:items-center gap-1.5 sm:gap-3 min-w-0 min-h-[44px] rounded-[14px] bg-white border border-slate-100 p-2.5 sm:p-3">' +
+            '<span class="h-8 w-8 sm:h-9 sm:w-9 shrink-0 rounded-full flex items-center justify-center ' + (t.key === 'electric' ? 'bg-emerald-50 text-emerald-600' : t.key === 'new' ? 'bg-orange-50 text-orange-500' : 'bg-[#eef2f9] text-[#0f1f3d]') + '">' + CATEGORY_ICONS[t.key] + '</span>' +
+            '<span class="min-w-0">' +
+              '<span class="block font-display font-bold text-[13px] sm:text-sm text-slate-900 leading-tight truncate group-hover:text-orange-600">' + escapeHtml(t.label) + '</span>' +
+              '<span class="block text-xs text-slate-500 mt-0.5">' + n.toLocaleString('en-US') + ' ' + unit + '</span>' +
+            '</span></a>';
+        }).join('');
+        section.classList.remove('hidden');
+      }
+      function loadCategories() {
+        fetch('/api/cars/categories')
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (c) { renderCategories(c); })
+          .catch(function () { renderCategories(null); });
+      }
+
       // ---- Featured: live promoted listings (admin-set); the section stays hidden when there are none.
       var lastFeatured = null;
       function renderFeatured(cars) {
@@ -737,6 +781,7 @@
         if (lastLatest) renderLatest(lastLatest.cars, lastLatest.showFallback);
         if (lastTopTrust) renderTopTrust(lastTopTrust);
         if (lastFeatured) renderFeatured(lastFeatured);
+        if (lastCategories) renderCategories(lastCategories);
       }
 
       function loadLatestListings(city) {
@@ -823,6 +868,7 @@
       loadNewArrivals(selectedCity);
       loadLatestListings(selectedCity);
       initBrandGrid();
+      loadCategories();
       loadFeatured();
       loadTopTrust();
     </script>

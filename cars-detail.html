@@ -606,6 +606,7 @@
           }
 
           document.getElementById('specGrid').innerHTML = '';
+          addSpec('Condition', v.condition === 'new' ? 'New' : 'Used');
           addSpec('Year', v.year ? String(v.year) : null);
           addSpec('Make', v.make);
           addSpec('Model', v.model);

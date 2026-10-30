@@ -69,6 +69,17 @@ html[lang="ar"] .font-display { font-family: 'Cairo', ui-sans-serif, system-ui, 
 .cf-hcard:active { box-shadow: 0 1px 2px rgba(15, 31, 61, 0.08), 0 12px 26px -12px rgba(15, 31, 61, 0.45); transform: scale(0.995); }
 .cf-hcard:focus-within { box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.35); }
 
+/* Home category tiles (New / Used / Electric): same chrome as the horizontal card, compact. */
+.cf-cat-tile {
+  box-shadow: 0 1px 2px rgba(15, 31, 61, 0.05), 0 8px 20px -14px rgba(15, 31, 61, 0.3);
+  transition: box-shadow 0.18s ease, transform 0.18s ease;
+}
+@media (hover: hover) {
+  .cf-cat-tile:hover { box-shadow: 0 1px 2px rgba(15, 31, 61, 0.06), 0 16px 32px -16px rgba(15, 31, 61, 0.42); }
+}
+.cf-cat-tile:active { transform: scale(0.98); }
+.cf-cat-tile:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.35); }
+
 /* Brand tiles: borderless circular logos. */
 .cf-brand-circle {
   display: flex;

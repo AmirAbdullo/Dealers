@@ -12,6 +12,9 @@
     <style>
       .photo-thumb--ghost { opacity: 0.5; transform: scale(0.95); }
       .photo-thumb--chosen { opacity: 0.5; transform: scale(0.95); }
+      .cond-opt span { display:block; text-align:center; border-radius:6px; padding:6px 0; font-size:14px; font-weight:600; color:#4b5563; cursor:pointer; }
+      .cond-opt input:checked + span { background:#fff; color:#0f1f3d; box-shadow:0 1px 2px rgba(15,31,61,.12); }
+      .cond-opt input:focus-visible + span { outline:2px solid #3b82f6; outline-offset:1px; }
     </style>
     <script>
       tailwind.config = {
@@ -58,6 +61,15 @@
       <section class="bg-white border border-gray-200 rounded-lg p-4 sm:p-5">
         <h2 class="text-lg font-bold">Vehicle Information</h2>
         <div class="mt-4 space-y-4">
+          <!-- Condition: Used (default) / New -->
+          <div>
+            <span id="conditionLabel" class="block text-sm font-medium text-gray-700">Condition</span>
+            <div role="radiogroup" aria-labelledby="conditionLabel" class="mt-1 inline-grid grid-cols-2 rounded-lg border border-gray-300 bg-gray-50 p-1 w-full sm:w-72">
+              <label class="cond-opt"><input type="radio" name="condition" value="used" class="sr-only" checked /><span>Used</span></label>
+              <label class="cond-opt"><input type="radio" name="condition" value="new" class="sr-only" /><span>New</span></label>
+            </div>
+            <p class="mt-1 text-xs text-gray-500">New cars can be listed with 0 km.</p>
+          </div>
           <div>
             <label for="make" class="block text-sm font-medium text-gray-700">Make</label>
             <select id="make" class="mt-1 block w-full px-3 py-2 text-base border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500">
@@ -220,6 +232,11 @@
       const priceEl = document.getElementById('price');
       const chassisEl = document.getElementById('chassis_number');
       const descEl = document.getElementById('description');
+      const conditionEls = Array.prototype.slice.call(document.querySelectorAll('input[name="condition"]'));
+      function getCondition() {
+        const on = conditionEls.find(function (r) { return r.checked; });
+        return on && on.value === 'new' ? 'new' : 'used';
+      }
       const dropZone = document.getElementById('dropZone');
       const photoInput = document.getElementById('photoInput');
       const photoGrid = document.getElementById('photoGrid');
@@ -288,12 +305,14 @@
       function buildPayload() {
         const mileage = parseMileageFromInput();
         const priceCents = parsePriceCentsFromInput();
+        const isNew = getCondition() === 'new';
         const payload = {
+          condition: getCondition(),
           make: (makeEl.value || '').trim(),
           model: getModelValue(),
           year: yearEl.value ? Number(yearEl.value) : undefined,
           trim: (trimEl.value || '').trim() || null,
-          mileage: mileage === null ? undefined : mileage,
+          mileage: mileage === null ? (isNew ? 0 : undefined) : mileage,
           price: priceCents === null ? undefined : priceCents,
           chassis_number: (chassisEl.value || '').trim().toUpperCase(),
           body_type: (bodyEl.value || '').trim() || null,
@@ -611,6 +630,8 @@
       }
 
       async function fillFormFromVehicle(v) {
+        const cond = (v.condition || v.car_condition) === 'new' ? 'new' : 'used';
+        conditionEls.forEach(function (r) { r.checked = r.value === cond; });
         if (v.make) {
           makeEl.value = v.make;
           await loadModelsForMake(v.make, v.model || '');
@@ -805,6 +826,7 @@
       attachFormattedNumberInput(milesEl);
       attachFormattedNumberInput(priceEl);
       [trimEl, bodyEl, transEl, fuelEl, extEl, intEl, chassisEl, descEl, modelEl, modelTextEl, yearEl].forEach(attachAutosave);
+      conditionEls.forEach(function (r) { r.addEventListener('change', function () { clearTimeout(saveTimer); formDirty = true; flushAutosave(); }); });
 
       function validateForPreview() {
         let ok = true;
@@ -824,7 +846,8 @@
         if (!make) { setFieldError(makeEl, document.getElementById('makeError'), 'Make is required'); ok = false; }
         if (!model) { setFieldError(getModelInput(), document.getElementById('modelError'), 'Model is required'); ok = false; }
         if (!year) { setFieldError(yearEl, document.getElementById('yearError'), 'Year is required'); ok = false; }
-        if (!mileage || mileage <= 0) { setFieldError(milesEl, document.getElementById('mileageError'), 'Mileage is required'); ok = false; }
+        // New cars may be listed with 0 km; used cars need a mileage.
+        if (getCondition() !== 'new' && (!mileage || mileage <= 0)) { setFieldError(milesEl, document.getElementById('mileageError'), 'Mileage is required'); ok = false; }
         if (!priceCents || priceCents <= 0) { setFieldError(priceEl, document.getElementById('priceError'), 'Price is required'); ok = false; }
         if (countDonePhotos() < 1) {
           const pe = document.getElementById('photosError');

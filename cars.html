@@ -211,6 +211,16 @@
             </div>
           </section>
 
+          <section class="filter-section" data-section-key="condition" data-filter-section="condition" data-open="true">
+            <button type="button" class="filter-section-toggle w-full flex items-center justify-between py-3 text-left" aria-expanded="true">
+              <span class="text-sm font-semibold text-gray-900 inline-flex items-center gap-1.5">Condition <span class="filter-section-count hidden rounded-full bg-blue-100 text-blue-800 text-[11px] font-semibold px-1.5 py-0.5"></span></span>
+              <svg xmlns="http://www.w3.org/2000/svg" class="filter-chevron h-4 w-4 text-gray-500 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+            </button>
+            <div class="filter-section-body pb-4">
+              <div id="conditionRadios" class="space-y-1.5"></div>
+            </div>
+          </section>
+
           <section class="filter-section" data-section-key="price" data-open="true">
             <button type="button" class="filter-section-toggle w-full flex items-center justify-between py-3 text-left" aria-expanded="true">
               <span class="text-sm font-semibold text-gray-900 inline-flex items-center gap-1.5">Price (EGP) <span class="filter-section-count hidden rounded-full bg-blue-100 text-blue-800 text-[11px] font-semibold px-1.5 py-0.5"></span></span>
@@ -476,6 +486,7 @@
             city: [],
             fuel_type: [],
             transmission: '',
+            condition: '',
             min_price: null,
             max_price: null,
             min_year: null,
@@ -510,6 +521,7 @@
             verified: filters.min_trust != null ? 1 : 0,
             body_type: filters.body_type.length,
             transmission: filters.transmission ? 1 : 0,
+            condition: filters.condition ? 1 : 0,
             fuel_type: filters.fuel_type.length,
             color: filters.color.length,
             features: filters.features.length
@@ -583,6 +595,7 @@
           if (filters.city.length) p.set('city', filters.city.join(','));
           if (filters.fuel_type.length) p.set('fuel_type', filters.fuel_type.join(','));
           if (filters.transmission) p.set('transmission', filters.transmission);
+          if (filters.condition) p.set('condition', filters.condition);
           if (filters.min_price != null) p.set('min_price', String(filters.min_price));
           if (filters.max_price != null) p.set('max_price', String(filters.max_price));
           if (filters.min_year != null) p.set('min_year', String(filters.min_year));
@@ -623,6 +636,7 @@
           if (p.has('governorate') && !next.city.length) next.city = csv(p, 'governorate');
           if (p.has('fuel_type')) next.fuel_type = csv(p, 'fuel_type');
           if (p.has('transmission')) next.transmission = p.get('transmission').trim();
+          if (p.has('condition')) { const c = p.get('condition').trim().toLowerCase(); next.condition = c === 'new' || c === 'used' ? c : ''; }
           if (p.has('min_price')) next.min_price = intOrNull(p, 'min_price');
           if (p.has('max_price')) next.max_price = intOrNull(p, 'max_price');
           if (p.has('min_year')) next.min_year = intOrNull(p, 'min_year');
@@ -804,6 +818,29 @@
           items.forEach(function (item) { radio(item.name, item.name, item.count); });
         }
 
+        function renderConditionRadios() {
+          const container = document.getElementById('conditionRadios');
+          if (!container) return;
+          const counts = {};
+          optionList('conditions').forEach(function (o) { counts[o.name] = o.count; });
+          container.innerHTML = '';
+          [['', 'Any condition'], ['new', 'New'], ['used', 'Used']].forEach(function (opt) {
+            const value = opt[0];
+            const count = value ? (counts[value] || 0) : null;
+            const label = document.createElement('label');
+            label.className = 'flex items-center gap-2 text-sm text-gray-700' + (count === 0 && filters.condition !== value ? ' filter-option-zero' : '');
+            label.innerHTML = '<input type="radio" name="filter_condition" data-filter-condition class="border-gray-300 text-blue-700" value="' + value + '" />' +
+              (count == null ? '<span>' + escapeHtml(opt[1]) + '</span>' : optionLabel(opt[1], count));
+            const input = label.querySelector('input');
+            input.checked = (filters.condition || '') === value;
+            input.addEventListener('change', function () {
+              if (input.checked) filters.condition = value;
+              onFilterChange(true);
+            });
+            container.appendChild(label);
+          });
+        }
+
         function renderPicks(containerId, key) {
           const container = document.getElementById(containerId);
           const picks = (facet && facet[key]) || (baseOptions && baseOptions[key]) || [];
@@ -863,6 +900,7 @@
           renderPicks('mileagePicks', 'mileage_picks');
           renderCheckboxList('bodyTypeCheckboxes', 'body_type', 'data-filter-body', filters.body_type, null);
           renderTransmissionRadios();
+          renderConditionRadios();
           renderCheckboxList('fuelTypeCheckboxes', 'fuel_type', 'data-filter-fuel', filters.fuel_type, null);
           renderCheckboxList('colorCheckboxes', 'color', 'data-filter-color', filters.color, null);
           renderFeatureCheckboxes();
@@ -887,6 +925,7 @@
             city: data.cities || [],
             transmissions: data.transmissions || [],
             fuel_type: data.fuel_types || [],
+            conditions: data.conditions || [],
             color: data.colors || [],
             features: data.features || [],
             price_picks: data.price_picks || [],
@@ -1129,6 +1168,7 @@
           if (filters.max_mileage != null) valueChip('max_mileage', 'Under ' + filters.max_mileage.toLocaleString('en-US') + ' km');
           listChips('body_type');
           if (filters.transmission) valueChip('transmission', filters.transmission);
+          if (filters.condition) valueChip('condition', filters.condition === 'new' ? 'New' : 'Used');
           listChips('fuel_type');
           listChips('color');
           listChips('features', featureName);
@@ -1665,6 +1705,7 @@
           // Badges sit on the photo: Value whenever rated, Trust from 40 points up.
           const trustScore = Number(car.trust_score) || 0;
           const badges =
+            (car.condition === 'new' ? CarfoxCard.newTagHtml('') : '') +
             (window.CarfoxValue ? CarfoxValue.badge(car, { size: 'md', className: 'shadow-md' }) : '') +
             (window.CarfoxTrust && trustScore >= 40 ? CarfoxTrust.badge(trustScore, { size: 'md', className: 'shadow-md' }) : '');
           card.setAttribute('data-car-id', String(car.id));

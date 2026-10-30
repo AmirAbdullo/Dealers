@@ -9,6 +9,7 @@
  *     opts.sold          true for a sold listing (muted photo + price, "Sold" tag)
  *     opts.layout        'horizontal' — home page card: photo start (~40%), title, price, 2x2 specs,
  *                        location, WhatsApp + Call Now; the whole card opens the listing
+ *   Cars with condition 'new' get a small green "New" tag with the photo badges (used cars get none).
  *     opts.featured      promoted listing: amber "Featured" tag on the photo; clicks mark the car as reached
  *                        through a promotion (CarfoxTrack.markPromoted) for engagement attribution
  *     opts.className     extra classes for the article
@@ -188,7 +189,7 @@
     var subtitle = [car.trim && String(car.trim).trim(), car.body_type].filter(Boolean).join(' · ');
     var trust = Number(car.trust_score) || 0;
 
-    var badges = '';
+    var badges = car.condition === 'new' ? newTagHtml('') : '';
     if (global.CarfoxValue && !sold) badges += CarfoxValue.badge(car, { size: 'md', className: 'shadow-md' });
     if (global.CarfoxTrust && (featureTrust || trust >= 40)) {
       badges += CarfoxTrust.badge(trust, { size: featureTrust ? 'lg' : 'md', className: 'shadow-md' });
@@ -252,6 +253,7 @@
     var badges = '';
     // Featured (promoted) tag heads the badge column so it never collides with the photo counter.
     if (featured) badges += featuredTagHtml('');
+    if (car.condition === 'new') badges += newTagHtml('');
     if (global.CarfoxValue) badges += CarfoxValue.badge(car, { compact: true, className: 'shadow-sm' });
     if (global.CarfoxTrust && (featureTrust || trust >= 40)) {
       // Phone photos are ~135px wide: a long tier label ("Highly Verified") shows from sm up, short ones always.
@@ -312,6 +314,12 @@
     return el;
   }
 
+  // Small green "New" tag for brand-new cars (used is the default expectation, so it gets no tag).
+  function newTagHtml(className) {
+    return '<span class="' + (className || '') + ' inline-flex items-center rounded-md bg-emerald-600 text-white text-[11px] font-bold px-1.5 py-0.5 shadow-sm">' +
+      esc(tx('card.new', 'New')) + '</span>';
+  }
+
   // Small amber "Featured" tag for promoted listings (always visible, never disguised as organic).
   function featuredTagHtml(className) {
     return '<span class="' + (className || '') + ' inline-flex items-center gap-1 rounded-md bg-amber-400 text-amber-950 text-[11px] font-bold px-1.5 py-0.5 shadow-sm" title="' +
@@ -331,6 +339,7 @@
     whatsappHref: whatsappHref,
     telHref: telHref,
     featuredTagHtml: featuredTagHtml,
+    newTagHtml: newTagHtml,
     escape: esc
   };
 })(typeof window !== 'undefined' ? window : this);

@@ -352,6 +352,9 @@ db.exec('CREATE INDEX IF NOT EXISTS idx_engagement_vehicle ON engagement_events(
 // promoted_by = admin user id, promoted_at = when it was set. The sweep clears the flag after expiry and keeps
 // the dates as history. engagement_events.promoted = 1 when the click came from a promoted placement.
 addColumnIfMissing('vehicles', 'promoted', 'INTEGER NOT NULL DEFAULT 0');
+// Vehicle condition: 'new' | 'used'. Column is car_condition (not "condition", to stay clear of SQL keyword
+// handling on Turso); the API calls it "condition". The default backfills every existing listing to 'used'.
+addColumnIfMissing('vehicles', 'car_condition', "TEXT NOT NULL DEFAULT 'used'");
 addColumnIfMissing('vehicles', 'promoted_from', 'TEXT');
 addColumnIfMissing('vehicles', 'promoted_until', 'TEXT');
 addColumnIfMissing('vehicles', 'promoted_by', 'INTEGER');
@@ -379,7 +382,7 @@ setInterval(expirePromotions, 10 * 60 * 1000).unref();
 function promoCardColumns() {
   return `
     v.id, v.year, v.make, v.model, v.trim, v.mileage, v.price,
-    v.body_type, v.transmission, v.fuel_type, v.exterior_color, v.published_at,
+    v.body_type, v.transmission, v.fuel_type, v.car_condition, v.exterior_color, v.published_at,
     p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score, v.value_rating, v.value_pct, v.value_median, v.value_comparables,
     (SELECT COUNT(*) FROM vehicle_photos ph WHERE ph.vehicle_id = v.id) AS photo_count,
     (SELECT GROUP_CONCAT(url, char(31)) FROM (SELECT ph.url FROM vehicle_photos ph WHERE ph.vehicle_id = v.id ORDER BY ph.is_primary DESC, ph.display_order ASC, ph.id ASC LIMIT 5)) AS photo_urls,
@@ -1044,9 +1047,9 @@ const GOVERNORATE_SEED = [
   }
 })();
 
-const SEARCH_SECTION_KEYS = ['body_type', 'transmission', 'fuel_type', 'color', 'features', 'mileage'];
+const SEARCH_SECTION_KEYS = ['condition', 'body_type', 'transmission', 'fuel_type', 'color', 'features', 'mileage'];
 const SEARCH_SETTINGS_DEFAULTS = {
-  sections: { body_type: true, transmission: true, fuel_type: true, color: true, features: true, mileage: true },
+  sections: { condition: true, body_type: true, transmission: true, fuel_type: true, color: true, features: true, mileage: true },
   price_picks: [
     { label: 'Under 300,000', min: null, max: 300000 },
     { label: '300,000 – 600,000', min: 300000, max: 600000 },
@@ -3568,6 +3571,14 @@ function buildPublicCarsFilter(query) {
     params.push.apply(params, fuelTypes);
   }
 
+  const conditions = parseCsvQueryParam(query.condition)
+    .map(function (c) { return String(c).toLowerCase(); })
+    .filter(function (c) { return c === 'new' || c === 'used'; });
+  if (conditions.length) {
+    whereParts.push("COALESCE(v.car_condition, 'used') IN (" + conditions.map(function () { return '?'; }).join(', ') + ')');
+    params.push.apply(params, conditions);
+  }
+
   const featureIds = parseFeatureIdList(query.features);
   if (featureIds.length) {
     whereParts.push('(SELECT COUNT(*) FROM vehicle_features vf WHERE vf.vehicle_id = v.id AND vf.feature_id IN (' + featureIds.map(function () { return '?'; }).join(', ') + ')) = ?');
@@ -3670,6 +3681,7 @@ function mapPublicCarRow(row) {
     body_type: row.body_type,
     transmission: row.transmission,
     fuel_type: row.fuel_type,
+    condition: row.car_condition !== undefined ? (row.car_condition === 'new' ? 'new' : 'used') : undefined,
     exterior_color: row.exterior_color,
     primary_photo_url: row.primary_photo_url || null,
     photo_count: row.photo_count != null ? Number(row.photo_count) : undefined,
@@ -3721,7 +3733,7 @@ app.get('/api/saved-cars/listings', requireBuyer, function (req, res) {
   const buyerId = req.user.id;
   const rows = db.prepare(
     'SELECT v.id, v.year, v.make, v.model, v.trim, v.mileage, v.price, v.body_type,' +
-    '       v.transmission, v.fuel_type, v.exterior_color, v.published_at, v.status,' +
+    '       v.transmission, v.fuel_type, v.car_condition, v.exterior_color, v.published_at, v.status,' +
     '       p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score, v.value_rating, v.value_pct, v.value_median, v.value_comparables,' +
     '       d.id AS dealer_id, d.business_name AS dealer_business_name,' +
     '       d.city AS dealer_city, d.state AS dealer_state' +
@@ -3782,7 +3794,7 @@ app.get('/api/dealers/:id/profile', function (req, res) {
     .prepare(
       `SELECT
         v.id, v.year, v.make, v.model, v.trim, v.mileage, v.price,
-        v.body_type, v.transmission, v.fuel_type, v.exterior_color,
+        v.body_type, v.transmission, v.fuel_type, v.car_condition, v.exterior_color,
         v.published_at,
         p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score, v.value_rating, v.value_pct, v.value_median, v.value_comparables,
         d.id AS dealer_id,
@@ -3877,6 +3889,7 @@ app.get('/api/cars/filter-options', function (req, res) {
     "v.fuel_type IS NOT NULL AND TRIM(v.fuel_type) != ''",
     q, ['fuel_type']
   );
+  const conditions = facetedFilterOptions("COALESCE(v.car_condition, 'used')", '1 = 1', q, ['condition']);
   // Colors are free text from dealers ("Black" / "black"): group case-insensitively, display capitalised.
   const colors = facetedFilterOptions(
     'LOWER(TRIM(v.exterior_color))',
@@ -3907,6 +3920,7 @@ app.get('/api/cars/filter-options', function (req, res) {
     cities: cities,
     transmissions: transmissions,
     fuel_types: fuelTypes,
+    conditions: conditions,
     colors: colors,
     year_range: {
       min: ranges.min_year != null ? ranges.min_year : new Date().getFullYear() - 15,
@@ -4024,7 +4038,7 @@ app.get('/api/cars', function (req, res) {
     .prepare(
       `SELECT
         v.id, v.year, v.make, v.model, v.trim, v.mileage, v.price,
-        v.body_type, v.transmission, v.fuel_type, v.exterior_color,
+        v.body_type, v.transmission, v.fuel_type, v.car_condition, v.exterior_color,
         v.published_at,
         p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score, v.value_rating, v.value_pct, v.value_median, v.value_comparables,
         (SELECT COUNT(*) FROM vehicle_photos ph WHERE ph.vehicle_id = v.id) AS photo_count,
@@ -4081,7 +4095,7 @@ app.get('/api/vehicles', function (req, res) {
     .prepare(
       `SELECT
         v.id, v.year, v.make, v.model, v.trim, v.mileage, v.price,
-        v.body_type, v.transmission, v.fuel_type, v.exterior_color,
+        v.body_type, v.transmission, v.fuel_type, v.car_condition, v.exterior_color,
         v.published_at,
         p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score, v.value_rating, v.value_pct, v.value_median, v.value_comparables,
         d.id AS dealer_id,
@@ -4115,6 +4129,7 @@ function mapPublicVehicleDetail(row, photoRows) {
     body_type: row.body_type,
     transmission: row.transmission,
     fuel_type: row.fuel_type,
+    condition: row.car_condition === 'new' ? 'new' : 'used',
     exterior_color: row.exterior_color,
     interior_color: row.interior_color,
     description: row.description,
@@ -4185,6 +4200,28 @@ app.get('/api/cars/:id/value', function (req, res) {
   });
 });
 
+// Home category tiles: active-listing counts for New / Used / Electric. A tile whose filter section is switched
+// off in admin (Catalog → Filters) comes back null so the home page hides it.
+app.get('/api/cars/categories', function (req, res) {
+  const row = db
+    .prepare(
+      `SELECT
+        SUM(CASE WHEN COALESCE(v.car_condition, 'used') = 'new' THEN 1 ELSE 0 END) AS new_count,
+        SUM(CASE WHEN COALESCE(v.car_condition, 'used') = 'used' THEN 1 ELSE 0 END) AS used_count,
+        SUM(CASE WHEN v.fuel_type = 'Electric' THEN 1 ELSE 0 END) AS electric_count
+      ${PUBLIC_CARS_FROM_SQL}
+      WHERE ${PUBLIC_CARS_BASE_WHERE}`
+    )
+    .get();
+  const on = searchSettings.sections || {};
+  res.set('Cache-Control', 'no-store');
+  return res.json({
+    new: on.condition === false ? null : Number(row.new_count) || 0,
+    used: on.condition === false ? null : Number(row.used_count) || 0,
+    electric: on.fuel_type === false ? null : Number(row.electric_count) || 0
+  });
+});
+
 // Live promoted listings for the home page "Featured" section, most recently promoted first.
 app.get('/api/cars/featured', function (req, res) {
   let limit = Number(req.query.limit);
@@ -4213,7 +4250,7 @@ app.get('/api/cars/top-trust', function (req, res) {
     .prepare(
       `SELECT
         v.id, v.year, v.make, v.model, v.trim, v.mileage, v.price,
-        v.body_type, v.transmission, v.fuel_type, v.exterior_color,
+        v.body_type, v.transmission, v.fuel_type, v.car_condition, v.exterior_color,
         v.published_at,
         p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score, v.value_rating, v.value_pct, v.value_median, v.value_comparables,
         (SELECT COUNT(*) FROM vehicle_photos ph WHERE ph.vehicle_id = v.id) AS photo_count,
@@ -4263,7 +4300,7 @@ app.get('/api/cars/:id/similar', function (req, res) {
     .prepare(
       `SELECT
         v.id, v.year, v.make, v.model, v.trim, v.mileage, v.price,
-        v.body_type, v.transmission, v.fuel_type, v.exterior_color,
+        v.body_type, v.transmission, v.fuel_type, v.car_condition, v.exterior_color,
         v.published_at,
         p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score, v.value_rating, v.value_pct, v.value_median, v.value_comparables,
         d.id AS dealer_id,
@@ -4298,7 +4335,7 @@ app.get('/api/cars/:id', function (req, res) {
     .prepare(
       `SELECT
         v.id, v.year, v.make, v.model, v.trim, v.mileage, v.price,
-        v.body_type, v.transmission, v.fuel_type, v.exterior_color, v.interior_color,
+        v.body_type, v.transmission, v.fuel_type, v.car_condition, v.exterior_color, v.interior_color,
         v.description, v.vin, v.status, v.published_at, COALESCE(v.views, 0) AS views,
         COALESCE(v.trust_score, 0) AS trust_score,
         v.value_rating, v.value_pct, v.value_median, v.value_comparables,
@@ -5169,6 +5206,7 @@ app.post('/api/vehicles', requireDealer, dealerSuspendedGuard, function (req, re
   const exterior_color = b.exterior_color != null ? String(b.exterior_color).trim() : null;
   const interior_color = b.interior_color != null ? String(b.interior_color).trim() : null;
   const description = b.description != null ? String(b.description).trim() : null;
+  const carCondition = String(b.condition || '').trim().toLowerCase() === 'new' ? 'new' : 'used';
   const status = (String(b.status || 'draft').trim().toLowerCase() === 'active') ? 'active' : 'draft';
 
   if (vin && !/^[A-Z0-9]{1,17}$/i.test(vin)) {
@@ -5192,14 +5230,14 @@ app.post('/api/vehicles', requireDealer, dealerSuspendedGuard, function (req, re
     INSERT INTO vehicles (
       dealership_id, vin, year, make, model, trim, mileage, price,
       body_type, transmission, fuel_type, exterior_color, interior_color, description,
-      status, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      status, created_at, car_condition
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   try {
     const info = stmt.run(
       req.dealership.id, vin, year, make, model, trim, mileage ?? 0, price,
       body_type, transmission, fuel_type, exterior_color, interior_color, description,
-      status, createdAt
+      status, createdAt, carCondition
     );
     const row = db.prepare('SELECT * FROM vehicles WHERE id = ?').get(info.lastInsertRowid);
     return res.status(201).json({ vehicle: row });
