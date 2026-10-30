@@ -4200,6 +4200,33 @@ app.get('/api/cars/:id/value', function (req, res) {
   });
 });
 
+// Home "Browse by Brand": makes with at least one active listing, most listings first, with the admin
+// catalogue's short name and logo when it has them.
+app.get('/api/cars/brands', function (req, res) {
+  let limit = Number(req.query.limit);
+  if (!limit || isNaN(limit) || limit < 1) limit = 12;
+  if (limit > 50) limit = 50;
+  const rows = db
+    .prepare(
+      `SELECT v.make AS name, COUNT(*) AS count
+      ${PUBLIC_CARS_FROM_SQL}
+      WHERE ${PUBLIC_CARS_BASE_WHERE} AND v.make IS NOT NULL AND TRIM(v.make) != ''
+      GROUP BY v.make
+      ORDER BY count DESC, v.make COLLATE NOCASE ASC
+      LIMIT ?`
+    )
+    .all(limit);
+  const makes = getPublicCatalog().makes || [];
+  res.set('Cache-Control', 'no-store');
+  return res.json({
+    brands: rows.map(function (r) {
+      const key = String(r.name).toLowerCase();
+      const m = makes.find(function (x) { return String(x.name).toLowerCase() === key; });
+      return { name: r.name, label: (m && m.short_name) || r.name, logo_url: (m && m.logo_url) || null, count: Number(r.count) || 0 };
+    })
+  });
+});
+
 // Home category tiles: active-listing counts for New / Used / Electric. A tile whose filter section is switched
 // off in admin (Catalog → Filters) comes back null so the home page hides it.
 app.get('/api/cars/categories', function (req, res) {

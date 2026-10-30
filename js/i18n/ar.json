@@ -29,10 +29,7 @@
   "suggest.no_matches": "لا توجد نتائج لـ “{q}”. اضغط Enter للبحث في كل الإعلانات.",
 
   "home.browse_by_brand": "تصفح حسب الماركة",
-  "home.show_all_brands": "عرض كل الماركات",
-  "home.show_less": "عرض أقل",
   "home.all_brands": "كل الماركات",
-  "home.all_cars": "كل السيارات",
   "home.new_arrivals": "وصل حديثاً",
   "home.latest_listings": "أحدث الإعلانات",
   "home.see_all": "عرض الكل ←",

@@ -191,21 +191,16 @@
       </div>
     </section>
 
-    <!-- Browse by Brand -->
-    <section class="bg-[#eef2f9] py-6 md:py-8">
+    <!-- Browse by Brand: makes with live inventory, most listings first; hidden when fewer than 3 -->
+    <section id="brandSection" class="hidden bg-[#eef2f9] py-6 md:py-8">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <h2 class="cf-section-title font-display font-extrabold text-xl md:text-2xl text-slate-900 mb-4 md:mb-5" data-i18n="home.browse_by_brand">Browse by Brand</h2>
-        <div id="brandGridMobile" class="flex gap-4 overflow-x-auto scrollbar-hide snap-x -mx-4 px-4 pb-1 md:hidden"></div>
-        <div id="brandGridDesktop" class="hidden md:grid grid-cols-6 lg:grid-cols-8 gap-x-4 gap-y-5"></div>
-        <button
-          type="button"
-          id="brandGridToggle"
-          class="mt-4 w-full py-2.5 text-sm font-semibold text-orange-600 hover:text-orange-700 hidden"
-          data-i18n="home.show_all_brands"
-          aria-expanded="false"
-        >
-          Show all brands
-        </button>
+        <div class="flex items-end justify-between gap-4 mb-4">
+          <h2 class="cf-section-title font-display font-extrabold text-xl md:text-2xl text-slate-900" data-i18n="home.browse_by_brand">Browse by Brand</h2>
+          <a href="/quick-search.html?step=make" class="shrink-0 text-sm font-semibold text-orange-600 hover:text-orange-700 mb-2" data-i18n="home.see_all">See all →</a>
+        </div>
+        <div class="relative">
+          <div id="brandRow" class="flex gap-2 md:gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory scroll-smooth -mx-4 px-4 sm:mx-0 sm:px-0 pt-1 pb-1"></div>
+        </div>
       </div>
     </section>
 
@@ -392,35 +387,20 @@
         dropdown.classList.add('hidden');
       });
 
-      // Brands and city chips come from the admin-managed catalog (GET /api/catalog). These
-      // lists are only the first-paint fallback and match the seeded catalog order.
-      let ALL_BRANDS = [
-        'Toyota', 'Hyundai', 'Kia', 'Nissan', 'Mercedes-Benz', 'BMW',
-        'Chevrolet', 'Honda', 'Volkswagen', 'Peugeot', 'Renault',
-        'Mitsubishi', 'Chery', 'MG', 'Opel', 'Fiat', 'Skoda',
-        'Jeep', 'Ford', 'Suzuki', 'Mazda', 'Audi', 'Volvo',
-        'Land Rover', 'Porsche', 'Subaru', 'BAIC', 'Geely',
-        'BYD', 'Haval', 'JAC', 'Lifan', 'Isuzu', 'Lexus'
-      ].map(function (n) { return { name: n, label: n === 'Mercedes-Benz' ? 'Mercedes' : n, logo: null }; });
       const GOV_AR = {};
-
       const BRAND_LOGOS = {};
 
       function applyCatalog(c) {
-        const brands = (c.makes || []).map(function (m) { return { name: m.name, label: m.short_name || m.name, logo: m.logo_url || null }; });
-        const brandsChanged = JSON.stringify(brands) !== JSON.stringify(ALL_BRANDS);
-        if (brands.length) ALL_BRANDS = brands;
         (c.governorates || []).forEach(function (g) { if (g.name_ar) GOV_AR[g.name] = g.name_ar; });
         if (window.CarfoxCard) CarfoxCard.setGovernorateNames(GOV_AR);
         // Admin filter toggles also hide the matching hero pills / quick picks.
         const sections = (c.search && c.search.sections) || {};
         document.querySelectorAll('[data-filter-section]').forEach(function (el) { el.classList.toggle('hidden', sections[el.dataset.filterSection] === false); });
-        return { brandsChanged: brandsChanged && brands.length > 0 };
       }
       const catalogReady = fetch('/api/catalog')
         .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (c) { return c ? applyCatalog(c) : { brandsChanged: false }; })
-        .catch(function () { return { brandsChanged: false }; });
+        .then(function (c) { if (c) applyCatalog(c); })
+        .catch(function () {});
 
       function brandLogoUrl(brand) {
         if (BRAND_LOGOS[brand]) return BRAND_LOGOS[brand];
@@ -443,158 +423,71 @@
           .replace(/"/g, '&quot;');
       }
 
-      function showBrandLogoFallback(img) {
-        img.classList.add('hidden');
-        img.setAttribute('aria-hidden', 'true');
-        const fallback = img.nextElementSibling;
-        if (fallback) {
-          fallback.classList.remove('hidden');
-          fallback.setAttribute('aria-hidden', 'false');
+      // ---- Browse by Brand: makes with active listings, most listings first (GET /api/cars/brands), as one
+      // snap-scroll row (desktop arrows + fades via CarfoxScrollRow) ending in an "All brands" tile that opens the
+      // quick-search make list. Hidden unless at least BRANDS_MIN makes have inventory.
+      var lastBrands = null;
+      const BRANDS_MIN = 3;
+      const BRANDS_MAX = 12;
+      const BRAND_TILE = 'cf-brand-tile snap-start shrink-0 w-[80px] md:w-[96px] flex flex-col items-center gap-1.5 text-center';
+      const BRAND_TEXT = 'block max-w-full truncate text-[11px] md:text-xs font-semibold text-slate-700 leading-tight';
+      // Name truncates if it must; the count always stays visible.
+      const BRAND_LINE = 'flex max-w-full items-baseline justify-center gap-1 text-[11px] md:text-xs font-semibold text-slate-700 leading-tight';
+
+      function renderBrandTile(b) {
+        const label = brandLabel({ name: b.name, label: b.label || b.name });
+        const a = document.createElement('a');
+        a.href = '/cars.html?make=' + encodeURIComponent(b.name);
+        a.className = BRAND_TILE;
+        a.setAttribute('aria-label', label + ' · ' + b.count);
+        a.innerHTML =
+          '<span class="cf-brand-circle cf-brand-circle--sm">' +
+            '<img src="' + escapeHtml(b.logo_url || brandLogoUrl(b.name)) + '" alt="" width="32" height="32" loading="lazy" class="w-7 h-7 md:w-8 md:h-8 object-contain" />' +
+            '<span class="hidden w-7 h-7 md:w-8 md:h-8 rounded-full bg-slate-200 text-slate-600 items-center justify-center text-sm font-bold" aria-hidden="true">' + escapeHtml(String(label).charAt(0).toUpperCase()) + '</span>' +
+          '</span>' +
+          '<span class="' + BRAND_LINE + '"><span class="min-w-0 truncate">' + escapeHtml(label) + '</span><span class="shrink-0 font-medium text-slate-400">· ' + Number(b.count).toLocaleString('en-US') + '</span></span>';
+        const img = a.querySelector('img');
+        img.addEventListener('error', function () {
+          img.classList.add('hidden');
+          img.nextElementSibling.classList.remove('hidden');
+          img.nextElementSibling.classList.add('flex');
+        });
+        return a;
+      }
+
+      function renderAllBrandsTile() {
+        const a = document.createElement('a');
+        a.href = '/quick-search.html?step=make';
+        a.className = BRAND_TILE;
+        a.innerHTML =
+          '<span class="cf-brand-circle cf-brand-circle--sm !bg-[#0f1f3d] text-white">' +
+            '<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg>' +
+          '</span>' +
+          '<span class="' + BRAND_TEXT + '">' + escapeHtml(tx('home.all_brands', 'All Brands')) + '</span>';
+        return a;
+      }
+
+      function renderBrands(brands) {
+        const section = document.getElementById('brandSection');
+        const row = document.getElementById('brandRow');
+        if (!section || !row) return;
+        lastBrands = brands;
+        if (brands.length < BRANDS_MIN) { section.classList.add('hidden'); row.innerHTML = ''; return; }
+        row.innerHTML = '';
+        brands.slice(0, BRANDS_MAX).forEach(function (b) { row.appendChild(renderBrandTile(b)); });
+        row.appendChild(renderAllBrandsTile());
+        section.classList.remove('hidden');
+        if (window.CarfoxScrollRow) {
+          const ctl = CarfoxScrollRow.attach(row, { fade: '#eef2f9' });
+          if (ctl) ctl.update();
         }
       }
 
-      function renderBrandCard(brand) {
-        const card = document.createElement('a');
-        card.href = '/cars.html?make=' + encodeURIComponent(brand.name);
-        card.className =
-          'cf-brand-tile snap-start shrink-0 w-[76px] md:w-auto flex flex-col items-center gap-2 cursor-pointer';
-
-        const iconWrap = document.createElement('div');
-        iconWrap.className = 'cf-brand-circle';
-
-        const img = document.createElement('img');
-        img.src = brand.logo || brandLogoUrl(brand.name);
-        img.alt = '';
-        img.width = 48;
-        img.height = 48;
-        img.loading = 'lazy';
-        img.className = 'w-9 h-9 object-contain';
-        img.addEventListener('error', function () {
-          showBrandLogoFallback(img);
-        });
-
-        const fallback = document.createElement('div');
-        fallback.className =
-          'hidden w-9 h-9 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-base font-bold';
-        fallback.setAttribute('aria-hidden', 'true');
-        fallback.textContent = String(brand.label).charAt(0).toUpperCase();
-
-        iconWrap.appendChild(img);
-        iconWrap.appendChild(fallback);
-
-        const label = document.createElement('span');
-        label.className =
-          'text-[11px] md:text-xs font-semibold text-slate-700 text-center leading-tight';
-        label.textContent = brandLabel(brand);
-
-        card.appendChild(iconWrap);
-        card.appendChild(label);
-        return card;
-      }
-
-      function renderAllBrandsCard() {
-        const miniBrands = ['Volkswagen', 'Honda', 'Renault', 'Mitsubishi'];
-        const card = document.createElement('a');
-        card.href = '/cars.html';
-        card.className =
-          'cf-brand-tile snap-start shrink-0 w-[76px] md:w-auto flex flex-col items-center gap-2 cursor-pointer';
-
-        const iconWrap = document.createElement('div');
-        iconWrap.className = 'cf-brand-circle grid grid-cols-2 gap-0.5 place-items-center p-3.5';
-
-        miniBrands.forEach(function (brand) {
-          const img = document.createElement('img');
-          img.src = brandLogoUrl(brand);
-          img.alt = '';
-          img.width = 20;
-          img.height = 20;
-          img.loading = 'lazy';
-          img.className = 'w-4 h-4 object-contain';
-          iconWrap.appendChild(img);
-        });
-
-        const label = document.createElement('span');
-        label.className =
-          'text-[11px] md:text-xs font-semibold text-slate-700 text-center leading-tight';
-        label.setAttribute('data-i18n', 'home.all_brands');
-        label.textContent = tx('home.all_brands', 'All Brands');
-
-        card.appendChild(iconWrap);
-        card.appendChild(label);
-        return card;
-      }
-
-      function renderAllCarsCard() {
-        const card = document.createElement('a');
-        card.href = '/cars.html';
-        card.className =
-          'cf-brand-tile snap-start shrink-0 w-[76px] md:w-auto flex flex-col items-center gap-2 cursor-pointer';
-        card.innerHTML =
-          '<div class="cf-brand-circle !bg-navy text-white">' +
-          '<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">' +
-          '<path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>' +
-          '</svg></div>' +
-          '<span class="text-[11px] md:text-xs font-semibold text-slate-700 text-center leading-tight" data-i18n="home.all_cars">' + escapeHtml(tx('home.all_cars', 'All Cars')) + '</span>';
-        return card;
-      }
-
-      const BRANDS_VISIBLE_COLLAPSED = 12;
-      const BRANDS_MOBILE_COUNT = 12;
-
-      function initBrandGridMobile() {
-        const grid = document.getElementById('brandGridMobile');
-        if (!grid) return;
-
-        grid.innerHTML = '';
-        ALL_BRANDS.slice(0, BRANDS_MOBILE_COUNT).forEach(function (brand) {
-          grid.appendChild(renderBrandCard(brand));
-        });
-        grid.appendChild(renderAllBrandsCard());
-      }
-
-      function initBrandGridDesktop() {
-        const grid = document.getElementById('brandGridDesktop');
-        const toggleBtn = document.getElementById('brandGridToggle');
-        if (!grid) return;
-
-        grid.innerHTML = '';
-        ALL_BRANDS.forEach(function (brand, index) {
-          const card = renderBrandCard(brand);
-          if (index >= BRANDS_VISIBLE_COLLAPSED) {
-            card.classList.add('hidden', 'brand-grid-extra');
-          }
-          grid.appendChild(card);
-        });
-
-        const allCarsCard = renderAllCarsCard();
-        allCarsCard.classList.add('hidden', 'brand-grid-extra');
-        grid.appendChild(allCarsCard);
-
-        if (!toggleBtn || ALL_BRANDS.length <= BRANDS_VISIBLE_COLLAPSED) return;
-
-        toggleBtn.classList.add('md:block');
-        let expanded = false;
-        toggleBtn.setAttribute('data-i18n', 'home.show_all_brands');
-        toggleBtn.setAttribute('aria-expanded', 'false');
-        toggleBtn.textContent = tx('home.show_all_brands', 'Show all brands');
-
-        toggleBtn.onclick = function () {
-          expanded = !expanded;
-          grid.querySelectorAll('.brand-grid-extra').forEach(function (el) {
-            el.classList.toggle('hidden', !expanded);
-          });
-          toggleBtn.setAttribute(
-            'data-i18n',
-            expanded ? 'home.show_less' : 'home.show_all_brands'
-          );
-          toggleBtn.textContent = tx(expanded ? 'home.show_less' : 'home.show_all_brands', expanded ? 'Show less' : 'Show all brands');
-          toggleBtn.setAttribute('aria-expanded', String(expanded));
-        };
-      }
-
-      function initBrandGrid() {
-        initBrandGridMobile();
-        initBrandGridDesktop();
+      function loadBrands() {
+        fetch('/api/cars/brands?limit=' + BRANDS_MAX)
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (d) { renderBrands((d && d.brands) || []); })
+          .catch(function () { renderBrands([]); });
       }
 
       // Each home section shows at most this many cards (phones: vertical list; desktop: 2 per row) + "See all".
@@ -843,7 +736,7 @@
       // in the active language; static markup is handled by CarfoxI18n.apply().
       function onLanguageApplied() {
         updateLangToggleLabel();
-        initBrandGrid();
+        if (lastBrands) renderBrands(lastBrands);
         rerenderListings();
         if (window.CarfoxI18n) CarfoxI18n.apply();
       }
@@ -862,12 +755,9 @@
           onPill: function (key) { window.location.href = '/cars.html?open=' + encodeURIComponent(key); }
         });
       }
-      catalogReady.then(function (changed) {
-        if (changed.brandsChanged) initBrandGrid();
-      });
       loadNewArrivals(selectedCity);
       loadLatestListings(selectedCity);
-      initBrandGrid();
+      loadBrands();
       loadCategories();
       loadFeatured();
       loadTopTrust();

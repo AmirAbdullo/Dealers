@@ -29,10 +29,7 @@
   "suggest.no_matches": "No matches for “{q}”. Press Enter to search everything.",
 
   "home.browse_by_brand": "Browse by Brand",
-  "home.show_all_brands": "Show all brands",
-  "home.show_less": "Show less",
   "home.all_brands": "All Brands",
-  "home.all_cars": "All Cars",
   "home.new_arrivals": "New Arrivals",
   "home.latest_listings": "Latest Listings",
   "home.see_all": "See all →",
