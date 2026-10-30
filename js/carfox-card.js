@@ -95,7 +95,7 @@
   }
 
   // tel: link to the dealer's phone: +/00 numbers kept international, 0-prefixed Egyptian numbers get +20,
-  // 20… numbers get +, anything else (e.g. a landline without its area code) dials as entered.
+  // 20… / 11+ digit numbers get +, 10-digit 1… numbers are Egyptian mobiles missing the 0, shorter ones dial as entered.
   function telHref(car) {
     var raw = car && car.dealer && car.dealer.phone ? String(car.dealer.phone).trim() : '';
     var digits = raw.replace(/[^0-9]/g, '');
@@ -104,7 +104,9 @@
     if (digits.indexOf('00') === 0) return 'tel:+' + digits.slice(2);
     if (digits.indexOf('0') === 0) return 'tel:+20' + digits.slice(1);
     if (digits.indexOf('20') === 0 && digits.length >= 11) return 'tel:+' + digits;
-    return 'tel:' + digits; // short local number: dial as entered
+    if (digits.length === 10 && digits.charAt(0) === '1') return 'tel:+20' + digits; // Egyptian mobile missing its 0
+    if (digits.length >= 11) return 'tel:+' + digits; // full international number without the +
+    return 'tel:' + digits; // short local number (e.g. landline without area code): dial as entered
   }
 
   function track(type, carId) {
