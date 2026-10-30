@@ -250,6 +250,17 @@
             '<span>' + esc(formatDaysAgo(v.published_at)) + '</span>';
           info.appendChild(metaEl);
 
+          // Promotion set by CarFox (Featured on the home page + pinned in matching search results).
+          if (Number(v.promo_current)) {
+            var promoLive = !!Number(v.promo_live);
+            var promoDate = function (iso) { var d = new Date(iso); return isNaN(d.getTime()) ? '' : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }); };
+            var promo = document.createElement('p');
+            promo.className = 'mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-2 py-1';
+            promo.textContent = '★ ' + (promoLive ? 'Promoted until ' + promoDate(v.promoted_until) : 'Promotion starts ' + promoDate(v.promoted_from)) +
+              (v.status !== 'active' ? ' · shows to buyers only while the listing is active' : '');
+            info.appendChild(promo);
+          }
+
           if (adminPaused) {
             var note = document.createElement('p');
             note.className = 'mt-1.5 text-xs text-red-700 bg-red-50 border border-red-200 rounded-md px-2 py-1.5';

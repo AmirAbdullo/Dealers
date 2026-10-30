@@ -9,6 +9,8 @@
  *     opts.sold          true for a sold listing (muted photo + price, "Sold" tag)
  *     opts.layout        'horizontal' — home page card: photo start (~40%), title, price, 2x2 specs,
  *                        location, WhatsApp + Call Now; the whole card opens the listing
+ *     opts.featured      promoted listing: amber "Featured" tag on the photo; clicks mark the car as reached
+ *                        through a promotion (CarfoxTrack.markPromoted) for engagement attribution
  *     opts.className     extra classes for the article
  *   Interior helpers shared with the browse page's horizontal card:
  *     CarfoxCard.priceHtml(piasters, { className, muted })   navy price, small muted unit
@@ -237,6 +239,7 @@
   // info text lets clicks through to it (pointer-events-none) and the buttons sit above it.
   function renderHorizontal(car, opts) {
     var featureTrust = !!opts.featureTrust;
+    var featured = !!opts.featured;
     var href = '/cars/' + encodeURIComponent(car.id);
     var title = [car.year, car.make, car.model].filter(Boolean).join(' ');
     var trust = Number(car.trust_score) || 0;
@@ -247,6 +250,8 @@
     el.setAttribute('data-car-id', String(car.id));
 
     var badges = '';
+    // Featured (promoted) tag heads the badge column so it never collides with the photo counter.
+    if (featured) badges += featuredTagHtml('');
     if (global.CarfoxValue) badges += CarfoxValue.badge(car, { compact: true, className: 'shadow-sm' });
     if (global.CarfoxTrust && (featureTrust || trust >= 40)) {
       // Phone photos are ~135px wide: a long tier label ("Highly Verified") shows from sm up, short ones always.
@@ -284,7 +289,7 @@
     if (!buttons) buttons = '<a href="' + href + '?openInquiry=1" data-track="message" class="' + btn + 'bg-[' + NAVY + '] hover:bg-[#162c57] text-white">' + ic('message') + '<span class="truncate">' + esc(tx('card.message', 'Message')) + '</span></a>';
 
     el.innerHTML =
-      '<a href="' + href + '" class="absolute inset-0 z-[1]" aria-label="' + esc(title) + '"></a>' +
+      '<a href="' + href + '" class="absolute inset-0 z-[1]" aria-label="' + esc((featured ? tx('card.featured', 'Featured') + ': ' : '') + title) + '"></a>' +
       photo +
       '<div class="pointer-events-none relative z-[2] min-w-0 flex-1 flex flex-col p-2.5 sm:p-3.5">' +
         '<h3 class="font-display font-bold text-[15px] sm:text-base leading-snug text-slate-900 truncate">' + esc(title) + '</h3>' +
@@ -294,6 +299,10 @@
         '<div class="mt-auto pt-2.5 sm:pt-3 flex gap-1.5 sm:gap-2">' + buttons + '</div>' +
       '</div>';
 
+    // Capture phase: runs before the buttons' own handlers (which stop propagation).
+    if (featured && global.CarfoxTrack && CarfoxTrack.markPromoted) {
+      el.addEventListener('click', function () { CarfoxTrack.markPromoted(car.id); }, true);
+    }
     el.querySelectorAll('[data-track]').forEach(function (b) {
       b.addEventListener('click', function (e) {
         e.stopPropagation();
@@ -301,6 +310,14 @@
       });
     });
     return el;
+  }
+
+  // Small amber "Featured" tag for promoted listings (always visible, never disguised as organic).
+  function featuredTagHtml(className) {
+    return '<span class="' + (className || '') + ' inline-flex items-center gap-1 rounded-md bg-amber-400 text-amber-950 text-[11px] font-bold px-1.5 py-0.5 shadow-sm" title="' +
+      esc(tx('card.featured_title', 'Promoted listing')) + '">' +
+      '<svg class="h-3 w-3" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.5L12 17.3l-5.9 3.2 1.3-6.5L2.5 9.4l6.6-.8z"/></svg>' +
+      esc(tx('card.featured', 'Featured')) + '</span>';
   }
 
   global.CarfoxCard = {
@@ -313,6 +330,7 @@
     formatMileage: formatMileage,
     whatsappHref: whatsappHref,
     telHref: telHref,
+    featuredTagHtml: featuredTagHtml,
     escape: esc
   };
 })(typeof window !== 'undefined' ? window : this);

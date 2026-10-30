@@ -154,6 +154,15 @@
     </section>
 
 
+    <!-- Featured: promoted listings (admin-set), hidden when none are live -->
+    <section id="featuredSection" class="hidden mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-6 pb-2">
+      <div class="mb-4">
+        <h2 class="cf-section-title font-display font-extrabold text-xl md:text-2xl text-slate-900" data-i18n="home.featured">Featured</h2>
+        <p class="text-xs md:text-sm text-slate-500 mt-1.5" data-i18n="home.featured_sub">Promoted listings from CarFox dealers.</p>
+      </div>
+      <div id="featuredRow" class="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4"></div>
+    </section>
+
     <!-- Top Trust Scores (hidden unless at least one active car scores 60+) -->
     <section id="topTrustSection" class="hidden mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-6 pb-6">
       <div class="flex items-end justify-between gap-4 mb-4">
@@ -674,6 +683,27 @@
         });
         section.classList.remove('hidden');
       }
+      // ---- Featured: live promoted listings (admin-set); the section stays hidden when there are none.
+      var lastFeatured = null;
+      function renderFeatured(cars) {
+        const section = document.getElementById('featuredSection');
+        const row = document.getElementById('featuredRow');
+        if (!section || !row) return;
+        lastFeatured = cars;
+        if (!cars.length) { section.classList.add('hidden'); row.innerHTML = ''; return; }
+        row.innerHTML = '';
+        cars.forEach(function (car) {
+          row.appendChild(CarfoxCard.render(car, { layout: 'horizontal', featured: true }));
+        });
+        section.classList.remove('hidden');
+      }
+      function loadFeatured() {
+        fetch('/api/cars/featured?limit=' + HOME_SECTION_MAX)
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (data) { renderFeatured((data && data.vehicles) || []); })
+          .catch(function () { renderFeatured([]); });
+      }
+
       function loadTopTrust() {
         fetch('/api/cars/top-trust?limit=' + HOME_SECTION_MAX)
           .then(function (r) { return r.ok ? r.json() : null; })
@@ -706,6 +736,7 @@
         if (lastArrivals) renderArrivals(lastArrivals.cars, lastArrivals.showFallback);
         if (lastLatest) renderLatest(lastLatest.cars, lastLatest.showFallback);
         if (lastTopTrust) renderTopTrust(lastTopTrust);
+        if (lastFeatured) renderFeatured(lastFeatured);
       }
 
       function loadLatestListings(city) {
@@ -792,6 +823,7 @@
       loadNewArrivals(selectedCity);
       loadLatestListings(selectedCity);
       initBrandGrid();
+      loadFeatured();
       loadTopTrust();
     </script>
   </body>

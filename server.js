@@ -346,6 +346,50 @@ db.exec(`
 db.exec('CREATE INDEX IF NOT EXISTS idx_engagement_dealership_created ON engagement_events(dealership_id, created_at)');
 db.exec('CREATE INDEX IF NOT EXISTS idx_engagement_vehicle ON engagement_events(vehicle_id)');
 
+// Promoted listings (admin-controlled, no payments yet). A listing is featured while promoted = 1 and
+// promoted_from <= now < promoted_until. Dates are ISO UTC strings (toISOString format), so SQL compares them
+// as text against strftime(...'now') in the same format; expiry is therefore exact even between sweeps.
+// promoted_by = admin user id, promoted_at = when it was set. The sweep clears the flag after expiry and keeps
+// the dates as history. engagement_events.promoted = 1 when the click came from a promoted placement.
+addColumnIfMissing('vehicles', 'promoted', 'INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('vehicles', 'promoted_from', 'TEXT');
+addColumnIfMissing('vehicles', 'promoted_until', 'TEXT');
+addColumnIfMissing('vehicles', 'promoted_by', 'INTEGER');
+addColumnIfMissing('vehicles', 'promoted_at', 'TEXT');
+addColumnIfMissing('engagement_events', 'promoted', 'INTEGER NOT NULL DEFAULT 0');
+
+const PROMO_NOW_SQL = "strftime('%Y-%m-%dT%H:%M:%fZ', 'now')";
+// Live right now (for "v" = vehicles).
+const PROMO_ACTIVE_SQL = '(COALESCE(v.promoted, 0) = 1 AND v.promoted_from <= ' + PROMO_NOW_SQL + ' AND v.promoted_until > ' + PROMO_NOW_SQL + ')';
+// Live or scheduled to start later (admin "Promoted" tab).
+const PROMO_CURRENT_SQL = '(COALESCE(v.promoted, 0) = 1 AND v.promoted_until > ' + PROMO_NOW_SQL + ')';
+
+function expirePromotions() {
+  try {
+    const r = db.prepare('UPDATE vehicles SET promoted = 0 WHERE COALESCE(promoted, 0) = 1 AND promoted_until <= ?').run(new Date().toISOString());
+    if (r && r.changes) console.log('Promotions expired:', r.changes);
+  } catch (e) {
+    console.error('expirePromotions failed:', e);
+  }
+}
+expirePromotions();
+setInterval(expirePromotions, 10 * 60 * 1000).unref();
+
+// Card columns for promoted rows (home Featured section and the browse page's pinned results).
+function promoCardColumns() {
+  return `
+    v.id, v.year, v.make, v.model, v.trim, v.mileage, v.price,
+    v.body_type, v.transmission, v.fuel_type, v.exterior_color, v.published_at,
+    p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score, v.value_rating, v.value_pct, v.value_median, v.value_comparables,
+    (SELECT COUNT(*) FROM vehicle_photos ph WHERE ph.vehicle_id = v.id) AS photo_count,
+    (SELECT GROUP_CONCAT(url, char(31)) FROM (SELECT ph.url FROM vehicle_photos ph WHERE ph.vehicle_id = v.id ORDER BY ph.is_primary DESC, ph.display_order ASC, ph.id ASC LIMIT 5)) AS photo_urls,
+    (SELECT COUNT(*) FROM vehicle_features vf WHERE vf.vehicle_id = v.id) AS feature_count,
+    (SELECT GROUP_CONCAT(name, char(31)) FROM (SELECT f.name FROM vehicle_features vf JOIN features f ON f.id = vf.feature_id WHERE vf.vehicle_id = v.id ORDER BY${FEATURE_ORDER_SQL} LIMIT 3)) AS feature_preview,
+    d.id AS dealer_id, d.business_name AS dealer_business_name, d.city AS dealer_city, d.state AS dealer_state,
+    d.governorate AS dealer_governorate, d.phone AS dealer_phone, d.whatsapp AS dealer_whatsapp, d.logo_url AS dealer_logo_url,
+    1 AS is_promoted`;
+}
+
 // Admin email invitations (buyer / dealer). status: sending | sent | failed | registered
 db.exec(`
   CREATE TABLE IF NOT EXISTS invitations (
@@ -2601,7 +2645,7 @@ app.get('/admin', function (req, res) {
 // Admin: paginated listing management (all statuses), with search and governorate filter.
 app.get('/api/admin/listings', requireAdmin, function (req, res) {
   const status = String(req.query.status || 'all').toLowerCase();
-  const allowed = { all: true, active: true, paused: true, sold: true, draft: true, archived: true };
+  const allowed = { all: true, active: true, paused: true, sold: true, draft: true, archived: true, promoted: true };
   const q = String(req.query.q || '').trim().toLowerCase();
   const governorate = String(req.query.governorate || '').trim();
   const paging = pageParams(req.query, 25, 100);
@@ -2610,7 +2654,8 @@ app.get('/api/admin/listings', requireAdmin, function (req, res) {
 
   let where = ' WHERE 1 = 1';
   const params = [];
-  if (allowed[status] && status !== 'all') { where += ' AND v.status = ?'; params.push(status); }
+  if (status === 'promoted') where += ' AND ' + PROMO_CURRENT_SQL;
+  else if (allowed[status] && status !== 'all') { where += ' AND v.status = ?'; params.push(status); }
   if (q) {
     const like = '%' + q.replace(/[%_\\]/g, function (ch) { return '\\' + ch; }) + '%';
     where += " AND (LOWER(COALESCE(v.year, '') || ' ' || COALESCE(v.make, '') || ' ' || COALESCE(v.model, '') || ' ' || COALESCE(v.trim, '')) LIKE ? ESCAPE '\\'" +
@@ -2627,6 +2672,9 @@ app.get('/api/admin/listings', requireAdmin, function (req, res) {
       'SELECT v.id, v.year, v.make, v.model, v.trim, v.price, v.status, COALESCE(v.views, 0) AS views,' +
       ' v.created_at, v.published_at, v.updated_at, COALESCE(v.admin_paused, 0) AS admin_paused, v.admin_pause_reason, v.admin_paused_at,' +
       ' COALESCE(v.trust_score, 0) AS trust_score,' +
+      ' COALESCE(v.promoted, 0) AS promoted, v.promoted_from, v.promoted_until, v.promoted_at,' +
+      ' ' + PROMO_ACTIVE_SQL + ' AS promo_live, ' + PROMO_CURRENT_SQL + ' AS promo_current,' +
+      ' (SELECT u.email FROM users u WHERE u.id = v.promoted_by) AS promoted_by_email,' +
       ' d.id AS dealership_id, d.business_name AS dealer_name, COALESCE(d.governorate, d.city) AS governorate,' +
       ' (SELECT p.url FROM vehicle_photos p WHERE p.vehicle_id = v.id ORDER BY p.is_primary DESC, p.display_order ASC LIMIT 1) AS photo_url,' +
       ' (SELECT COUNT(*) FROM vehicle_photos p WHERE p.vehicle_id = v.id) AS photo_count,' +
@@ -2640,13 +2688,22 @@ app.get('/api/admin/listings', requireAdmin, function (req, res) {
   db.prepare('SELECT status, COUNT(*) AS n FROM vehicles GROUP BY status').all().forEach(function (r) {
     counts[r.status] = Number(r.n); counts.all += Number(r.n);
   });
+  counts.promoted = Number(db.prepare('SELECT COUNT(*) AS n FROM vehicles v WHERE ' + PROMO_CURRENT_SQL).get().n);
   const governorates = db
     .prepare("SELECT DISTINCT COALESCE(d.governorate, d.city) AS g FROM vehicles v JOIN dealerships d ON d.id = v.dealership_id WHERE COALESCE(d.governorate, d.city) IS NOT NULL AND COALESCE(d.governorate, d.city) != '' ORDER BY g COLLATE NOCASE")
     .all().map(function (r) { return r.g; });
 
   res.set('Cache-Control', 'no-store');
   return res.json({
-    listings: rows.map(function (r) { return Object.assign({}, r, { admin_paused: !!Number(r.admin_paused), title: vehicleTitle(r) }); }),
+    listings: rows.map(function (r) {
+      return Object.assign({}, r, {
+        admin_paused: !!Number(r.admin_paused),
+        promoted: !!Number(r.promoted),
+        promo_live: !!Number(r.promo_live),
+        promo_current: !!Number(r.promo_current),
+        title: vehicleTitle(r)
+      });
+    }),
     total: total, page: page, limit: limit, pages: Math.max(1, Math.ceil(total / limit)),
     counts: counts, governorates: governorates
   });
@@ -2693,6 +2750,51 @@ app.post('/api/admin/listings/:id/republish', requireAdmin, function (req, res) 
       .catch(function (err) { console.error('Failed to send listing republished email:', err); });
   }
   return res.json({ vehicle: db.prepare('SELECT * FROM vehicles WHERE id = ?').get(id) });
+});
+
+// Admin: promote (feature) an active listing. Body: { days: 7|14|30|1..365 } from now, or { from, until } as
+// ISO dates (custom range; from may be in the future = scheduled). Replaces any current promotion.
+app.post('/api/admin/listings/:id/promote', requireAdmin, function (req, res) {
+  const id = Number(req.params.id);
+  if (!id) return res.status(400).json({ error: 'Invalid listing id' });
+  const v = db.prepare('SELECT * FROM vehicles WHERE id = ?').get(id);
+  if (!v) return res.status(404).json({ error: 'Listing not found' });
+  if (v.status !== 'active') return res.status(400).json({ error: 'Only active listings can be promoted' });
+  const body = req.body || {};
+  const now = new Date();
+  let from = now;
+  let until = null;
+  if (body.days != null && body.days !== '') {
+    const days = Number(body.days);
+    if (!Number.isInteger(days) || days < 1 || days > 365) return res.status(400).json({ error: 'Duration must be 1–365 days' });
+    until = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+  } else {
+    const f = body.from ? new Date(body.from) : now;
+    const u = body.until ? new Date(body.until) : null;
+    if (isNaN(f.getTime()) || !u || isNaN(u.getTime())) return res.status(400).json({ error: 'Choose a duration or a valid date range' });
+    from = f < now ? now : f;
+    until = u;
+  }
+  if (until <= now) return res.status(400).json({ error: 'The end date must be in the future' });
+  if (until <= from) return res.status(400).json({ error: 'The end date must be after the start date' });
+  if (until.getTime() - from.getTime() > 366 * 24 * 60 * 60 * 1000) return res.status(400).json({ error: 'A promotion can last at most a year' });
+  db.prepare('UPDATE vehicles SET promoted = 1, promoted_from = ?, promoted_until = ?, promoted_by = ?, promoted_at = ? WHERE id = ?')
+    .run(from.toISOString(), until.toISOString(), req.user.id, now.toISOString(), id);
+  console.log('Admin', req.user.email, 'promoted listing', id, from.toISOString(), '→', until.toISOString());
+  return res.json({ id: id, promoted: true, promoted_from: from.toISOString(), promoted_until: until.toISOString() });
+});
+
+// Admin: end a promotion early (or cancel a scheduled one). The end date becomes "now" for the record.
+app.post('/api/admin/listings/:id/unpromote', requireAdmin, function (req, res) {
+  const id = Number(req.params.id);
+  if (!id) return res.status(400).json({ error: 'Invalid listing id' });
+  const v = db.prepare('SELECT id, promoted, promoted_until FROM vehicles WHERE id = ?').get(id);
+  if (!v) return res.status(404).json({ error: 'Listing not found' });
+  const nowIso = new Date().toISOString();
+  const endedAt = v.promoted_until && v.promoted_until < nowIso ? v.promoted_until : nowIso;
+  db.prepare('UPDATE vehicles SET promoted = 0, promoted_until = ? WHERE id = ?').run(endedAt, id);
+  console.log('Admin', req.user.email, 'ended promotion for listing', id);
+  return res.json({ id: id, promoted: false, promoted_until: endedAt });
 });
 
 // Admin: hard delete a listing (spam / scam), including its photos in R2.
@@ -3325,11 +3427,15 @@ app.post('/api/engagement', function (req, res) {
 
   let vehicleId = body.vehicle_id != null && body.vehicle_id !== '' ? Number(body.vehicle_id) : null;
   let dealershipId = body.dealership_id != null && body.dealership_id !== '' ? Number(body.dealership_id) : null;
+  // promoted: the click came from a promoted placement (or after one in the same visit). Only stored when the
+  // listing really is promoted right now, so "extra clicks from your promotion" can't be inflated.
+  let promoted = 0;
   if (vehicleId != null) {
     if (!Number.isInteger(vehicleId)) return res.status(400).json({ error: 'Invalid vehicle_id' });
-    const v = db.prepare('SELECT id, dealership_id FROM vehicles WHERE id = ?').get(vehicleId);
+    const v = db.prepare('SELECT v.id, v.dealership_id, ' + PROMO_ACTIVE_SQL + ' AS promo_live FROM vehicles v WHERE v.id = ?').get(vehicleId);
     if (!v) return res.status(404).json({ error: 'Vehicle not found' });
     dealershipId = v.dealership_id;
+    promoted = body.promoted === true && Number(v.promo_live) ? 1 : 0;
   } else if (dealershipId != null) {
     if (!Number.isInteger(dealershipId)) return res.status(400).json({ error: 'Invalid dealership_id' });
     const d = db.prepare('SELECT id FROM dealerships WHERE id = ?').get(dealershipId);
@@ -3339,8 +3445,8 @@ app.post('/api/engagement', function (req, res) {
   }
 
   if (!engagementAllowed(req.ip || 'unknown')) return res.status(204).end();
-  db.prepare('INSERT INTO engagement_events (vehicle_id, dealership_id, event_type, created_at) VALUES (?, ?, ?, ?)')
-    .run(vehicleId, dealershipId, type, new Date().toISOString());
+  db.prepare('INSERT INTO engagement_events (vehicle_id, dealership_id, event_type, created_at, promoted) VALUES (?, ?, ?, ?, ?)')
+    .run(vehicleId, dealershipId, type, new Date().toISOString(), promoted);
   return res.status(204).end();
 });
 
@@ -3585,6 +3691,7 @@ function mapPublicCarRow(row) {
       logo_url: row.dealer_logo_url || null
     },
     published_at: row.published_at,
+    promoted: row.is_promoted != null ? !!Number(row.is_promoted) : undefined,
     status: row.status || 'active'
   };
 }
@@ -3939,7 +4046,23 @@ app.get('/api/cars', function (req, res) {
     )
     .all(...listParams);
 
-  return res.json({ total: total, cars: listRows.map(mapPublicCarRow) });
+  // Promoted listings that match the same filters are pinned above page 1 (max 2, tagged "Featured").
+  let featured = [];
+  if (offset === 0) {
+    featured = db
+      .prepare(
+        `SELECT ${promoCardColumns()}
+        ${PUBLIC_CARS_FROM_SQL}
+        LEFT JOIN vehicle_photos p ON p.vehicle_id = v.id AND p.is_primary = 1
+        WHERE ${filter.whereSql} AND ${PROMO_ACTIVE_SQL}
+        ORDER BY v.promoted_at DESC, v.id DESC
+        LIMIT 2`
+      )
+      .all(...filter.params)
+      .map(mapPublicCarRow);
+  }
+
+  return res.json({ total: total, cars: listRows.map(mapPublicCarRow), featured: featured });
 });
 
 app.get('/api/vehicles', function (req, res) {
@@ -4060,6 +4183,25 @@ app.get('/api/cars/:id/value', function (req, res) {
       great_below_pct: carValueSettings.great_below_pct, good_below_pct: carValueSettings.good_below_pct, fair_band_pct: carValueSettings.fair_band_pct
     }
   });
+});
+
+// Live promoted listings for the home page "Featured" section, most recently promoted first.
+app.get('/api/cars/featured', function (req, res) {
+  let limit = Number(req.query.limit);
+  if (!limit || isNaN(limit) || limit < 1) limit = 6;
+  if (limit > 12) limit = 12;
+  const rows = db
+    .prepare(
+      `SELECT ${promoCardColumns()}
+      ${PUBLIC_CARS_FROM_SQL}
+      LEFT JOIN vehicle_photos p ON p.vehicle_id = v.id AND p.is_primary = 1
+      WHERE ${PUBLIC_CARS_BASE_WHERE} AND ${PROMO_ACTIVE_SQL}
+      ORDER BY v.promoted_at DESC, v.id DESC
+      LIMIT ?`
+    )
+    .all(limit);
+  res.set('Cache-Control', 'no-store');
+  return res.json({ vehicles: rows.map(mapPublicCarRow) });
 });
 
 // Highest-scoring verified listings for the home page "Top Trust Scores" row (score 60+ only).
@@ -4658,7 +4800,8 @@ app.get('/api/dealer/vehicles', requireDealer, function (req, res) {
       COALESCE(v.views, 0) AS views,
       v.published_at,
       COALESCE(v.admin_paused, 0) AS admin_paused, v.admin_pause_reason,
-      p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score, v.value_rating, v.value_pct, v.value_median, v.value_comparables
+      p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score, v.value_rating, v.value_pct, v.value_median, v.value_comparables,
+      v.promoted_from, v.promoted_until, ${PROMO_ACTIVE_SQL} AS promo_live, ${PROMO_CURRENT_SQL} AS promo_current
     FROM vehicles v
     LEFT JOIN vehicle_photos p ON p.vehicle_id = v.id AND p.is_primary = 1
     WHERE v.dealership_id = ?

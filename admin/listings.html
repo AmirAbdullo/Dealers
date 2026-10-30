@@ -19,6 +19,10 @@
       tr.admin-paused td:first-child { box-shadow: inset 4px 0 0 #dc2626; }
       .tab-btn { border-radius:999px; padding:6px 12px; font-size:13px; font-weight:600; white-space:nowrap; }
       .tab-btn .n { margin-left:4px; font-weight:500; opacity:.75; }
+      tr.promoted td:first-child { box-shadow: inset 4px 0 0 #f59e0b; }
+      .promo-opt span { display:block; text-align:center; border:1px solid #d1d5db; border-radius:8px; padding:8px 0; font-size:13px; font-weight:600; cursor:pointer; color:#374151; }
+      .promo-opt input:checked + span { background:#fffbeb; border-color:#f59e0b; color:#92400e; }
+      .promo-opt input:focus-visible + span { outline:2px solid #3b82f6; outline-offset:1px; }
     </style>
   </head>
   <body class="bg-white text-gray-900 font-sans">
@@ -70,6 +74,7 @@
       <div id="statusTabs" class="mt-4 flex gap-1 overflow-x-auto pb-1 -mx-1 px-1">
         <button data-status="all" class="tab-btn bg-blue-700 text-white">All<span class="n" data-count="all"></span></button>
         <button data-status="active" class="tab-btn bg-gray-100 text-gray-700">Active<span class="n" data-count="active"></span></button>
+        <button data-status="promoted" class="tab-btn bg-gray-100 text-gray-700">★ Promoted<span class="n" data-count="promoted"></span></button>
         <button data-status="paused" class="tab-btn bg-gray-100 text-gray-700">Paused<span class="n" data-count="paused"></span></button>
         <button data-status="sold" class="tab-btn bg-gray-100 text-gray-700">Sold<span class="n" data-count="sold"></span></button>
         <button data-status="draft" class="tab-btn bg-gray-100 text-gray-700">Draft<span class="n" data-count="draft"></span></button>
@@ -120,6 +125,34 @@
         <div class="mt-4 flex justify-end gap-2">
           <button class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700" data-close-unpublish>Cancel</button>
           <button id="confirmUnpublish" class="px-4 py-2 rounded-lg bg-amber-600 text-white font-semibold hover:bg-amber-700">Unpublish</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Promote modal -->
+    <div id="promoteModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+      <div class="absolute inset-0 bg-black/40" data-close-promote></div>
+      <div class="relative bg-white rounded-xl shadow-xl w-[92%] max-w-md p-5">
+        <h3 class="text-lg font-semibold text-gray-900">★ Promote listing</h3>
+        <p id="promoteTitle" class="mt-1 text-sm text-gray-600"></p>
+        <p class="mt-2 text-xs text-gray-500">Promoted listings appear in the home page “Featured” section and are pinned above matching search results (max 2), always tagged “Featured”. The promotion ends on its own; you can also end it early.</p>
+        <fieldset class="mt-4">
+          <legend class="text-xs font-semibold text-gray-600">Duration</legend>
+          <div class="mt-2 grid grid-cols-4 gap-2">
+            <label class="promo-opt"><input type="radio" name="promoDur" value="7" class="sr-only" checked /><span>7 days</span></label>
+            <label class="promo-opt"><input type="radio" name="promoDur" value="14" class="sr-only" /><span>14 days</span></label>
+            <label class="promo-opt"><input type="radio" name="promoDur" value="30" class="sr-only" /><span>30 days</span></label>
+            <label class="promo-opt"><input type="radio" name="promoDur" value="custom" class="sr-only" /><span>Custom</span></label>
+          </div>
+        </fieldset>
+        <div id="promoCustom" class="hidden mt-3 grid grid-cols-2 gap-3">
+          <label class="block text-xs font-semibold text-gray-600">From<input id="promoFrom" type="date" class="mt-1 w-full input-xs py-2" /></label>
+          <label class="block text-xs font-semibold text-gray-600">Until (end of day)<input id="promoUntil" type="date" class="mt-1 w-full input-xs py-2" /></label>
+        </div>
+        <p id="promoSummary" class="mt-3 text-sm text-gray-800"></p>
+        <div class="mt-4 flex justify-end gap-2">
+          <button class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700" data-close-promote>Cancel</button>
+          <button id="confirmPromote" class="px-4 py-2 rounded-lg bg-amber-500 text-white font-semibold hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed">Promote</button>
         </div>
       </div>
     </div>
@@ -187,8 +220,31 @@
         }
         return '<span class="badge ' + (STATUS_BADGE[v.status] || STATUS_BADGE.archived) + '">' + esc(v.status) + '</span>';
       }
+      const DAY = 24 * 60 * 60 * 1000;
+      const fmtDT = (d) => d.toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+      // ★ Promoted · N days left (live) / ★ Starts <date> (scheduled); tooltip has the window and who set it.
+      function promoBadge(v) {
+        if (!v.promo_current) return '';
+        const until = parseTs(v.promoted_until);
+        const tip = 'Promoted ' + fmtDate(v.promoted_from) + ' → ' + fmtDate(v.promoted_until) +
+          (v.promoted_by_email ? ' · by ' + v.promoted_by_email : '') +
+          (v.status !== 'active' ? ' · hidden from buyers while the listing is ' + v.status : '');
+        let text;
+        if (!v.promo_live) {
+          text = '★ Starts ' + fmtDate(v.promoted_from);
+        } else {
+          const ms = until ? until.getTime() - Date.now() : 0;
+          text = '★ Promoted · ' + (ms < DAY ? Math.max(1, Math.ceil(ms / 3600000)) + 'h left' : Math.ceil(ms / DAY) + ' days left');
+        }
+        return '<span class="badge bg-amber-50 border-amber-300 text-amber-800" title="' + esc(tip) + '">' + esc(text) + '</span>';
+      }
       function actionButtons(v) {
         let html = '<a href="/cars/' + v.id + '" target="_blank" rel="noopener" class="btn-xs border border-gray-300 text-gray-700 hover:bg-gray-50">View</a>';
+        if (v.promo_current) {
+          html += '<button class="btn-xs border border-amber-400 text-amber-800 hover:bg-amber-50" data-unpromote="' + v.id + '">End promotion</button>';
+        } else if (v.status === 'active' && !v.admin_paused) {
+          html += '<button class="btn-xs bg-amber-500 text-white hover:bg-amber-600" data-promote="' + v.id + '">★ Promote</button>';
+        }
         html += '<button class="btn-xs border border-blue-300 text-blue-800 hover:bg-blue-50" data-trust="' + v.id + '">Trust score</button>';
         if (v.admin_paused) {
           html += '<button class="btn-xs bg-green-600 text-white hover:bg-green-700" data-republish="' + v.id + '">Republish</button>';
@@ -213,11 +269,12 @@
         $('emptyState').classList.toggle('hidden', listings.length > 0);
         listings.forEach((v) => {
           const tr = document.createElement('tr');
-          tr.className = v.admin_paused ? 'admin-paused' : '';
+          tr.className = v.admin_paused ? 'admin-paused' : (v.promo_current ? 'promoted' : '');
           tr.innerHTML =
             '<td class="px-4 py-3"><div class="flex items-center gap-3">' + thumb(v, 'w-16 h-12') +
               '<div class="min-w-0"><a href="/cars/' + v.id + '" target="_blank" rel="noopener" class="font-semibold text-gray-900 hover:text-blue-700">' + esc(v.title || 'Untitled draft') + '</a>' +
               '<div class="text-xs text-gray-500 flex items-center gap-2">#' + v.id + ' · ' + v.photo_count + ' ' + (v.photo_count === 1 ? 'photo' : 'photos') + ' ' + CarfoxTrust.badge(v.trust_score, { compact: true }) + '</div>' +
+              (v.promo_current ? '<div class="mt-1">' + promoBadge(v) + '</div>' : '') +
               (v.admin_paused && v.admin_pause_reason ? '<div class="text-xs text-red-700 mt-0.5">Reason: ' + esc(v.admin_pause_reason) + '</div>' : '') +
               '</div></div></td>' +
             '<td class="px-4 py-3">' + dealerLink(v) + '<div class="text-xs text-gray-500">' + esc(v.governorate || '—') + '</div></td>' +
@@ -230,7 +287,7 @@
           tbody.appendChild(tr);
 
           const card = document.createElement('div');
-          card.className = 'rounded-xl border p-3 ' + (v.admin_paused ? 'border-red-300 bg-red-50/40' : 'border-gray-200 bg-white');
+          card.className = 'rounded-xl border p-3 ' + (v.admin_paused ? 'border-red-300 bg-red-50/40' : v.promo_current ? 'border-amber-300 bg-amber-50/30' : 'border-gray-200 bg-white');
           card.innerHTML =
             '<div class="flex items-start gap-3">' + thumb(v, 'w-20 h-16') +
               '<div class="min-w-0 flex-1">' +
@@ -238,6 +295,7 @@
                 '<div class="text-sm text-blue-700 font-bold mt-0.5 flex items-center gap-2">' + fmtPrice(v.price) + ' ' + CarfoxTrust.badge(v.trust_score, { compact: true }) + '</div>' +
                 '<div class="text-xs text-gray-500 mt-0.5">' + dealerLink(v) + ' · ' + esc(v.governorate || '—') + '</div>' +
                 '<div class="text-xs text-gray-500 mt-0.5">' + num(v.views) + ' views · ' + num(v.engagements_30d) + ' eng. (30d) · ' + fmtDate(v.created_at) + '</div>' +
+                (v.promo_current ? '<div class="mt-1">' + promoBadge(v) + '</div>' : '') +
                 (v.admin_paused && v.admin_pause_reason ? '<div class="text-xs text-red-700 mt-1">Reason: ' + esc(v.admin_pause_reason) + '</div>' : '') +
               '</div></div>' +
             '<div class="mt-3 flex flex-wrap gap-1.5">' + actionButtons(v) + '</div>';
@@ -309,6 +367,16 @@
           $('unpublishReason').focus();
           return;
         }
+        const pr = e.target.closest('[data-promote]');
+        if (pr) { openPromote(listings.find((v) => v.id === Number(pr.dataset.promote))); return; }
+        const upr = e.target.closest('[data-unpromote]');
+        if (upr) {
+          const v = listings.find((x) => x.id === Number(upr.dataset.unpromote));
+          if (v && window.confirm('End the promotion for ' + (v.title || 'listing #' + v.id) + ' now? It leaves the Featured section and search pins immediately.')) {
+            act('POST', '/api/admin/listings/' + v.id + '/unpromote', null, 'Promotion ended');
+          }
+          return;
+        }
         const rp = e.target.closest('[data-republish]');
         if (rp) { act('POST', '/api/admin/listings/' + rp.dataset.republish + '/republish', null, 'Listing is live again'); return; }
         const del = e.target.closest('[data-delete]');
@@ -331,6 +399,58 @@
         $('unpublishModal').classList.add('hidden');
         await act('POST', '/api/admin/listings/' + id + '/unpublish', { reason }, 'Listing unpublished; dealer notified');
       });
+      // ---------- promote modal ----------
+      const ymd = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      function localDay(s, endOfDay) {
+        if (!s) return null;
+        const p = s.split('-').map(Number);
+        return endOfDay ? new Date(p[0], p[1] - 1, p[2], 23, 59, 59, 999) : new Date(p[0], p[1] - 1, p[2], 0, 0, 0, 0);
+      }
+      function promoChoice() { const r = document.querySelector('input[name="promoDur"]:checked'); return r ? r.value : '7'; }
+      function promoRange() {
+        const c = promoChoice();
+        const now = new Date();
+        if (c !== 'custom') return { body: { days: Number(c) }, from: now, until: new Date(now.getTime() + Number(c) * DAY) };
+        const from = localDay($('promoFrom').value, false);
+        const until = localDay($('promoUntil').value, true);
+        if (!from || !until) return { error: 'Pick a start and an end date.' };
+        if (until <= from) return { error: 'The end date must be after the start date.' };
+        if (until <= now) return { error: 'The end date must be in the future.' };
+        return { body: { from: from.toISOString(), until: until.toISOString() }, from: from < now ? now : from, until: until };
+      }
+      function updatePromoSummary() {
+        $('promoCustom').classList.toggle('hidden', promoChoice() !== 'custom');
+        const r = promoRange();
+        $('confirmPromote').disabled = !!r.error;
+        $('promoSummary').className = 'mt-3 text-sm ' + (r.error ? 'text-red-700' : 'text-gray-800');
+        $('promoSummary').textContent = r.error || ('Featured from ' + fmtDT(r.from) + ' until ' + fmtDT(r.until) + '.');
+      }
+      function openPromote(v) {
+        if (!v) return;
+        modalTarget = v;
+        $('promoteTitle').textContent = (v.title || 'Listing #' + v.id) + ' · ' + v.dealer_name;
+        document.querySelector('input[name="promoDur"][value="7"]').checked = true;
+        const today = new Date();
+        $('promoFrom').value = ymd(today);
+        $('promoUntil').value = ymd(new Date(today.getTime() + 7 * DAY));
+        $('promoFrom').min = ymd(today);
+        $('promoUntil').min = ymd(today);
+        updatePromoSummary();
+        $('promoteModal').classList.remove('hidden');
+      }
+      document.querySelectorAll('input[name="promoDur"]').forEach((r) => r.addEventListener('change', updatePromoSummary));
+      $('promoFrom').addEventListener('input', updatePromoSummary);
+      $('promoUntil').addEventListener('input', updatePromoSummary);
+      document.querySelectorAll('[data-close-promote]').forEach((el) => el.addEventListener('click', () => { $('promoteModal').classList.add('hidden'); modalTarget = null; }));
+      $('confirmPromote').addEventListener('click', async () => {
+        if (!modalTarget) return;
+        const r = promoRange();
+        if (r.error) { updatePromoSummary(); return; }
+        const id = modalTarget.id; modalTarget = null;
+        $('promoteModal').classList.add('hidden');
+        await act('POST', '/api/admin/listings/' + id + '/promote', r.body, (d) => 'Promoted until ' + fmtDT(new Date(d.promoted_until)));
+      });
+
       $('deleteConfirmInput').addEventListener('input', () => { $('confirmDelete').disabled = $('deleteConfirmInput').value.trim() !== 'DELETE'; });
       $('confirmDelete').addEventListener('click', async () => {
         if (!modalTarget || $('deleteConfirmInput').value.trim() !== 'DELETE') return;
