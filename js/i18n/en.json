@@ -43,8 +43,6 @@
   "home.load_error_arrivals": "Could not load new arrivals.",
   "home.load_error_listings": "Could not load listings.",
   "home.fallback_notice": "No listings in this area yet — showing all Egypt instead",
-  "home.scroll_left": "Scroll left",
-  "home.scroll_right": "Scroll right",
   "home.all_egypt": "All Egypt",
   "filters.pill_price": "Price",
   "filters.pill_make": "Make/Model",
@@ -67,6 +65,7 @@
 
   "card.whatsapp": "WhatsApp",
   "card.message": "Message",
+  "card.call": "Call Now",
   "card.price_on_request": "Price on request",
   "card.egp": "EGP",
   "card.km": "km",

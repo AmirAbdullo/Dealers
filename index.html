@@ -155,7 +155,7 @@
 
 
     <!-- Top Trust Scores (hidden unless at least one active car scores 60+) -->
-    <section id="topTrustSection" class="hidden px-4 pt-6 pb-6">
+    <section id="topTrustSection" class="hidden mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-6 pb-6">
       <div class="flex items-end justify-between gap-4 mb-4">
         <div class="min-w-0">
           <h2 class="cf-section-title font-display font-extrabold text-xl md:text-2xl text-slate-900" data-i18n="home.top_trust">Top Trust Scores</h2>
@@ -163,33 +163,17 @@
         </div>
         <a href="/cars.html" class="shrink-0 text-sm font-semibold text-orange-600 hover:text-orange-700 mb-2" data-i18n="home.see_all">See all →</a>
       </div>
-      <div class="relative">
-        <button type="button" data-scroll="prev" aria-label="Scroll left" data-i18n-aria-label="home.scroll_left" class="hidden md:flex absolute -start-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 items-center justify-center rounded-full bg-white shadow-md border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-0 disabled:pointer-events-none transition-opacity">
-          <svg class="h-5 w-5 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-        </button>
-        <div id="topTrustRow" class="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory scroll-smooth"></div>
-        <button type="button" data-scroll="next" aria-label="Scroll right" data-i18n-aria-label="home.scroll_right" class="hidden md:flex absolute -end-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 items-center justify-center rounded-full bg-white shadow-md border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-0 disabled:pointer-events-none transition-opacity">
-          <svg class="h-5 w-5 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-        </button>
-      </div>
+      <div id="topTrustRow" class="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4"></div>
     </section>
 
     <!-- New Arrivals -->
-    <section class="px-4 pt-6 pb-6">
+    <section class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-6 pb-6">
       <div class="flex items-end justify-between mb-4">
         <h2 class="cf-section-title font-display font-extrabold text-xl md:text-2xl text-slate-900" data-i18n="home.new_arrivals">New Arrivals</h2>
         <a href="/cars.html" class="text-sm font-semibold text-orange-600 hover:text-orange-700 mb-2" data-i18n="home.see_all">See all →</a>
       </div>
-      <div class="relative">
-        <button type="button" data-scroll="prev" aria-label="Scroll left" data-i18n-aria-label="home.scroll_left" class="hidden md:flex absolute -start-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 items-center justify-center rounded-full bg-white shadow-md border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-0 disabled:pointer-events-none transition-opacity">
-          <svg class="h-5 w-5 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-        </button>
-        <div id="newArrivalsRow" class="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory scroll-smooth">
-          <p class="text-sm text-gray-500 py-4 shrink-0" data-i18n="home.loading">Loading…</p>
-        </div>
-        <button type="button" data-scroll="next" aria-label="Scroll right" data-i18n-aria-label="home.scroll_right" class="hidden md:flex absolute -end-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 items-center justify-center rounded-full bg-white shadow-md border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-0 disabled:pointer-events-none transition-opacity">
-          <svg class="h-5 w-5 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-        </button>
+      <div id="newArrivalsRow" class="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4">
+        <p class="text-sm text-gray-500 py-4" data-i18n="home.loading">Loading…</p>
       </div>
     </section>
 
@@ -211,13 +195,13 @@
       </div>
     </section>
 
-    <!-- Latest Listings -->
-    <section class="px-4 pt-6 pb-8">
+    <!-- Latest Listings (continues after New Arrivals; hidden when there is nothing more) -->
+    <section id="latestSection" class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-6 pb-8">
       <div class="flex items-end justify-between mb-4">
         <h2 class="cf-section-title font-display font-extrabold text-xl md:text-2xl text-slate-900" data-i18n="home.latest_listings">Latest Listings</h2>
         <a href="/cars.html" class="text-sm font-semibold text-orange-600 hover:text-orange-700 mb-2" data-i18n="home.see_all">See all →</a>
       </div>
-      <div id="latestCarsList" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div id="latestCarsList" class="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4">
         <p class="text-sm text-gray-500 py-4 text-center" data-i18n="home.loading_listings">Loading listings…</p>
       </div>
     </section>
@@ -599,30 +583,11 @@
         initBrandGridDesktop();
       }
 
-      function initScrollArrows(rowId) {
-        var row = document.getElementById(rowId);
-        if (!row || !row.parentElement) return;
-        var wrap = row.parentElement;
-        var prev = wrap.querySelector('[data-scroll="prev"]');
-        var next = wrap.querySelector('[data-scroll="next"]');
-        if (!prev || !next) return;
-        // In RTL the row starts at its right edge and scrollLeft runs negative toward the end.
-        function rtl() { return getComputedStyle(row).direction === 'rtl'; }
-        function update() {
-          var max = row.scrollWidth - row.clientWidth - 2;
-          var pos = Math.abs(row.scrollLeft);
-          prev.disabled = pos <= 2;
-          next.disabled = pos >= max;
-        }
-        prev.onclick = function () { row.scrollBy({ left: (rtl() ? 1 : -1) * row.clientWidth * 0.9, behavior: 'smooth' }); };
-        next.onclick = function () { row.scrollBy({ left: (rtl() ? -1 : 1) * row.clientWidth * 0.9, behavior: 'smooth' }); };
-        row.addEventListener('scroll', update, { passive: true });
-        window.addEventListener('resize', update);
-        update();
-      }
+      // Each home section shows at most this many cards (phones: vertical list; desktop: 2 per row) + "See all".
+      const HOME_SECTION_MAX = 6;
 
       function renderNewArrivalCard(car) {
-        return CarfoxCard.render(car, { variant: 'scroll', compact: true });
+        return CarfoxCard.render(car, { layout: 'horizontal' });
       }
 
       function fallbackNotice() {
@@ -655,20 +620,19 @@
         lastArrivals = { cars: cars, showFallback: showFallback };
         if (!cars.length) {
           row.innerHTML =
-            '<p class="text-sm text-gray-500 py-2 shrink-0">' + escapeHtml(tx('home.no_new_listings', 'No new listings yet.')) + '</p>';
+            '<p class="text-sm text-gray-500 py-2">' + escapeHtml(tx('home.no_new_listings', 'No new listings yet.')) + '</p>';
           return;
         }
         row.innerHTML = '';
         if (showFallback) {
           const note = document.createElement('p');
-          note.className = 'text-xs text-amber-700 py-2 px-2 shrink-0 self-center whitespace-normal w-44';
+          note.className = 'col-span-full text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2';
           note.textContent = fallbackNotice();
           row.appendChild(note);
         }
         cars.forEach(function (car) {
           row.appendChild(renderNewArrivalCard(car));
         });
-        initScrollArrows('newArrivalsRow');
       }
 
       function loadNewArrivals(city) {
@@ -676,10 +640,10 @@
         if (!row) return;
         const useCity = city || selectedCity || 'All Egypt';
 
-        fetchVehicles(useCity, 15)
+        fetchVehicles(useCity, HOME_SECTION_MAX)
           .then(function (cars) {
             if (!cars.length && useCity !== 'All Egypt') {
-              return fetchVehicles('All Egypt', 15).then(function (allCars) {
+              return fetchVehicles('All Egypt', HOME_SECTION_MAX).then(function (allCars) {
                 renderArrivals(allCars, true);
               });
             }
@@ -688,12 +652,12 @@
           .catch(function () {
             lastArrivals = null;
             row.innerHTML =
-              '<p class="text-sm text-gray-500 py-2 shrink-0">' + escapeHtml(tx('home.load_error_arrivals', 'Could not load new arrivals.')) + '</p>';
+              '<p class="text-sm text-gray-500 py-2">' + escapeHtml(tx('home.load_error_arrivals', 'Could not load new arrivals.')) + '</p>';
           });
       }
 
       function renderLatestCarCard(car) {
-        return CarfoxCard.render(car, { variant: 'grid' });
+        return CarfoxCard.render(car, { layout: 'horizontal' });
       }
 
       // ---- Top Trust Scores: highest-scoring verified cars (60+); the section stays hidden otherwise.
@@ -706,13 +670,12 @@
         if (!cars.length) { section.classList.add('hidden'); return; }
         row.innerHTML = '';
         cars.forEach(function (car) {
-          row.appendChild(CarfoxCard.render(car, { variant: 'scroll', compact: true, featureTrust: true }));
+          row.appendChild(CarfoxCard.render(car, { layout: 'horizontal', featureTrust: true }));
         });
         section.classList.remove('hidden');
-        initScrollArrows('topTrustRow');
       }
       function loadTopTrust() {
-        fetch('/api/cars/top-trust?limit=10')
+        fetch('/api/cars/top-trust?limit=' + HOME_SECTION_MAX)
           .then(function (r) { return r.ok ? r.json() : null; })
           .then(function (data) { renderTopTrust((data && data.vehicles) || []); })
           .catch(function () { renderTopTrust([]); });
@@ -723,11 +686,9 @@
         const list = document.getElementById('latestCarsList');
         if (!list) return;
         lastLatest = { cars: cars, showFallback: showFallback };
-        if (!cars.length) {
-          list.innerHTML =
-            '<p class="text-sm text-gray-500 py-4 text-center">' + escapeHtml(tx('home.no_listings', 'No listings yet.')) + '</p>';
-          return;
-        }
+        const section = document.getElementById('latestSection');
+        if (section) section.classList.toggle('hidden', !cars.length);
+        if (!cars.length) return;
         list.innerHTML = '';
         if (showFallback) {
           const note = document.createElement('p');
@@ -752,14 +713,16 @@
         if (!list) return;
         const useCity = city || selectedCity || 'All Egypt';
 
-        fetchVehicles(useCity, 8)
+        // Same newest-first list as New Arrivals, so skip the cars that section already shows.
+        const n = HOME_SECTION_MAX * 2;
+        fetchVehicles(useCity, n)
           .then(function (cars) {
             if (!cars.length && useCity !== 'All Egypt') {
-              return fetchVehicles('All Egypt', 8).then(function (allCars) {
-                renderLatest(allCars, true);
+              return fetchVehicles('All Egypt', n).then(function (allCars) {
+                renderLatest(allCars.slice(HOME_SECTION_MAX), true);
               });
             }
-            renderLatest(cars, false);
+            renderLatest(cars.slice(HOME_SECTION_MAX), false);
           })
           .catch(function () {
             lastLatest = null;

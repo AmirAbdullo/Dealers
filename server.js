@@ -3581,6 +3581,7 @@ function mapPublicCarRow(row) {
       state: row.dealer_state,
       governorate: governorate,
       whatsapp: row.dealer_whatsapp || null,
+      phone: row.dealer_phone || null,
       logo_url: row.dealer_logo_url || null
     },
     published_at: row.published_at,
@@ -3928,7 +3929,7 @@ app.get('/api/cars', function (req, res) {
         d.city AS dealer_city,
         d.state AS dealer_state,
         d.governorate AS dealer_governorate,
-        d.whatsapp AS dealer_whatsapp,
+        d.phone AS dealer_phone, d.whatsapp AS dealer_whatsapp,
         d.logo_url AS dealer_logo_url
       ${PUBLIC_CARS_FROM_SQL}
       LEFT JOIN vehicle_photos p ON p.vehicle_id = v.id AND p.is_primary = 1
@@ -3965,7 +3966,7 @@ app.get('/api/vehicles', function (req, res) {
         d.city AS dealer_city,
         d.state AS dealer_state,
         d.governorate AS dealer_governorate,
-        d.whatsapp AS dealer_whatsapp,
+        d.phone AS dealer_phone, d.whatsapp AS dealer_whatsapp,
         d.logo_url AS dealer_logo_url,
         (SELECT COUNT(*) FROM vehicle_photos ph WHERE ph.vehicle_id = v.id) AS photo_count
       ${PUBLIC_CARS_FROM_SQL}
@@ -4079,7 +4080,7 @@ app.get('/api/cars/top-trust', function (req, res) {
         d.city AS dealer_city,
         d.state AS dealer_state,
         d.governorate AS dealer_governorate,
-        d.whatsapp AS dealer_whatsapp,
+        d.phone AS dealer_phone, d.whatsapp AS dealer_whatsapp,
         d.logo_url AS dealer_logo_url
       ${PUBLIC_CARS_FROM_SQL}
       LEFT JOIN vehicle_photos p ON p.vehicle_id = v.id AND p.is_primary = 1
@@ -4128,7 +4129,7 @@ app.get('/api/cars/:id/similar', function (req, res) {
         d.city AS dealer_city,
         d.state AS dealer_state,
         d.governorate AS dealer_governorate,
-        d.whatsapp AS dealer_whatsapp,
+        d.phone AS dealer_phone, d.whatsapp AS dealer_whatsapp,
         d.logo_url AS dealer_logo_url
       ${PUBLIC_CARS_FROM_SQL}
       LEFT JOIN vehicle_photos p ON p.vehicle_id = v.id AND p.is_primary = 1

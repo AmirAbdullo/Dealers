@@ -43,8 +43,6 @@
   "home.load_error_arrivals": "تعذّر تحميل أحدث السيارات.",
   "home.load_error_listings": "تعذّر تحميل الإعلانات.",
   "home.fallback_notice": "لا توجد إعلانات في هذه المنطقة بعد — نعرض لك كل مصر",
-  "home.scroll_left": "تمرير لليسار",
-  "home.scroll_right": "تمرير لليمين",
   "home.all_egypt": "كل مصر",
   "filters.pill_price": "السعر",
   "filters.pill_make": "الماركة/الموديل",
@@ -67,6 +65,7 @@
 
   "card.whatsapp": "واتساب",
   "card.message": "رسالة",
+  "card.call": "اتصل الآن",
   "card.price_on_request": "السعر عند الطلب",
   "card.egp": "جنيه",
   "card.km": "كم",
