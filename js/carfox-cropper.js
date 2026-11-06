@@ -19,6 +19,7 @@
 
   var CSS =
     '#cfCropOverlay{position:fixed;inset:0;z-index:300;background:rgba(15,23,42,.6);display:flex;align-items:flex-end;justify-content:center;}' +
+    '#cfCropOverlay[hidden]{display:none !important;}' +
     '@media(min-width:640px){#cfCropOverlay{align-items:center;}}' +
     '#cfCropPanel{background:#fff;width:100%;max-width:480px;border-radius:20px 20px 0 0;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.3);}' +
     '@media(min-width:640px){#cfCropPanel{border-radius:20px;}}' +
