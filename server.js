@@ -1171,6 +1171,16 @@ ensureMessagingTables();
 
 // When the dealer was last emailed about a conversation (anti-spam: at most one email per hour).
 addColumnIfMissing('conversations', 'dealer_notified_at', 'TEXT');
+// Same for the buyer: when they were last emailed about a dealer reply in this conversation.
+addColumnIfMissing('conversations', 'buyer_notified_at', 'TEXT');
+
+// Per-user email preferences (Account → Notifications). 1 = on (default).
+//   notify_messages   buyer: a dealer replied · dealer: a buyer sent a message
+//   notify_inquiries  dealer: a new inquiry arrived
+//   notify_saved_cars buyer: price drops / sold on saved cars (preference stored; sending comes later)
+addColumnIfMissing('users', 'notify_messages', 'INTEGER NOT NULL DEFAULT 1');
+addColumnIfMissing('users', 'notify_inquiries', 'INTEGER NOT NULL DEFAULT 1');
+addColumnIfMissing('users', 'notify_saved_cars', 'INTEGER NOT NULL DEFAULT 1');
 
 // Buyer saved cars. Created here (not only in db/migrate-add-saved-cars.js) so a fresh
 // or production database gets the table without a manual migration step.
@@ -1405,7 +1415,30 @@ async function sendDealerMessageEmail(opts) {
       (opts.carTitle ? ' about your <strong>' + escapeHtmlForEmail(opts.carTitle) + '</strong>' : '') + ':</p>' +
       (opts.preview ? '<blockquote style="margin:12px 0;padding:12px 16px;background:#f3f4f6;border-left:4px solid #1d4ed8;border-radius:8px;color:#111">' + escapeHtmlForEmail(opts.preview) + '</blockquote>' : '') +
       (link ? '<p><a href="' + link + '" style="display:inline-block;background:#1d4ed8;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:bold">Open conversation</a></p>' : '') +
-      '<p style="color:#999;font-size:13px">You will get at most one email per conversation per hour.</p>'
+      '<p style="color:#999;font-size:13px">You will get at most one email per conversation per hour.' +
+      (base ? ' <a href="' + base + '/dealer/account.html#notifications" style="color:#999">Email settings</a>' : '') + '</p>'
+    )
+  });
+}
+
+// Buyer: a dealer replied in a conversation (link opens the buyer chat).
+async function sendBuyerReplyEmail(opts) {
+  const base = appBaseUrl();
+  const link = base ? base + '/buyer/chat.html?conversation=' + opts.conversationId : '';
+  const subject = opts.dealerName + ' replied' + (opts.carTitle ? ' about the ' + opts.carTitle : '');
+  await resend.emails.send({
+    from: 'CarFox <noreply@mawtiq.online>',
+    to: opts.email,
+    subject: subject,
+    html: emailShell(
+      escapeHtmlForEmail(subject),
+      '<p>Hi ' + escapeHtmlForEmail(opts.buyerName || 'there') + ',</p>' +
+      '<p><strong>' + escapeHtmlForEmail(opts.dealerName) + '</strong> replied to your message' +
+      (opts.carTitle ? ' about the <strong>' + escapeHtmlForEmail(opts.carTitle) + '</strong>' : '') + ':</p>' +
+      (opts.preview ? '<blockquote style="margin:12px 0;padding:12px 16px;background:#f3f4f6;border-left:4px solid #1d4ed8;border-radius:8px;color:#111">' + escapeHtmlForEmail(opts.preview) + '</blockquote>' : '') +
+      (link ? '<p><a href="' + link + '" style="display:inline-block;background:#1d4ed8;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:bold">Open conversation</a></p>' : '') +
+      '<p style="color:#999;font-size:13px">You will get at most one email per conversation per hour.' +
+      (base ? ' <a href="' + base + '/buyer/account.html#notifications" style="color:#999">Email settings</a>' : '') + '</p>'
     )
   });
 }
@@ -1454,9 +1487,13 @@ function notifyDealerOfNewMessage(conversation, message, buyer) {
       return;
     }
     const dealer = db
-      .prepare('SELECT d.id, d.business_name, d.suspended, u.email, u.full_name FROM dealerships d JOIN users u ON u.id = d.user_id WHERE d.id = ?')
+      .prepare('SELECT d.id, d.business_name, d.suspended, u.email, u.full_name, COALESCE(u.notify_messages, 1) AS notify_messages FROM dealerships d JOIN users u ON u.id = d.user_id WHERE d.id = ?')
       .get(conversation.dealership_id);
     if (!dealer || !dealer.email || dealer.suspended) return;
+    if (!Number(dealer.notify_messages)) {
+      console.log('Dealer email skipped for conversation ' + conversation.id + ' (message emails turned off)');
+      return;
+    }
     db.prepare('UPDATE conversations SET dealer_notified_at = ? WHERE id = ?').run(new Date(now).toISOString(), conversation.id);
     const preview = message && message.body ? String(message.body).slice(0, 300) : (message && message.has_attachments ? '[Attachment]' : '');
     sendDealerMessageEmail({
@@ -1474,6 +1511,43 @@ function notifyDealerOfNewMessage(conversation, message, buyer) {
   }
 }
 
+// Email the buyer about a dealer's reply, at most once per conversation per hour, when they keep the
+// "dealer replies" email on (Account → Notifications).
+function notifyBuyerOfDealerReply(conversation, message) {
+  try {
+    const now = Date.now();
+    const row = db.prepare('SELECT buyer_notified_at FROM conversations WHERE id = ?').get(conversation.id);
+    const last = row && row.buyer_notified_at ? Date.parse(row.buyer_notified_at) : 0;
+    if (last && now - last < DEALER_NOTIFY_WINDOW_MS) {
+      console.log('Buyer email skipped for conversation ' + conversation.id + ' (last sent ' + Math.round((now - last) / 60000) + ' min ago)');
+      return;
+    }
+    const buyer = db
+      .prepare('SELECT id, email, full_name, COALESCE(suspended, 0) AS suspended, COALESCE(notify_messages, 1) AS notify_messages FROM users WHERE id = ?')
+      .get(conversation.buyer_id);
+    if (!buyer || !buyer.email || Number(buyer.suspended)) return;
+    if (!Number(buyer.notify_messages)) {
+      console.log('Buyer email skipped for conversation ' + conversation.id + ' (reply emails turned off)');
+      return;
+    }
+    const dealer = db.prepare('SELECT business_name FROM dealerships WHERE id = ?').get(conversation.dealership_id);
+    db.prepare('UPDATE conversations SET buyer_notified_at = ? WHERE id = ?').run(new Date(now).toISOString(), conversation.id);
+    const preview = message && message.body ? String(message.body).slice(0, 300) : (message && message.has_attachments ? '[Attachment]' : '');
+    sendBuyerReplyEmail({
+      email: buyer.email,
+      buyerName: firstNameOf(buyer) === 'a buyer' ? '' : firstNameOf(buyer),
+      dealerName: (dealer && dealer.business_name) || 'The dealer',
+      carTitle: carTitleFor(conversation.vehicle_id),
+      preview: preview,
+      conversationId: conversation.id
+    })
+      .then(function () { console.log('Buyer reply email sent to ' + buyer.email + ' for conversation ' + conversation.id); })
+      .catch(function (err) { console.error('Buyer reply email failed:', err); });
+  } catch (err) {
+    console.error('notifyBuyerOfDealerReply failed:', err);
+  }
+}
+
 // Email the dealer about an inquiry, at most once per buyer per dealership per hour.
 function notifyDealerOfInquiry(dealershipId, vehicleId, buyer, messageText, buyerPhone, createdAt) {
   try {
@@ -1486,9 +1560,13 @@ function notifyDealerOfInquiry(dealershipId, vehicleId, buyer, messageText, buye
       return;
     }
     const dealer = db
-      .prepare('SELECT d.id, d.business_name, d.suspended, u.email, u.full_name FROM dealerships d JOIN users u ON u.id = d.user_id WHERE d.id = ?')
+      .prepare('SELECT d.id, d.business_name, d.suspended, u.email, u.full_name, COALESCE(u.notify_inquiries, 1) AS notify_inquiries FROM dealerships d JOIN users u ON u.id = d.user_id WHERE d.id = ?')
       .get(dealershipId);
     if (!dealer || !dealer.email || dealer.suspended) return;
+    if (!Number(dealer.notify_inquiries)) {
+      console.log('Dealer inquiry email skipped for dealership ' + dealershipId + ' (inquiry emails turned off)');
+      return;
+    }
     sendDealerInquiryEmail({
       email: dealer.email,
       dealerName: dealer.full_name,
@@ -1664,14 +1742,141 @@ app.get('/api/me', authMiddleware, function (req, res) {
   return res.json({ user: { id: row.id, email: row.email, fullName: row.full_name } });
 });
 
+// Update the signed-in user's name and/or phone. Email is read-only here (changing it needs re-verification).
+// Body: { fullName | full_name, phone } — send only what changes; phone '' clears it.
 app.patch('/api/me', authMiddleware, function (req, res) {
-  var fullName = String(req.body.fullName || '').trim();
-  if (!fullName) {
-    return res.status(400).json({ error: 'Name is required.' });
+  var body = req.body || {};
+  var sets = [];
+  var params = [];
+  if ('fullName' in body || 'full_name' in body) {
+    var fullName = String(body.fullName != null ? body.fullName : body.full_name || '').trim();
+    if (!fullName) return res.status(400).json({ error: 'Name is required.' });
+    if (fullName.length > 100) return res.status(400).json({ error: 'Name is too long (max 100 characters).' });
+    sets.push('full_name = ?'); params.push(fullName);
   }
-  db.prepare('UPDATE users SET full_name = ? WHERE id = ?').run(fullName, req.auth.sub);
-  var row = db.prepare('SELECT id, email, full_name FROM users WHERE id = ?').get(req.auth.sub);
-  return res.json({ user: { id: row.id, email: row.email, fullName: row.full_name } });
+  if ('phone' in body) {
+    var phone = String(body.phone == null ? '' : body.phone).trim();
+    if (phone && !/^\+?[0-9][0-9\s-]{6,19}$/.test(phone)) return res.status(400).json({ error: 'Enter a valid phone number (digits, spaces or dashes, optional +).' });
+    sets.push('phone = ?'); params.push(phone || null);
+  }
+  if (!sets.length) return res.status(400).json({ error: 'Nothing to update.' });
+  params.push(req.auth.sub);
+  db.prepare('UPDATE users SET ' + sets.join(', ') + ' WHERE id = ?').run(...params);
+  var row = db.prepare('SELECT id, email, full_name, phone FROM users WHERE id = ?').get(req.auth.sub);
+  if (!row) return res.status(404).json({ error: 'User not found.' });
+  return res.json({ user: { id: row.id, email: row.email, fullName: row.full_name, full_name: row.full_name, phone: row.phone || null } });
+});
+
+// Same rules the signup form shows: 8+ characters, a number, an uppercase letter, a lowercase letter, a symbol.
+function passwordRuleError(pw) {
+  pw = String(pw || '');
+  if (pw.length < 8) return 'Password must be at least 8 characters.';
+  if (!/[0-9]/.test(pw)) return 'Password needs at least one number.';
+  if (!/[A-Z]/.test(pw)) return 'Password needs at least one uppercase letter.';
+  if (!/[a-z]/.test(pw)) return 'Password needs at least one lowercase letter.';
+  if (!/[^A-Za-z0-9]/.test(pw)) return 'Password needs at least one special character.';
+  return null;
+}
+
+// Wrong current-password attempts per user: 5 per 15 minutes, then a cool-down.
+const passwordChangeFailures = new Map();
+const PASSWORD_CHANGE_WINDOW_MS = 15 * 60 * 1000;
+
+// Change password: verifies the current password first.
+app.post('/api/me/password', authMiddleware, function (req, res) {
+  var body = req.body || {};
+  var current = String(body.current_password || '');
+  var next = String(body.new_password || '');
+  var userId = Number(req.auth.sub);
+  var now = Date.now();
+  var fails = (passwordChangeFailures.get(userId) || []).filter(function (t) { return now - t < PASSWORD_CHANGE_WINDOW_MS; });
+  if (fails.length >= 5) return res.status(429).json({ error: 'Too many wrong attempts. Try again in 15 minutes, or use Forgot password.' });
+  if (!current) return res.status(400).json({ error: 'Enter your current password.' });
+  var ruleErr = passwordRuleError(next);
+  if (ruleErr) return res.status(400).json({ error: ruleErr });
+  var row = db.prepare('SELECT id, password_hash FROM users WHERE id = ?').get(userId);
+  if (!row) return res.status(404).json({ error: 'User not found.' });
+  if (!row.password_hash || !bcrypt.compareSync(current, row.password_hash)) {
+    fails.push(now);
+    passwordChangeFailures.set(userId, fails);
+    return res.status(400).json({ error: 'Your current password is not correct.', code: 'WRONG_PASSWORD' });
+  }
+  if (bcrypt.compareSync(next, row.password_hash)) return res.status(400).json({ error: 'Choose a password different from your current one.' });
+  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(bcrypt.hashSync(next, 10), userId);
+  db.prepare('UPDATE password_reset_tokens SET used = 1 WHERE user_id = ?').run(userId);
+  passwordChangeFailures.delete(userId);
+  return res.json({ success: true });
+});
+
+// Email preferences for the signed-in user (keys depend on role).
+function notificationPrefsFor(row) {
+  if (row.role === 'dealer') return { messages: !!Number(row.notify_messages), inquiries: !!Number(row.notify_inquiries) };
+  return { messages: !!Number(row.notify_messages), saved_cars: !!Number(row.notify_saved_cars) };
+}
+app.get('/api/me/notifications', authMiddleware, function (req, res) {
+  var row = db.prepare('SELECT role, COALESCE(notify_messages, 1) AS notify_messages, COALESCE(notify_inquiries, 1) AS notify_inquiries, COALESCE(notify_saved_cars, 1) AS notify_saved_cars FROM users WHERE id = ?').get(req.auth.sub);
+  if (!row) return res.status(404).json({ error: 'User not found.' });
+  res.set('Cache-Control', 'no-store');
+  return res.json({ notifications: notificationPrefsFor(row) });
+});
+app.patch('/api/me/notifications', authMiddleware, function (req, res) {
+  var body = req.body || {};
+  var cols = { messages: 'notify_messages', inquiries: 'notify_inquiries', saved_cars: 'notify_saved_cars' };
+  var sets = [];
+  var params = [];
+  Object.keys(cols).forEach(function (k) {
+    if (k in body) { sets.push(cols[k] + ' = ?'); params.push(body[k] ? 1 : 0); }
+  });
+  if (!sets.length) return res.status(400).json({ error: 'Nothing to update.' });
+  params.push(req.auth.sub);
+  db.prepare('UPDATE users SET ' + sets.join(', ') + ' WHERE id = ?').run(...params);
+  var row = db.prepare('SELECT role, COALESCE(notify_messages, 1) AS notify_messages, COALESCE(notify_inquiries, 1) AS notify_inquiries, COALESCE(notify_saved_cars, 1) AS notify_saved_cars FROM users WHERE id = ?').get(req.auth.sub);
+  return res.json({ notifications: notificationPrefsFor(row) });
+});
+
+// Buyer: permanently delete the account. Removes saved cars, conversations (messages + attachment files),
+// reset/verification tokens, the avatar and the user row; inquiries the buyer sent are kept for the dealer
+// but stripped of name, email, phone and text. Views and engagement stats hold no user data and stay.
+// Body: { confirm: 'DELETE' }. No transaction (Turso): child rows first, the user row last.
+app.delete('/api/me', authMiddleware, async function (req, res) {
+  var body = req.body || {};
+  if (String(body.confirm || '') !== 'DELETE') return res.status(400).json({ error: 'Type DELETE to confirm.' });
+  var user = db.prepare('SELECT id, email, role, avatar_url FROM users WHERE id = ?').get(req.auth.sub);
+  if (!user) return res.status(404).json({ error: 'User not found.' });
+  if (user.role !== 'buyer') return res.status(403).json({ error: 'Only buyer accounts can be deleted here. Dealers: contact CarFox support.' });
+  try {
+    var convIds = db.prepare('SELECT id FROM conversations WHERE buyer_id = ?').all(user.id).map(function (r) { return r.id; });
+    var files = [];
+    convIds.forEach(function (cid) {
+      db.prepare('SELECT a.url, a.thumbnail_url FROM message_attachments a JOIN messages m ON m.id = a.message_id WHERE m.conversation_id = ?').all(cid)
+        .forEach(function (a) { if (a.url) files.push(a.url); if (a.thumbnail_url) files.push(a.thumbnail_url); });
+      db.prepare('DELETE FROM message_attachments WHERE message_id IN (SELECT id FROM messages WHERE conversation_id = ?)').run(cid);
+      db.prepare('DELETE FROM messages WHERE conversation_id = ?').run(cid);
+    });
+    db.prepare('DELETE FROM conversations WHERE buyer_id = ?').run(user.id);
+    db.prepare('DELETE FROM saved_cars WHERE buyer_id = ?').run(user.id);
+    db.prepare("UPDATE inquiries SET buyer_name = 'Deleted user', buyer_email = '', buyer_phone = '', message = '(Removed: the buyer deleted their CarFox account.)' WHERE LOWER(buyer_email) = ?")
+      .run(String(user.email || '').toLowerCase());
+    db.prepare('DELETE FROM password_reset_tokens WHERE user_id = ?').run(user.id);
+    db.prepare('DELETE FROM email_verification_tokens WHERE user_id = ?').run(user.id);
+    db.prepare('DELETE FROM users WHERE id = ?').run(user.id);
+    passwordChangeFailures.delete(user.id);
+    if (user.avatar_url) files.push(user.avatar_url);
+    var removed = 0;
+    if (r2Configured()) {
+      for (var i = 0; i < files.length; i++) {
+        var key = publicUrlToKey(files[i]);
+        if (!key) continue;
+        try { await r2.send(new DeleteObjectCommand({ Bucket: r2Bucket, Key: key })); removed++; }
+        catch (e) { console.error('R2 delete failed for', key, e && e.message); }
+      }
+    }
+    console.log('Buyer account deleted: user ' + user.id + ' (' + convIds.length + ' conversations, ' + removed + '/' + files.length + ' files removed from storage)');
+    return res.json({ deleted: true });
+  } catch (err) {
+    console.error('Account delete failed for user ' + user.id, err);
+    return res.status(500).json({ error: 'Could not delete the account. Please try again.' });
+  }
 });
 
 // Dealer signup: creates a user (dealer role) and associated dealership in a single transaction
@@ -4793,6 +4998,7 @@ app.post('/api/conversations/:id/messages', requireMessagingAuth, messagingSuspe
     });
     wsBroadcastMessage(conversationId, message, req.user.id);
     if (req.messagingRole === 'buyer') notifyDealerOfNewMessage(conversation, message, req.user);
+    else if (req.messagingRole === 'dealer') notifyBuyerOfDealerReply(conversation, message);
     return res.status(201).json(message);
   } catch (err) {
     console.error(err);

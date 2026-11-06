@@ -105,21 +105,9 @@
         </a>
       </section>
 
+      <!-- Settings: Edit Profile · Notifications · Language (js/carfox-account-settings.js) -->
       <section class="px-4 py-2">
-        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100 opacity-60 cursor-not-allowed">
-            <span class="text-sm font-medium text-gray-900">Edit Profile</span>
-            <span class="text-xs text-gray-400">Coming soon</span>
-          </div>
-          <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100 opacity-60 cursor-not-allowed">
-            <span class="text-sm font-medium text-gray-900">Notifications</span>
-            <span class="text-xs text-gray-400">Coming soon</span>
-          </div>
-          <div class="flex items-center justify-between px-4 py-3 opacity-60 cursor-not-allowed">
-            <span class="text-sm font-medium text-gray-900">Language</span>
-            <span class="text-xs text-gray-400">Coming soon</span>
-          </div>
-        </div>
+        <div id="accountSettings"></div>
       </section>
 
       <section class="px-4 py-6">
@@ -131,12 +119,19 @@
           Sign Out
         </button>
       </section>
+
+      <section class="px-4 pb-10">
+        <div id="deleteAccountMount"></div>
+      </section>
     </main>
+
+    <div id="accountToast" class="hidden fixed top-20 left-1/2 -translate-x-1/2 z-[1110] max-w-sm w-[calc(100%-2rem)] rounded-lg border px-4 py-3 text-sm shadow-lg" role="status"></div>
 
 
     <script src="/js/carfox-cropper.js"></script>
     <script src="/js/carfox-auth.js"></script>
     <script src="/js/carfox-buyer-nav.js"></script>
+    <script src="/js/carfox-account-settings.js"></script>
     <script>
       (function () {
         const TOKEN_KEY = 'carfox_token';
@@ -162,6 +157,15 @@
           const d = new Date(createdAt);
           if (isNaN(d.getTime())) return 'Member since recently';
           return 'Member since ' + d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        }
+
+        function showToast(kind, message) {
+          const t = document.getElementById('accountToast');
+          t.className = 'fixed top-20 left-1/2 -translate-x-1/2 z-[1110] max-w-sm w-[calc(100%-2rem)] rounded-lg border px-4 py-3 text-sm shadow-lg ' +
+            (kind === 'error' ? 'border-red-200 bg-red-50 text-red-800' : 'border-green-200 bg-green-50 text-green-800');
+          t.textContent = message;
+          clearTimeout(showToast._t);
+          showToast._t = setTimeout(function () { t.classList.add('hidden'); }, 3000);
         }
 
         function renderProfile(user) {
@@ -218,6 +222,28 @@
               localStorage.setItem(USER_KEY, JSON.stringify(user));
             } catch (_) {}
             renderProfile(user);
+            if (window.CarfoxAccountSettings) {
+              CarfoxAccountSettings.mount({
+                listEl: document.getElementById('accountSettings'),
+                deleteEl: document.getElementById('deleteAccountMount'),
+                role: 'buyer',
+                user: user,
+                token: token,
+                language: true,
+                toast: showToast,
+                onProfileSaved: function (u) {
+                  document.getElementById('profileName').textContent = u.full_name;
+                  document.getElementById('avatarInitials').textContent = initialsFromName(u.full_name);
+                  try {
+                    const stored = JSON.parse(localStorage.getItem(USER_KEY) || '{}');
+                    stored.full_name = u.full_name;
+                    stored.fullName = u.full_name;
+                    stored.phone = u.phone || null;
+                    localStorage.setItem(USER_KEY, JSON.stringify(stored));
+                  } catch (_) {}
+                }
+              });
+            }
             // Fetch live saved count
             fetch('/api/saved-cars', { headers: { Authorization: 'Bearer ' + token } })
               .then(function (r) { return r.ok ? r.json() : null; })

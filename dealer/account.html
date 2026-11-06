@@ -250,18 +250,9 @@
         </a>
       </section>
 
-      <!-- Settings (coming soon) -->
+      <!-- Settings: Edit Profile (name + password) · Notifications (js/carfox-account-settings.js) -->
       <section class="px-4 py-2">
-        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100 opacity-60 cursor-not-allowed">
-            <span class="text-sm font-medium text-gray-900">Edit Profile</span>
-            <span class="text-xs text-gray-400">Coming soon</span>
-          </div>
-          <div class="flex items-center justify-between px-4 py-3 opacity-60 cursor-not-allowed">
-            <span class="text-sm font-medium text-gray-900">Notifications</span>
-            <span class="text-xs text-gray-400">Coming soon</span>
-          </div>
-        </div>
+        <div id="accountSettings"></div>
       </section>
 
       <!-- Sign out -->
@@ -279,12 +270,12 @@
 
     <div
       id="successToast"
-      class="hidden fixed top-20 left-1/2 -translate-x-1/2 z-50 max-w-sm w-full mx-4 rounded-lg border border-green-200 bg-green-50 text-green-800 text-sm px-4 py-3 shadow-lg"
+      class="hidden fixed top-20 left-1/2 -translate-x-1/2 z-[1110] max-w-sm w-full mx-4 rounded-lg border border-green-200 bg-green-50 text-green-800 text-sm px-4 py-3 shadow-lg"
       role="status"
     ></div>
     <div
       id="errorToast"
-      class="hidden fixed top-20 left-1/2 -translate-x-1/2 z-50 max-w-sm w-full mx-4 rounded-lg border border-red-200 bg-red-50 text-red-800 text-sm px-4 py-3 shadow-lg"
+      class="hidden fixed top-20 left-1/2 -translate-x-1/2 z-[1110] max-w-sm w-full mx-4 rounded-lg border border-red-200 bg-red-50 text-red-800 text-sm px-4 py-3 shadow-lg"
       role="alert"
     ></div>
 
@@ -296,6 +287,7 @@
     <script src="/js/carfox-geo.js"></script>
     <script src="/js/carfox-cropper.js"></script>
     <script src="/js/carfox-dealer-nav.js"></script>
+    <script src="/js/carfox-account-settings.js"></script>
     <script>
       (function () {
         function formatMemberSince(createdAt) {
@@ -621,6 +613,15 @@
           CarfoxDealerNav.mountDealerDesktopHeader('account');
 
           renderProfile(session.user, session.dealership);
+          if (window.CarfoxAccountSettings) {
+            CarfoxAccountSettings.mount({
+              listEl: document.getElementById('accountSettings'),
+              role: 'dealer',
+              user: session.user,
+              token: localStorage.getItem('carfox_token'),
+              toast: function (kind, msg) { if (kind === 'error') showErrorToast(msg); else showSuccessToast(msg); }
+            });
+          }
         });
 
         document.getElementById('avatarFileInput').addEventListener('change', async function () {

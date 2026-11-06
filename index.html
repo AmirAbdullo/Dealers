@@ -776,6 +776,17 @@
       loadCategories();
       loadFeatured();
       loadTopTrust();
+
+      // Arrived here from Account → Delete account: confirm it, then drop the flag from the URL.
+      if (new URLSearchParams(location.search).get('account_deleted') === '1') {
+        const note = document.createElement('div');
+        note.setAttribute('role', 'status');
+        note.className = 'fixed top-20 left-1/2 -translate-x-1/2 z-[1110] w-[calc(100%-2rem)] max-w-sm rounded-lg border border-green-200 bg-green-50 text-green-800 text-sm px-4 py-3 shadow-lg';
+        note.textContent = tx('home.account_deleted', 'Your CarFox account has been deleted.');
+        document.body.appendChild(note);
+        setTimeout(function () { note.remove(); }, 6000);
+        history.replaceState(history.state, '', location.pathname);
+      }
     </script>
   </body>
 </html>
