@@ -165,7 +165,7 @@
         <h2 class="cf-section-title font-display font-extrabold text-xl md:text-2xl text-slate-900" data-i18n="home.featured">Featured</h2>
         <p class="text-xs md:text-sm text-slate-500 mt-1.5" data-i18n="home.featured_sub">Promoted listings from CarFox dealers.</p>
       </div>
-      <div id="featuredRow" class="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4"></div>
+      <div class="relative"><div id="featuredRow" class="flex gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory scroll-smooth scroll-px-4 sm:scroll-px-0 -mx-4 px-4 sm:mx-0 sm:px-0 pt-1 pb-3"></div></div>
     </section>
 
     <!-- Top Trust Scores (hidden unless at least one active car scores 60+) -->
@@ -177,7 +177,7 @@
         </div>
         <a href="/cars.html" class="shrink-0 text-sm font-semibold text-orange-600 hover:text-orange-700 mb-2" data-i18n="home.see_all">See all →</a>
       </div>
-      <div id="topTrustRow" class="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4"></div>
+      <div class="relative"><div id="topTrustRow" class="flex gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory scroll-smooth scroll-px-4 sm:scroll-px-0 -mx-4 px-4 sm:mx-0 sm:px-0 pt-1 pb-3"></div></div>
     </section>
 
     <!-- New Arrivals -->
@@ -186,8 +186,10 @@
         <h2 class="cf-section-title font-display font-extrabold text-xl md:text-2xl text-slate-900" data-i18n="home.new_arrivals">New Arrivals</h2>
         <a href="/cars.html" class="text-sm font-semibold text-orange-600 hover:text-orange-700 mb-2" data-i18n="home.see_all">See all →</a>
       </div>
-      <div id="newArrivalsRow" class="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4">
-        <p class="text-sm text-gray-500 py-4" data-i18n="home.loading">Loading…</p>
+      <div class="relative">
+        <div id="newArrivalsRow" class="flex gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory scroll-smooth scroll-px-4 sm:scroll-px-0 -mx-4 px-4 sm:mx-0 sm:px-0 pt-1 pb-3">
+          <p class="text-sm text-gray-500 py-4 shrink-0" data-i18n="home.loading">Loading…</p>
+        </div>
       </div>
     </section>
 
@@ -210,8 +212,10 @@
         <h2 class="cf-section-title font-display font-extrabold text-xl md:text-2xl text-slate-900" data-i18n="home.latest_listings">Latest Listings</h2>
         <a href="/cars.html" class="text-sm font-semibold text-orange-600 hover:text-orange-700 mb-2" data-i18n="home.see_all">See all →</a>
       </div>
-      <div id="latestCarsList" class="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4">
-        <p class="text-sm text-gray-500 py-4 text-center" data-i18n="home.loading_listings">Loading listings…</p>
+      <div class="relative">
+        <div id="latestCarsList" class="flex gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory scroll-smooth scroll-px-4 sm:scroll-px-0 -mx-4 px-4 sm:mx-0 sm:px-0 pt-1 pb-3">
+          <p class="text-sm text-gray-500 py-4 shrink-0" data-i18n="home.loading_listings">Loading listings…</p>
+        </div>
       </div>
     </section>
 
@@ -490,11 +494,18 @@
           .catch(function () { renderBrands([]); });
       }
 
-      // Each home section shows at most this many cards (phones: vertical list; desktop: 2 per row) + "See all".
+      // Each home row shows at most this many compact cards (snap-scroll with next-card peek; desktop arrows) + "See all".
       const HOME_SECTION_MAX = 6;
+      // Desktop arrows + edge fades for a home card row (fade = page background).
+      function attachRow(id) {
+        const row = document.getElementById(id);
+        if (!row || !window.CarfoxScrollRow) return;
+        const ctl = CarfoxScrollRow.attach(row, { fade: '#f9fafb', step: 620 });
+        if (ctl) ctl.update();
+      }
 
       function renderNewArrivalCard(car) {
-        return CarfoxCard.render(car, { layout: 'horizontal' });
+        return CarfoxCard.render(car, { compact: true });
       }
 
       function fallbackNotice() {
@@ -533,13 +544,14 @@
         row.innerHTML = '';
         if (showFallback) {
           const note = document.createElement('p');
-          note.className = 'col-span-full text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2';
+          note.className = 'shrink-0 self-center w-48 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2';
           note.textContent = fallbackNotice();
           row.appendChild(note);
         }
         cars.forEach(function (car) {
           row.appendChild(renderNewArrivalCard(car));
         });
+        attachRow('newArrivalsRow');
       }
 
       function loadNewArrivals(city) {
@@ -564,7 +576,7 @@
       }
 
       function renderLatestCarCard(car) {
-        return CarfoxCard.render(car, { layout: 'horizontal' });
+        return CarfoxCard.render(car, { compact: true });
       }
 
       // ---- Top Trust Scores: highest-scoring verified cars (60+); the section stays hidden otherwise.
@@ -577,9 +589,10 @@
         if (!cars.length) { section.classList.add('hidden'); return; }
         row.innerHTML = '';
         cars.forEach(function (car) {
-          row.appendChild(CarfoxCard.render(car, { layout: 'horizontal', featureTrust: true }));
+          row.appendChild(CarfoxCard.render(car, { compact: true, featureTrust: true }));
         });
         section.classList.remove('hidden');
+        attachRow('topTrustRow');
       }
       // ---- Category tiles (New / Used / Electric). Counts come from /api/cars/categories; null = the filter
       // section is switched off in admin, 0 = nothing to show — either way the tile is hidden.
@@ -630,9 +643,10 @@
         if (!cars.length) { section.classList.add('hidden'); row.innerHTML = ''; return; }
         row.innerHTML = '';
         cars.forEach(function (car) {
-          row.appendChild(CarfoxCard.render(car, { layout: 'horizontal', featured: true }));
+          row.appendChild(CarfoxCard.render(car, { compact: true, featured: true }));
         });
         section.classList.remove('hidden');
+        attachRow('featuredRow');
       }
       function loadFeatured() {
         fetch('/api/cars/featured?limit=' + HOME_SECTION_MAX)
@@ -660,13 +674,14 @@
         if (showFallback) {
           const note = document.createElement('p');
           note.className =
-            'col-span-full text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2';
+            'shrink-0 self-center w-48 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2';
           note.textContent = fallbackNotice();
           list.appendChild(note);
         }
         cars.forEach(function (car) {
           list.appendChild(renderLatestCarCard(car));
         });
+        attachRow('latestCarsList');
       }
 
       function rerenderListings() {

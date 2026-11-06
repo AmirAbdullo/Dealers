@@ -83,10 +83,18 @@
     next.addEventListener('click', function () { row.scrollBy({ left: (rtl() ? -1 : 1) * step(), behavior: 'smooth' }); });
     row.addEventListener('scroll', update, { passive: true });
     global.addEventListener('resize', update);
-    if (global.MutationObserver) {
-      new MutationObserver(function () { global.requestAnimationFrame(update); }).observe(row, { childList: true, subtree: true });
+    // Re-check when the row or any item changes size: item widths can arrive late (e.g. Tailwind's CDN generating
+    // a w-[300px] rule after the cards are inserted), which changes the overflow without resizing the row itself.
+    var ro = global.ResizeObserver ? new global.ResizeObserver(update) : null;
+    function observeItems() {
+      if (!ro) return;
+      ro.observe(row);
+      Array.prototype.forEach.call(row.children, function (c) { ro.observe(c); });
     }
-    if (global.ResizeObserver) new ResizeObserver(update).observe(row);
+    if (global.MutationObserver) {
+      new MutationObserver(function () { observeItems(); global.requestAnimationFrame(update); }).observe(row, { childList: true, subtree: true });
+    }
+    observeItems();
     update();
 
     row.__cfScrollRow = { update: update, prev: prev, next: next };

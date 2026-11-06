@@ -7,8 +7,9 @@
  *     opts.actions       false to omit the WhatsApp / Message buttons (default true)
  *     opts.featureTrust  true to feature the Trust Score badge large (Top Trust Scores row)
  *     opts.sold          true for a sold listing (muted photo + price, "Sold" tag)
- *     opts.layout        'horizontal' — home page card: photo start (~40%), title, price, 2x2 specs,
- *                        location, WhatsApp + Call Now; the whole card opens the listing
+ *     opts.compact       home page card (every home row): fixed 280/300px, photo on top with badges + photo
+ *                        count, then title, price and one muted "mileage · governorate" line; the whole
+ *                        card is a link (no specs, dealer row or contact buttons)
  *   Cars with condition 'new' get a small green "New" tag with the photo badges (used cars get none).
  *     opts.featured      promoted listing: amber "Featured" tag on the photo; clicks mark the car as reached
  *                        through a promotion (CarfoxTrack.markPromoted) for engagement attribution
@@ -74,7 +75,6 @@
     transmission: '<svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="6" cy="6" r="2"/><circle cx="12" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="12" cy="18" r="2"/><path stroke-linecap="round" d="M6 8v8M12 8v8M18 8v4H6"/></svg>',
     color: '<svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg>',
     pin: '<svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21s-6-5.3-6-11a6 6 0 1 1 12 0c0 5.7-6 11-6 11z"/><circle cx="12" cy="10" r="2.5"/></svg>',
-    phone: '<svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 4h3.5l1.7 4.3-2.2 1.4a11 11 0 0 0 6.3 6.3l1.4-2.2L20 15.5V19a1.5 1.5 0 0 1-1.6 1.5A16.5 16.5 0 0 1 3.5 5.6 1.5 1.5 0 0 1 5 4z"/></svg>',
     camera: '<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8a2 2 0 012-2h2l1.5-2h7L17 6h2a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/><circle cx="12" cy="12.5" r="3.5"/></svg>',
     whatsapp: '<svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 1.8a8.2 8.2 0 1 1-4.2 15.3l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 0 1 12 3.8zm-3.3 4.4c-.2 0-.5.1-.7.3-.3.3-1 1-1 2.3s1 2.7 1.2 2.9c.1.2 2 3.2 5 4.4 2.5 1 3 .8 3.5.7.5-.1 1.7-.7 1.9-1.4.2-.7.2-1.2.2-1.3-.1-.1-.3-.2-.6-.3l-2-.9c-.3-.1-.5-.2-.7.1l-.9 1.1c-.2.2-.3.2-.6.1-.3-.1-1.2-.4-2.3-1.4-.9-.8-1.5-1.7-1.6-2-.2-.3 0-.5.1-.6l.5-.6.3-.5c.1-.2 0-.4 0-.5l-.9-2.2c-.2-.5-.4-.5-.6-.5h-.6z"/></svg>',
     message: '<svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12c0 4.4-4 8-9 8a9.9 9.9 0 0 1-4.3-.9L3 20l1.4-3.7C3.5 15 3 13.6 3 12c0-4.4 4-8 9-8s9 3.6 9 8z"/></svg>',
@@ -95,21 +95,6 @@
       ? i.t('card.whatsapp_text', { title: title, url: url })
       : "Hi, I'm interested in the " + title + ' listed on CarFox: ' + url;
     return 'https://wa.me/' + digits + '?text=' + encodeURIComponent(text);
-  }
-
-  // tel: link to the dealer's phone: +/00 numbers kept international, 0-prefixed Egyptian numbers get +20,
-  // 20… / 11+ digit numbers get +, 10-digit 1… numbers are Egyptian mobiles missing the 0, shorter ones dial as entered.
-  function telHref(car) {
-    var raw = car && car.dealer && car.dealer.phone ? String(car.dealer.phone).trim() : '';
-    var digits = raw.replace(/[^0-9]/g, '');
-    if (!digits) return '';
-    if (raw.charAt(0) === '+') return 'tel:+' + digits;
-    if (digits.indexOf('00') === 0) return 'tel:+' + digits.slice(2);
-    if (digits.indexOf('0') === 0) return 'tel:+20' + digits.slice(1);
-    if (digits.indexOf('20') === 0 && digits.length >= 11) return 'tel:+' + digits;
-    if (digits.length === 10 && digits.charAt(0) === '1') return 'tel:+20' + digits; // Egyptian mobile missing its 0
-    if (digits.length >= 11) return 'tel:+' + digits; // full international number without the +
-    return 'tel:' + digits; // short local number (e.g. landline without area code): dial as entered
   }
 
   function track(type, carId) {
@@ -176,7 +161,7 @@
     var featureTrust = !!opts.featureTrust;
     var sold = !!opts.sold || car.status === 'sold';
 
-    if (opts.layout === 'horizontal') return renderHorizontal(car, opts);
+    if (opts.compact) return renderCompact(car, opts);
     var el = document.createElement('article');
     el.className =
       'cf-card flex flex-col ' +
@@ -235,82 +220,49 @@
     return el;
   }
 
-  // Home page horizontal card. Photo on the start side (~40%), info on the end side, contact buttons at the
-  // bottom of the info. A stretched link under the content opens the listing from anywhere on the card; the
-  // info text lets clicks through to it (pointer-events-none) and the buttons sit above it.
-  function renderHorizontal(car, opts) {
-    var featureTrust = !!opts.featureTrust;
+  // Home page compact card: photo on top (Featured / New / value / trust badges + photo count), then title, price
+  // and one muted "mileage · governorate" line. The card itself is the link to the listing.
+  function renderCompact(car, opts) {
     var featured = !!opts.featured;
-    var href = '/cars/' + encodeURIComponent(car.id);
+    var featureTrust = !!opts.featureTrust;
     var title = [car.year, car.make, car.model].filter(Boolean).join(' ');
     var trust = Number(car.trust_score) || 0;
     var photoCount = Number(car.photo_count) || 0;
 
-    var el = document.createElement('article');
-    el.className = 'cf-hcard' + (opts.className ? ' ' + opts.className : '');
+    var el = document.createElement('a');
+    el.href = '/cars/' + encodeURIComponent(car.id);
+    el.className = 'cf-card flex flex-col snap-start shrink-0 w-[280px] sm:w-[300px]' + (opts.className ? ' ' + opts.className : '');
     el.setAttribute('data-car-id', String(car.id));
 
     var badges = '';
-    // Featured (promoted) tag heads the badge column so it never collides with the photo counter.
     if (featured) badges += featuredTagHtml('');
     if (car.condition === 'new') badges += newTagHtml('');
-    if (global.CarfoxValue) badges += CarfoxValue.badge(car, { compact: true, className: 'shadow-sm' });
+    if (global.CarfoxValue) badges += CarfoxValue.badge(car, { size: 'md', className: 'shadow-md' });
     if (global.CarfoxTrust && (featureTrust || trust >= 40)) {
-      // Phone photos are ~135px wide: a long tier label ("Highly Verified") shows from sm up, short ones always.
-      var tierText = CarfoxTrust.label ? CarfoxTrust.label(trust) : '';
-      badges += CarfoxTrust.badge(trust, { size: 'sm', labelClass: tierText.length > 10 ? 'hidden sm:inline' : '', className: 'shadow-sm' });
+      badges += CarfoxTrust.badge(trust, { size: featureTrust ? 'lg' : 'md', className: 'shadow-md' });
     }
-
-    var photo =
-      '<div class="relative w-[36%] sm:w-[40%] shrink-0 bg-slate-100">' +
-      (car.primary_photo_url
-        ? '<img src="' + esc(car.primary_photo_url) + '" alt="" class="absolute inset-0 w-full h-full object-cover" loading="lazy" />'
-        : '<div class="absolute inset-0 flex items-center justify-center">' + ICONS.car + '</div>') +
-      (badges ? '<div class="absolute top-2 start-2 flex flex-col items-start gap-1 max-w-[calc(100%-1rem)]">' + badges + '</div>' : '') +
-      (photoCount > 1
-        ? '<span class="absolute bottom-2 end-2 inline-flex items-center gap-1 rounded-md bg-black/55 text-white text-[11px] font-medium px-1.5 py-0.5">' + ICONS.camera + photoCount + '</span>'
-        : '') +
-      '</div>';
-
-    var specs = [];
-    var mileage = formatMileage(car.mileage);
-    if (mileage) specs.push(specItem('mileage', mileage));
-    if (car.fuel_type) specs.push(specItem('fuel', trv('fuel', car.fuel_type)));
-    if (car.transmission) specs.push(specItem('transmission', trv('transmission', car.transmission)));
-    if (car.exterior_color) specs.push(specItem('color', trv('color', car.exterior_color)));
-    var loc = location(car);
-
-    var wa = whatsappHref(car);
-    var tel = telHref(car);
-    // Phones: two buttons share ~95px each, so padding/gap/text tighten there and icons drop below 360px.
-    var btn = 'pointer-events-auto relative z-[2] flex-1 min-w-0 h-10 inline-flex items-center justify-center gap-1 sm:gap-1.5 rounded-xl px-1 sm:px-2 text-[12.5px] sm:text-[13px] font-semibold transition-colors ';
-    function ic(name) { return '<span class="hidden min-[360px]:inline-flex">' + ICONS[name] + '</span>'; }
-    var buttons = '';
-    if (wa) buttons += '<a href="' + esc(wa) + '" target="_blank" rel="noopener" data-track="whatsapp" class="' + btn + 'bg-green-600 hover:bg-green-700 active:bg-green-800 text-white">' + ic('whatsapp') + '<span class="truncate">' + esc(tx('card.whatsapp', 'WhatsApp')) + '</span></a>';
-    if (tel) buttons += '<a href="' + esc(tel) + '" data-track="call" class="' + btn + 'border-[1.5px] border-[' + NAVY + '] bg-white text-[' + NAVY + '] hover:bg-slate-50 active:bg-slate-100">' + ic('phone') + '<span class="truncate">' + esc(tx('card.call', 'Call Now')) + '</span></a>';
-    if (!buttons) buttons = '<a href="' + href + '?openInquiry=1" data-track="message" class="' + btn + 'bg-[' + NAVY + '] hover:bg-[#162c57] text-white">' + ic('message') + '<span class="truncate">' + esc(tx('card.message', 'Message')) + '</span></a>';
+    var line = [formatMileage(car.mileage), location(car)].filter(Boolean).join(' · ');
 
     el.innerHTML =
-      '<a href="' + href + '" class="absolute inset-0 z-[1]" aria-label="' + esc((featured ? tx('card.featured', 'Featured') + ': ' : '') + title) + '"></a>' +
-      photo +
-      '<div class="pointer-events-none relative z-[2] min-w-0 flex-1 flex flex-col p-2.5 sm:p-3.5">' +
-        '<h3 class="font-display font-bold text-[15px] sm:text-base leading-snug text-slate-900 truncate">' + esc(title) + '</h3>' +
-        priceHtml(car.price, { className: 'text-lg sm:text-xl mt-0.5' }) +
-        (specs.length ? '<div class="mt-2 grid grid-cols-1 min-[360px]:grid-cols-2 gap-x-2.5 gap-y-1.5 text-xs text-slate-600">' + specs.join('') + '</div>' : '') +
-        (loc ? '<p class="mt-1.5 flex items-center gap-1.5 min-w-0 text-xs text-slate-500"><span class="text-slate-400">' + ICONS.pin + '</span><span class="truncate">' + esc(loc) + '</span></p>' : '') +
-        '<div class="mt-auto pt-2.5 sm:pt-3 flex gap-1.5 sm:gap-2">' + buttons + '</div>' +
+      '<div class="relative aspect-[4/3] bg-slate-100 overflow-hidden">' +
+        (car.primary_photo_url
+          ? '<img src="' + esc(car.primary_photo_url) + '" alt="" class="absolute inset-0 w-full h-full object-cover" loading="lazy" />'
+          : '<div class="absolute inset-0 flex items-center justify-center">' + ICONS.car + '</div>') +
+        (badges ? '<div class="absolute top-2.5 start-2.5 flex flex-wrap items-start gap-1.5 max-w-[calc(100%-1.25rem)]">' + badges + '</div>' : '') +
+        (photoCount > 1
+          ? '<span class="absolute bottom-2 end-2 inline-flex items-center gap-1 rounded-md bg-black/55 text-white text-[11px] font-medium px-1.5 py-0.5">' + ICONS.camera + photoCount + '</span>'
+          : '') +
+      '</div>' +
+      '<div class="p-3">' +
+        '<p class="font-display font-bold text-[15px] text-slate-900 leading-snug truncate">' + esc(title) + '</p>' +
+        priceHtml(car.price, { className: 'text-lg mt-1' }) +
+        (line ? '<p class="mt-1 text-xs text-slate-500 truncate">' + esc(line) + '</p>' : '') +
       '</div>';
 
-    // Capture phase: runs before the buttons' own handlers (which stop propagation).
+    // Promoted card: later engagements on this car (detail page) are attributed to the promotion.
     if (featured && global.CarfoxTrack && CarfoxTrack.markPromoted) {
-      el.addEventListener('click', function () { CarfoxTrack.markPromoted(car.id); }, true);
+      el.addEventListener('click', function () { CarfoxTrack.markPromoted(car.id); });
     }
-    el.querySelectorAll('[data-track]').forEach(function (b) {
-      b.addEventListener('click', function (e) {
-        e.stopPropagation();
-        track(b.getAttribute('data-track'), car.id);
-      });
-    });
     return el;
   }
 
@@ -337,7 +289,6 @@
     formatPrice: formatPrice,
     formatMileage: formatMileage,
     whatsappHref: whatsappHref,
-    telHref: telHref,
     featuredTagHtml: featuredTagHtml,
     newTagHtml: newTagHtml,
     escape: esc
