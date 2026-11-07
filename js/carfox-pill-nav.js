@@ -19,8 +19,12 @@
  *                         they get the home-indicator inset added to their bottom padding
  *
  * Installed PWA (display-mode: standalone / iOS navigator.standalone): <html> gets .cf-standalone and the
- * viewport gains viewport-fit=cover so env(safe-area-inset-bottom) is real; the pill then sits 8px above the
- * home-indicator area (safe-area inset + 8px) and --cf-nav-space / the spacer follow the inset.
+ * viewport gains viewport-fit=cover so env(safe-area-inset-bottom) is real; the pill then sits 4px above the
+ * home-indicator area (safe-area inset + 4px) and --cf-nav-space / the spacer follow the inset.
+ *
+ * Scrolling down compacts the pill (Instagram-like: scale 0.85 from its bottom edge, tighter row, a bit more
+ * transparent, 200ms ease); any upward scroll past a small threshold, or reaching the top / bottom of the page,
+ * restores it. Direction flutter is ignored (distance threshold per direction). It stays fully tappable.
  * Regular browser tabs keep the 12px + safe-area offset.
  * Unread dots keep their hooks: [data-messages-unread-dot] (buyer More), [data-inquiries-unread-dot] (dealer).
  */
@@ -97,9 +101,9 @@
   // Standalone-only layout rules; emitted twice: under the display-mode media query (CSS-only) and under
   // html.cf-standalone (covers iOS versions that only expose navigator.standalone).
   function standaloneRules(prefix) {
-    return prefix + '.cf-pnav-nav{bottom:calc(8px + env(safe-area-inset-bottom))}' +
+    return prefix + '.cf-pnav-nav{bottom:calc(4px + env(safe-area-inset-bottom))}' +
       prefix + '.cf-pnav-spacer{height:calc(12px + env(safe-area-inset-bottom))}' +
-      (prefix ? 'html.cf-standalone.cf-has-pill-nav' : 'html.cf-has-pill-nav') + '{--cf-nav-space:calc(80px + env(safe-area-inset-bottom))}' +
+      (prefix ? 'html.cf-standalone.cf-has-pill-nav' : 'html.cf-has-pill-nav') + '{--cf-nav-space:calc(76px + env(safe-area-inset-bottom))}' +
       prefix + '.cf-above-nav{padding-bottom:0 !important}';
   }
 
@@ -112,9 +116,13 @@
     s.textContent =
       '.cf-pnav-nav{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:100;margin:0 auto;max-width:28rem;height:60px;' +
         'border-radius:9999px;background:rgba(255,255,255,.95);-webkit-backdrop-filter:saturate(1.6) blur(18px);backdrop-filter:saturate(1.6) blur(18px);' +
-        'box-shadow:0 10px 30px -8px rgba(15,31,61,.28),0 2px 6px rgba(15,31,61,.08),0 0 0 1px rgba(15,23,42,.06);transition:transform .25s ease,opacity .25s ease}' +
+        'box-shadow:0 10px 30px -8px rgba(15,31,61,.28),0 2px 6px rgba(15,31,61,.08),0 0 0 1px rgba(15,23,42,.06);' +
+        'transform-origin:50% 100%;transition:transform .2s ease,opacity .25s ease,background-color .2s ease,box-shadow .2s ease}' +
+      // Compact (scrolling down): smaller, tighter, a touch more see-through; still fully interactive.
+      '.cf-pnav-nav.is-compact{transform:scale(.85);background:rgba(255,255,255,.86);box-shadow:0 6px 18px -8px rgba(15,31,61,.22),0 0 0 1px rgba(15,23,42,.05)}' +
       '@media (min-width:768px){.cf-pnav-nav{display:none}}' +
-      '.cf-pnav-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));height:100%;padding:0 6px}' +
+      '.cf-pnav-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));height:100%;padding:0 6px;transition:padding .2s ease}' +
+      '.cf-pnav-nav.is-compact .cf-pnav-row{padding:0 2px}' +
       '.cf-pnav-item{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:#64748b;' +
         '-webkit-tap-highlight-color:transparent;text-decoration:none;transition:transform .32s cubic-bezier(.34,1.56,.64,1),color .2s ease;touch-action:manipulation}' +
       '.cf-pnav-item.is-pressed{transform:scale(.9);transition-duration:.09s}' +
@@ -143,7 +151,7 @@
       '@media (max-width:767.98px){' + standaloneRules('html.cf-standalone ') + '}' +
       '@media (display-mode:standalone){.cf-safe-bottom{padding-bottom:calc(1rem + env(safe-area-inset-bottom)) !important}}' +
       'html.cf-standalone .cf-safe-bottom{padding-bottom:calc(1rem + env(safe-area-inset-bottom)) !important}' +
-      '@media (prefers-reduced-motion:reduce){.cf-pnav-item,.cf-pnav-ind,.cf-pnav-nav{transition:none}}';
+      '@media (prefers-reduced-motion:reduce){.cf-pnav-item,.cf-pnav-ind,.cf-pnav-nav,.cf-pnav-row{transition:none}}';
     document.head.appendChild(s);
   }
 
@@ -194,11 +202,39 @@
 
   applyStandaloneMode();
 
+  // Compact while scrolling down, full size on any upward scroll or at the top / bottom of the page.
+  // Distances accumulate per direction (reset when it flips) so tiny back-and-forth jitter never toggles it.
+  var COMPACT_AFTER = 12;   // px of continuous downward scroll
+  var EXPAND_AFTER = 6;     // px of upward scroll ("even slightly")
+  var EDGE = 24;            // px from the top / bottom where the pill is always full size
+  function initCompactOnScroll(nav) {
+    var lastY = Math.max(0, global.scrollY || 0);
+    var run = 0;
+    function set(compact) {
+      if (nav.classList.contains('is-compact') !== compact) nav.classList.toggle('is-compact', compact);
+    }
+    function onScroll() {
+      var y = Math.max(0, global.scrollY || 0);
+      var dy = y - lastY;
+      lastY = y;
+      if (!dy) return;
+      var max = Math.max(0, document.documentElement.scrollHeight - global.innerHeight);
+      if (y <= EDGE || y >= max - EDGE) { run = 0; set(false); return; }
+      if ((dy > 0) !== (run > 0)) run = 0;
+      run += dy;
+      if (run >= COMPACT_AFTER) set(true);
+      else if (run <= -EXPAND_AFTER) set(false);
+    }
+    global.addEventListener('scroll', onScroll, { passive: true });
+    return onScroll;
+  }
+
   function mount(preset, activeKey, container) {
     if (document.getElementById('cfBottomNav')) return document.getElementById('cfBottomNav');
     var nav = create(preset, activeKey);
     (container || document.body).appendChild(nav);
     document.documentElement.classList.add('cf-has-pill-nav');
+    initCompactOnScroll(nav);
     if (!document.querySelector('.cf-pnav-spacer')) {
       var sp = document.createElement('div');
       sp.className = 'cf-pnav-spacer';
