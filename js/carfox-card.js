@@ -60,7 +60,7 @@
   // Navy price with the currency small and muted (never the competitor-blue price).
   function priceHtml(piasters, opts) {
     opts = opts || {};
-    var cls = 'font-display font-extrabold leading-tight ' + (opts.className || 'text-xl') + ' ' + (opts.muted ? 'text-slate-400' : 'text-[' + NAVY + ']');
+    var cls = 'font-display font-extrabold leading-tight ' + (opts.className || 'text-xl') + ' ' + (opts.muted ? 'text-slate-400' : 'text-[#0f1f3d]');
     if (!piasters || piasters <= 0) {
       return '<p class="' + cls + '">' + esc(tx('card.price_on_request', 'Price on request')) + '</p>';
     }
@@ -133,7 +133,7 @@
       return '<img src="' + esc(logo) + '" alt="" loading="lazy" class="h-5 w-5 rounded-full object-cover bg-white ring-1 ring-slate-200 shrink-0" />';
     }
     var initial = String(name || '?').trim().charAt(0).toUpperCase() || '?';
-    return '<span class="h-5 w-5 rounded-full bg-[' + NAVY + '] text-white text-[10px] font-bold flex items-center justify-center shrink-0" aria-hidden="true">' + esc(initial) + '</span>';
+    return '<span class="h-5 w-5 rounded-full bg-[#0f1f3d] text-white text-[10px] font-bold flex items-center justify-center shrink-0" aria-hidden="true">' + esc(initial) + '</span>';
   }
 
   // Location pin + dealer (logo thumbnail + name, linked to the dealer profile when we know the id).
@@ -199,7 +199,7 @@
         (wa
           ? '<a href="' + esc(wa) + '" target="_blank" rel="noopener" data-track="whatsapp" class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-semibold py-2">' + ICONS.whatsapp + esc(tx('card.whatsapp', 'WhatsApp')) + '</a>'
           : '') +
-        '<a href="' + href + '?openInquiry=1" data-track="message" class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-[' + NAVY + '] hover:bg-[#162c57] text-white text-sm font-semibold py-2">' + ICONS.message + esc(tx('card.message', 'Message')) + '</a>' +
+        '<a href="' + href + '?openInquiry=1" data-track="message" class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#0f1f3d] hover:bg-[#162c57] text-white text-sm font-semibold py-2">' + ICONS.message + esc(tx('card.message', 'Message')) + '</a>' +
         '</div>'
       : '';
 

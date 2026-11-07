@@ -10,20 +10,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/css/carfox-brand.css" />
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-              display: ['Nunito', 'Cairo', 'ui-sans-serif', 'system-ui', 'sans-serif']
-            },
-            colors: { navy: { DEFAULT: '#0f1f3d', 700: '#162c57', 900: '#0b1830' } }
-          }
-        }
-      };
-    </script>
     <style>
       /* Below lg the filter panel is a bottom sheet; from lg it is a static sidebar. */
       #filterPanel { transition: transform 250ms ease-out; }
@@ -58,6 +44,7 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
     <script src="/js/carfox-pwa.js" defer></script>
     <script src="/js/carfox-ui.js"></script>
+    <link rel="stylesheet" href="/css/app.css" />
   </head>
   <body class="bg-gray-50 text-gray-900 font-sans pb-28 md:pb-0">
     <header class="sticky top-0 z-40 bg-white border-b border-gray-200">

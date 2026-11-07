@@ -14,6 +14,7 @@ const SHELL_CACHE = 'carfox-shell-' + VERSION;
 const SHELL = [
   '/offline.html',
   '/manifest.webmanifest',
+  '/css/app.css',
   '/css/carfox-brand.css',
   '/js/carfox-auth.js',
   '/js/carfox-buyer-nav.js',
