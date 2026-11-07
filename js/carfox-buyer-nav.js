@@ -178,40 +178,29 @@
   }
 
   // ---- Shared mobile bottom nav: Home · Search · Favorites · More ----
-  var NAV_ICONS = {
-    home: '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3.172 2.25 10.5V21h6.75v-6h6v6h6V10.5L12 3.172z"/></svg>',
-    search: '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10.5 3a7.5 7.5 0 0 1 5.3 12.8l4.2 4.2-1.4 1.4-4.2-4.2A7.5 7.5 0 1 1 10.5 3zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11z"/></svg>',
-    heart: '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>',
-    more: '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>'
-  };
+  // The floating pill itself lives in /js/carfox-pill-nav.js (shared with the dealer nav); pages include it
+  // before this file, and it is loaded on demand if a page does not.
+  function loadScriptOnce(src, cb) {
+    var existing = document.querySelector('script[src="' + src + '"]');
+    if (existing && !existing.dataset.cfLoaded) { existing.addEventListener('load', cb); return; }
+    var s = document.createElement('script');
+    s.src = src;
+    s.dataset.cfLoaded = '';
+    s.onload = cb;
+    document.body.appendChild(s);
+  }
 
   function mountBuyerBottomNav() {
     if (!document.body || document.getElementById('cfBottomNav')) return;
     if (/\/buyer\/chat\.html$/.test(location.pathname)) return; // chat has its own composer bar
+    if (!global.CarfoxPillNav) { loadScriptOnce('/js/carfox-pill-nav.js', mountBuyerBottomNav); return; }
     var path = location.pathname.replace(/\/index\.html$/, '/');
     var isHome = path === '/';
     var isSearch = /\/(cars|search|quick-search)\.html$/.test(path) || /^\/cars\//.test(path);
     var isFav = /\/buyer\/saved-cars\.html$/.test(path);
-    var isMore = !isHome && !isSearch && !isFav;
-    function cls(active) {
-      return 'flex flex-col items-center justify-center ' + (active ? 'text-blue-700' : 'text-gray-600 hover:text-gray-900');
-    }
+    var active = isHome ? 'home' : isSearch ? 'search' : isFav ? 'favorites' : 'more';
+    var nav = CarfoxPillNav.mount('buyer', active);
     // Labels carry data-i18n keys: pages that load /js/i18n/i18n.js translate them, others stay English.
-    var label = function (t, key) { return '<span class="text-[11px] leading-tight mt-1" data-i18n="' + key + '">' + t + '</span>'; };
-    var nav = document.createElement('nav');
-    nav.id = 'cfBottomNav';
-    nav.className = 'fixed bottom-0 left-0 right-0 z-[100] md:hidden border-t border-gray-200 bg-white h-16';
-    nav.style.paddingBottom = 'env(safe-area-inset-bottom)';
-    nav.setAttribute('aria-label', 'Main');
-    nav.innerHTML =
-      '<div class="mx-auto max-w-7xl grid grid-cols-4 h-full" dir="ltr">' +
-      '<a href="/" class="' + cls(isHome) + '">' + NAV_ICONS.home + label('Home', 'bottomnav.home') + '</a>' +
-      '<a href="/cars.html" data-quick-search class="' + cls(isSearch) + '">' + NAV_ICONS.search + label('Search', 'bottomnav.search') + '</a>' +
-      '<a href="/buyer/saved-cars.html" class="' + cls(isFav) + '">' + NAV_ICONS.heart + label('Favorites', 'bottomnav.favorites') + '</a>' +
-      '<a href="/more.html" class="' + cls(isMore) + '"><span class="relative inline-flex">' + NAV_ICONS.more +
-      '<span data-messages-unread-dot class="hidden absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-red-500" aria-hidden="true"></span></span>' + label('More', 'bottomnav.more') + '</a>' +
-      '</div>';
-    document.body.appendChild(nav);
     if (global.CarfoxI18n && CarfoxI18n.isReady && CarfoxI18n.isReady()) CarfoxI18n.apply(nav);
     // The Search tab opens the results page; the helper script carries current filters over.
     if (!global.CarfoxQuickSearch && !document.querySelector('script[src="/js/carfox-quick-search.js"]')) {

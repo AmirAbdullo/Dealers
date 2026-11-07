@@ -270,47 +270,19 @@
     );
   }
 
-  function dealerBottomNavHtml(activeTab) {
-    function tabClass(id) {
-      return id === activeTab
-        ? 'flex flex-col items-center justify-center text-blue-700'
-        : 'flex flex-col items-center justify-center text-gray-600 hover:text-gray-900';
-    }
-
-    return (
-      '<nav class="fixed bottom-0 left-0 right-0 md:hidden border-t border-gray-200 bg-white h-16" style="padding-bottom: env(safe-area-inset-bottom);">' +
-      '<div class="mx-auto max-w-7xl grid grid-cols-4 h-full">' +
-      '<a href="/dealer/dashboard.html" class="' +
-      tabClass('dashboard') +
-      '">' +
-      '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.172 2.25 10.5V21h6.75v-6h6v6h6V10.5L12 3.172z"/></svg>' +
-      '<span class="text-[11px] leading-tight mt-1">Dashboard</span></a>' +
-      '<a href="/dealer/inventory.html" class="' +
-      tabClass('inventory') +
-      '">' +
-      '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M3 16v3h2v-2h14v2h2v-3l-2-5H5l-2 5zm3.5-6h11l-1.2-3H7.7L6.5 10z"/></svg>' +
-      '<span class="text-[11px] leading-tight mt-1">Inventory</span></a>' +
-      '<a href="/dealer/inquiries.html" class="relative ' +
-      tabClass('inquiries') +
-      '">' +
-      '<span class="relative inline-flex">' +
-      '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h16v12H6l-2 2V4zm2 3v2h12V7H6zm0 4v2h8v-2H6z"/></svg>' +
-      '<span data-inquiries-unread-dot class="hidden absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-red-500" aria-hidden="true"></span>' +
-      '</span><span class="text-[11px] leading-tight mt-1' +
-      (activeTab === 'inquiries' ? ' font-medium' : '') +
-      '">Inquiries</span></a>' +
-      '<a href="/dealer/account.html" class="' +
-      tabClass('account') +
-      '">' +
-      '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5zm0 2c-4.4 0-8 2.2-8 5v3h16v-3c0-2.8-3.6-5-8-5z"/></svg>' +
-      '<span class="text-[11px] leading-tight mt-1">Account</span></a>' +
-      '</div></nav>'
-    );
-  }
-
+  // Mobile bottom nav: the shared floating pill (/js/carfox-pill-nav.js) with the dealer tabs
+  // (Dashboard · Inventory · Inquiries · Account). Loaded on demand if the page did not include it.
   function mountDealerBottomNav(container, activeTab) {
     if (!container) return;
-    container.innerHTML = dealerBottomNavHtml(activeTab);
+    if (!global.CarfoxPillNav) {
+      var s = document.createElement('script');
+      s.src = '/js/carfox-pill-nav.js';
+      s.onload = function () { mountDealerBottomNav(container, activeTab); };
+      document.body.appendChild(s);
+      return;
+    }
+    container.innerHTML = '';
+    CarfoxPillNav.mount('dealer', activeTab, container);
     initInquiriesUnreadBadge();
   }
 
@@ -416,7 +388,6 @@
     initInquiriesUnreadBadge: initInquiriesUnreadBadge,
     filterConversations: filterConversations,
     renderInquiryCardHtml: renderInquiryCardHtml,
-    dealerBottomNavHtml: dealerBottomNavHtml,
     mountDealerBottomNav: mountDealerBottomNav,
     dealerDesktopHeaderHtml: dealerDesktopHeaderHtml,
     mountDealerDesktopHeader: mountDealerDesktopHeader,
