@@ -19,8 +19,8 @@
  *                         they get the home-indicator inset added to their bottom padding
  *
  * Installed PWA (display-mode: standalone / iOS navigator.standalone): <html> gets .cf-standalone and the
- * viewport gains viewport-fit=cover so env(safe-area-inset-bottom) is real; the pill then sits 22px above the
- * home-indicator area (Instagram-like) instead of 12px, and --cf-nav-space / the spacer grow to match.
+ * viewport gains viewport-fit=cover so env(safe-area-inset-bottom) is real; the pill then sits 8px above the
+ * home-indicator area (safe-area inset + 8px) and --cf-nav-space / the spacer follow the inset.
  * Regular browser tabs keep the 12px + safe-area offset.
  * Unread dots keep their hooks: [data-messages-unread-dot] (buyer More), [data-inquiries-unread-dot] (dealer).
  */
@@ -97,9 +97,9 @@
   // Standalone-only layout rules; emitted twice: under the display-mode media query (CSS-only) and under
   // html.cf-standalone (covers iOS versions that only expose navigator.standalone).
   function standaloneRules(prefix) {
-    return prefix + '.cf-pnav-nav{bottom:calc(22px + env(safe-area-inset-bottom))}' +
-      prefix + '.cf-pnav-spacer{height:calc(22px + env(safe-area-inset-bottom))}' +
-      (prefix ? 'html.cf-standalone.cf-has-pill-nav' : 'html.cf-has-pill-nav') + '{--cf-nav-space:calc(94px + env(safe-area-inset-bottom))}' +
+    return prefix + '.cf-pnav-nav{bottom:calc(8px + env(safe-area-inset-bottom))}' +
+      prefix + '.cf-pnav-spacer{height:calc(12px + env(safe-area-inset-bottom))}' +
+      (prefix ? 'html.cf-standalone.cf-has-pill-nav' : 'html.cf-has-pill-nav') + '{--cf-nav-space:calc(80px + env(safe-area-inset-bottom))}' +
       prefix + '.cf-above-nav{padding-bottom:0 !important}';
   }
 
