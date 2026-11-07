@@ -5805,6 +5805,15 @@ app.get('/sw.js', function (req, res) {
   res.send(src.split('__CACHE_VERSION__').join(SW_VERSION));
 });
 
+// The site's static files live in the project root, so the root is served as-is — but never the server
+// source, databases (incl. the Turso embedded replica), dependencies, tooling or build inputs.
+const PRIVATE_STATIC_RE = /^\/(?:server\.js|package(?:-lock)?\.json|tailwind\.config\.js|new-project\.md|readme\.md|tmp-[^/]*|node_modules|scripts|lib|db|middleware|styles)(?:\/|$)|\.(?:db|db-wal|db-shm|db-info|db-journal|sqlite\d?|log|env)$|\/\./i;
+app.use(function (req, res, next) {
+  let p = req.path;
+  try { p = decodeURIComponent(p); } catch (_) { return res.status(400).end(); }
+  if (PRIVATE_STATIC_RE.test(p.replace(/\\/g, '/').replace(/\/{2,}/g, '/'))) return res.status(404).send('Not found');
+  next();
+});
 app.use(express.static(__dirname));
 
 const server = http.createServer(app);
