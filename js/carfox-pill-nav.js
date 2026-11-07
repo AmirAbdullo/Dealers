@@ -23,8 +23,8 @@
  * home-indicator area (safe-area inset + 4px) and --cf-nav-space / the spacer follow the inset.
  *
  * Scrolling down compacts the pill (Instagram-like: scale 0.85 from its bottom edge, tighter row, a bit more
- * transparent, 200ms ease); any upward scroll past a small threshold, or reaching the top / bottom of the page,
- * restores it. Direction flutter is ignored (distance threshold per direction). It stays fully tappable.
+ * transparent, 200ms ease); only an upward scroll past a small threshold, or reaching the very top of the page,
+ * restores it (it stays minimized at the bottom of the page). Direction flutter is ignored (distance threshold per direction). It stays fully tappable.
  * Regular browser tabs keep the 12px + safe-area offset.
  * Unread dots keep their hooks: [data-messages-unread-dot] (buyer More), [data-inquiries-unread-dot] (dealer).
  */
@@ -202,11 +202,12 @@
 
   applyStandaloneMode();
 
-  // Compact while scrolling down, full size on any upward scroll or at the top / bottom of the page.
+  // Compact while scrolling down; full size again only on an upward scroll or at the very top of the page
+  // (reaching the bottom keeps it minimized).
   // Distances accumulate per direction (reset when it flips) so tiny back-and-forth jitter never toggles it.
   var COMPACT_AFTER = 12;   // px of continuous downward scroll
   var EXPAND_AFTER = 6;     // px of upward scroll ("even slightly")
-  var EDGE = 24;            // px from the top / bottom where the pill is always full size
+  var TOP_EDGE = 24;        // px from the top where the pill is always full size
   function initCompactOnScroll(nav) {
     var lastY = Math.max(0, global.scrollY || 0);
     var run = 0;
@@ -214,12 +215,13 @@
       if (nav.classList.contains('is-compact') !== compact) nav.classList.toggle('is-compact', compact);
     }
     function onScroll() {
-      var y = Math.max(0, global.scrollY || 0);
+      // Clamp to the scrollable range: iOS rubber-band bounce past the end must not read as scrolling up.
+      var max = Math.max(0, document.documentElement.scrollHeight - global.innerHeight);
+      var y = Math.min(Math.max(0, global.scrollY || 0), max);
       var dy = y - lastY;
       lastY = y;
       if (!dy) return;
-      var max = Math.max(0, document.documentElement.scrollHeight - global.innerHeight);
-      if (y <= EDGE || y >= max - EDGE) { run = 0; set(false); return; }
+      if (y <= TOP_EDGE) { run = 0; set(false); return; }
       if ((dy > 0) !== (run > 0)) run = 0;
       run += dy;
       if (run >= COMPACT_AFTER) set(true);
