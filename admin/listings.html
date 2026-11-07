@@ -24,6 +24,7 @@
       .promo-opt input:checked + span { background:#fffbeb; border-color:#f59e0b; color:#92400e; }
       .promo-opt input:focus-visible + span { outline:2px solid #3b82f6; outline-offset:1px; }
     </style>
+    <script src="/js/carfox-ui.js"></script>
   </head>
   <body class="bg-white text-gray-900 font-sans">
     <header class="sticky top-0 z-40 bg-white border-b border-gray-200">
@@ -199,6 +200,7 @@
       const fmtDate = (t) => { const d = parseTs(t); return d ? d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '—'; };
 
       function setToast(kind, message) {
+        if (window.CarfoxUI) return CarfoxUI.toast(message, kind === 'error' ? 'error' : 'success');
         const inner = $('toastInner');
         inner.className = 'rounded-lg border p-3 text-sm shadow-md ' + (kind === 'error' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-green-50 border-green-200 text-green-800');
         inner.textContent = message;

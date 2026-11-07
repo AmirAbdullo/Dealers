@@ -57,6 +57,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
     <script src="/js/carfox-pwa.js" defer></script>
+    <script src="/js/carfox-ui.js"></script>
   </head>
   <body class="bg-gray-50 text-gray-900 font-sans pb-28 md:pb-0">
     <header class="sticky top-0 z-40 bg-white border-b border-gray-200">
@@ -143,7 +144,7 @@
 
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 lg:py-6 lg:flex lg:gap-6 lg:items-start">
       <!-- Filter backdrop (bottom sheet only) -->
-      <div id="filterBackdrop" class="fixed inset-0 bg-black/50 z-40 hidden lg:hidden" aria-hidden="true"></div>
+      <div id="filterBackdrop" class="cf-anim-backdrop fixed inset-0 bg-black/50 z-40 hidden lg:hidden" aria-hidden="true"></div>
 
       <!-- Filter panel: bottom sheet below lg, persistent sidebar from lg -->
       <aside id="filterPanel" aria-label="Filters"
@@ -386,7 +387,7 @@
           </div>
         </div>
 
-        <div id="vehicleList" class="space-y-4 hidden"></div>
+        <div id="vehicleList" class="space-y-4 transition-opacity duration-150" data-cf-skeleton="browse:3" aria-label="Loading cars…"></div>
 
         <div id="emptyState" class="hidden text-center py-16 bg-white border border-gray-200 rounded-xl">
           <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-16 w-16 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
@@ -1606,6 +1607,7 @@
           if (isSaved) { savedIds.delete(carId); } else { savedIds.add(carId); }
           btn.innerHTML = heartSvg(!isSaved);
           btn.setAttribute('aria-label', !isSaved ? 'Remove from saved' : 'Save car');
+          if (window.CarfoxUI) CarfoxUI.heartPop(btn, !isSaved);
           fetch('/api/saved-cars/' + carId, {
             method: isSaved ? 'DELETE' : 'POST',
             headers: { Authorization: 'Bearer ' + buyerToken }
@@ -1682,9 +1684,9 @@
               window.location.href = '/buyer/chat.html?conversation=' + encodeURIComponent(data.id) + (data.last_message_preview ? '' : '&prefill=1');
               return;
             }
-            alert(data.error || 'Could not start conversation. Please try again.');
+            CarfoxUI.toast(data.error || 'Could not start conversation. Please try again.', 'error');
           } catch (_) {
-            alert('Network error. Please try again.');
+            CarfoxUI.toast('Network error. Please try again.', 'error');
           }
           btn.disabled = false;
           btn.textContent = orig;
@@ -1864,6 +1866,8 @@
           const signal = listAbort.signal;
           loading = true;
           resultsCount.textContent = 'Loading cars…';
+          const firstLoad = !!vehicleList.querySelector('.cf-skel-card');
+          if (!firstLoad) vehicleList.style.opacity = '.55';
           try {
             const res = await fetch('/api/cars?' + filtersToParams(false).toString(), { signal: signal });
             const data = await res.json().catch(function () { return {}; });
@@ -1887,6 +1891,8 @@
             updateResultsCount();
             previewCount = total;
             vehicleList.innerHTML = '';
+            vehicleList.removeAttribute('aria-busy');
+            vehicleList.removeAttribute('aria-label');
 
             if (total === 0) {
               vehicleList.classList.add('hidden');
@@ -1905,16 +1911,19 @@
               vehicleList.classList.remove('hidden');
               featured.forEach(function (car) { vehicleList.appendChild(renderCard(car, { featured: true })); });
               cars.forEach(function (car) { vehicleList.appendChild(renderCard(car)); });
+              if (window.CarfoxUI) CarfoxUI.stagger(vehicleList);
             }
             renderPagination();
             updateFilterUiState();
           } catch (err) {
             if (err.name === 'AbortError') return;
             console.error(err);
+            if (vehicleList.querySelector('.cf-skel-card')) { vehicleList.innerHTML = ''; vehicleList.removeAttribute('aria-busy'); }
             resultsCount.textContent = 'Could not load listings. Please try again.';
             if (resultsCountMobile) resultsCountMobile.textContent = 'Could not load';
           } finally {
             loading = false;
+            if (!signal.aborted) vehicleList.style.opacity = '';
           }
         }
 

@@ -32,6 +32,7 @@
       .skeleton { color:transparent !important; background:#f3f4f6; border-radius:6px; }
       @media (max-width: 640px) { .stat-value { font-size:22px; } .chart-labels { font-size:9px; } }
     </style>
+    <script src="/js/carfox-ui.js"></script>
   </head>
   <body class="bg-gray-50 text-gray-900 font-sans">
     <header class="sticky top-0 z-40 bg-white border-b border-gray-200">
@@ -213,6 +214,7 @@
       const fmtPrice = (p) => (p > 0 ? Math.round(Number(p) / 100).toLocaleString('en-EG') + ' EGP' : '—');
 
       function setToast(kind, message) {
+        if (window.CarfoxUI) return CarfoxUI.toast(message, kind === 'error' ? 'error' : 'success');
         const inner = $('toastInner');
         inner.className = 'rounded-lg border p-3 text-sm shadow-md ' + (kind === 'error' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-green-50 border-green-200 text-green-800');
         inner.textContent = message;

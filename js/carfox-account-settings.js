@@ -86,8 +86,8 @@
     // Above Leaflet panes/controls (z 400–1000) on the dealer page map and the bottom nav.
     wrap.className = 'fixed inset-0 z-[1100] flex items-end sm:items-center justify-center';
     wrap.innerHTML =
-      '<div class="absolute inset-0 bg-black/40" data-cfas-close></div>' +
-      '<div role="dialog" aria-modal="true" aria-labelledby="cfasTitle" class="relative w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[92vh] flex flex-col">' +
+      '<div class="cf-anim-backdrop absolute inset-0 bg-black/40" data-cfas-close></div>' +
+      '<div role="dialog" aria-modal="true" aria-labelledby="cfasTitle" class="cf-anim-sheet relative w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[92vh] flex flex-col">' +
         '<div class="flex items-center justify-between gap-2 px-4 h-14 border-b border-gray-100 shrink-0">' +
           '<h2 id="cfasTitle" class="text-base font-bold text-gray-900">' + esc(title) + '</h2>' +
           '<button type="button" data-cfas-close class="p-2 -me-2 text-gray-500 hover:text-gray-900" aria-label="Close">' +

@@ -19,6 +19,7 @@
       tr.at-limit { background:#fef2f2; }
       tr.is-suspended td:first-child { box-shadow: inset 4px 0 0 #dc2626; }
     </style>
+    <script src="/js/carfox-ui.js"></script>
   </head>
   <body class="bg-white text-gray-900 font-sans">
     <header class="sticky top-0 z-40 bg-white border-b border-gray-200">
@@ -127,6 +128,7 @@
       const planLabel = (plan, limit) => (plan ? plan.charAt(0).toUpperCase() + plan.slice(1) : 'Basic') + ' · ' + limit;
 
       function setToast(kind, message) {
+        if (window.CarfoxUI) return CarfoxUI.toast(message, kind === 'error' ? 'error' : 'success');
         const inner = $('toastInner');
         inner.className = 'rounded-lg border p-3 text-sm shadow-md ' + (kind === 'error' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-green-50 border-green-200 text-green-800');
         inner.textContent = message;

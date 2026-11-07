@@ -49,6 +49,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
     <script src="/js/carfox-pwa.js" defer></script>
+    <script src="/js/carfox-ui.js"></script>
   </head>
   <body class="bg-gray-50 text-gray-900 font-sans">
     <header class="hidden md:block sticky top-0 z-40 bg-white border-b border-gray-200 h-16">
@@ -73,7 +74,7 @@
     </header>
     <div id="shareToast" class="hidden fixed top-20 inset-x-0 mx-auto w-max max-w-[90%] rounded-lg bg-gray-900 text-white text-sm font-semibold px-4 py-2 shadow-lg z-50">Link copied</div>
 
-    <div id="pageLoading" class="px-4 py-16 text-center text-gray-600">Loading listing…</div>
+    <div id="pageLoading" class="text-gray-600" aria-label="Loading listing…"><div data-cf-skeleton="detail"></div></div>
 
     <div id="soldBanner" class="hidden max-md:!hidden md:mx-auto md:max-w-6xl md:px-6 md:mt-6">
       <div class="rounded-lg border border-gray-300 bg-gray-100 px-4 py-3 text-sm text-gray-800">
@@ -354,6 +355,7 @@
             return;
           }
           const done = function () {
+            if (window.CarfoxUI) { CarfoxUI.toast('Link copied'); return; }
             const t = document.getElementById('shareToast');
             t.classList.remove('hidden');
             setTimeout(function () { t.classList.add('hidden'); }, 1800);
@@ -684,7 +686,7 @@
         async function startConversationAndGoToChat(sourceBtn) {
           const v = currentVehicle;
           if (!v || !v.dealer || !v.dealer.id) {
-            alert('Could not contact dealer for this listing.');
+            CarfoxUI.toast('Could not contact dealer for this listing.', 'error');
             return;
           }
           const btn = sourceBtn || document.getElementById('contactDealerBtnInline');
@@ -715,9 +717,9 @@
               window.location.href = url;
               return;
             }
-            alert(data.error || 'Could not start conversation. Please try again.');
+            CarfoxUI.toast(data.error || 'Could not start conversation. Please try again.', 'error');
           } catch (_) {
-            alert('Network error. Please try again.');
+            CarfoxUI.toast('Network error. Please try again.', 'error');
           } finally {
             btn.disabled = false;
             btn.textContent = orig;
@@ -823,6 +825,7 @@
             var wasSaved = detailIsSaved;
             detailIsSaved = !wasSaved;
             updateDetailSaveIcon();
+            if (window.CarfoxUI) CarfoxUI.heartPop(this, detailIsSaved);
             fetch('/api/saved-cars/' + vId, {
               method: wasSaved ? 'DELETE' : 'POST',
               headers: { Authorization: 'Bearer ' + detailBuyerToken }

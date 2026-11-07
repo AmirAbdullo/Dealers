@@ -28,6 +28,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
     <script src="/js/carfox-pwa.js" defer></script>
+    <script src="/js/carfox-ui.js"></script>
   </head>
   <body class="bg-gray-50 text-gray-900 font-sans min-h-screen pb-20">
     <header class="sticky top-0 z-40 bg-white border-b border-gray-200 h-16">
@@ -161,6 +162,7 @@
         }
 
         function showToast(kind, message) {
+          if (window.CarfoxUI) return CarfoxUI.toast(message, kind === 'error' ? 'error' : 'success');
           const t = document.getElementById('accountToast');
           t.className = 'fixed top-20 left-1/2 -translate-x-1/2 z-[1110] max-w-sm w-[calc(100%-2rem)] rounded-lg border px-4 py-3 text-sm shadow-lg ' +
             (kind === 'error' ? 'border-red-200 bg-red-50 text-red-800' : 'border-green-200 bg-green-50 text-green-800');
@@ -277,7 +279,7 @@
           try {
             blob = await CarfoxCropper.open(file, { shape: 'circle', title: 'Adjust profile photo', output: 'image/jpeg', size: 512 });
           } catch (err) {
-            alert(err.message || 'Could not open the image editor');
+            CarfoxUI.toast(err.message || 'Could not open the image editor', 'error');
             return;
           }
           if (!blob) return; // cancelled
@@ -304,7 +306,7 @@
             img.classList.remove('hidden');
             document.getElementById('avatarInitials').classList.add('hidden');
           } catch (err) {
-            alert('Could not upload photo: ' + err.message);
+            CarfoxUI.toast('Could not upload photo: ' + err.message, 'error');
           } finally {
             wrapper.style.opacity = '';
             wrapper.style.pointerEvents = '';

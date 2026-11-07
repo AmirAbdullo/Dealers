@@ -133,7 +133,7 @@
   function toast(kind, msg) {
     if (current && current.toast) current.toast(kind, msg);
     else if (global.setToast) global.setToast(kind, msg);
-    else alert(msg);
+    else if (global.CarfoxUI) CarfoxUI.toast(msg, kind === 'error' ? 'error' : 'success');
   }
 
   async function open(vehicleId, opts) {

@@ -34,6 +34,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
     <script src="/js/carfox-pwa.js" defer></script>
+    <script src="/js/carfox-ui.js"></script>
   </head>
   <body class="bg-gray-50 text-gray-900 font-sans min-h-screen pb-28">
     <header class="sticky top-0 z-40 bg-white border-b border-gray-200 h-16">
@@ -46,7 +47,7 @@
       </div>
     </header>
 
-    <div id="pageLoading" class="px-4 py-16 text-center text-sm text-gray-600">Loading saved cars…</div>
+    <div id="pageLoading" class="px-4 py-4 max-w-lg mx-auto text-center text-sm text-gray-600" aria-label="Loading saved cars…"><div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-start" data-cf-skeleton="grid:4"></div></div>
 
     <main id="pageContent" class="hidden px-4 py-4 max-w-lg mx-auto">
       <div id="emptyState" class="hidden py-16 text-center">
@@ -104,6 +105,7 @@
           if (isSaved) { savedIds.delete(carId); } else { savedIds.add(carId); }
           btn.innerHTML = heartSvg(!isSaved);
           btn.setAttribute('aria-label', !isSaved ? 'Remove from saved' : 'Save car');
+          if (window.CarfoxUI) CarfoxUI.heartPop(btn, !isSaved);
           // On this page, unsaving removes the card after a short delay
           if (isSaved && cardEl) {
             cardEl.style.transition = 'opacity 300ms';
@@ -174,7 +176,9 @@
             return;
           }
           cars.forEach(function (car) { carGrid.appendChild(renderCard(car)); });
+          if (window.CarfoxUI) CarfoxUI.stagger(carGrid);
         }).catch(function () {
+          pageLoading.classList.add('py-16');
           pageLoading.textContent = 'Could not load saved cars. Please refresh.';
         });
       })();

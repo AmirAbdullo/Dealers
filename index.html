@@ -38,6 +38,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
     <script src="/js/carfox-pwa.js" defer></script>
+    <script src="/js/carfox-ui.js"></script>
   </head>
   <body class="bg-gray-50 text-gray-900 font-sans pb-20 md:pb-0">
     <!-- Navbar -->
@@ -188,7 +189,7 @@
       </div>
       <div class="relative">
         <div id="newArrivalsRow" class="flex gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory scroll-smooth scroll-px-4 sm:scroll-px-0 -mx-4 px-4 sm:mx-0 sm:px-0 pt-1 pb-3">
-          <p class="text-sm text-gray-500 py-4 shrink-0" data-i18n="home.loading">Loading…</p>
+          <div class="contents" data-cf-skeleton="compact:3"></div>
         </div>
       </div>
     </section>
@@ -214,7 +215,7 @@
       </div>
       <div class="relative">
         <div id="latestCarsList" class="flex gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory scroll-smooth scroll-px-4 sm:scroll-px-0 -mx-4 px-4 sm:mx-0 sm:px-0 pt-1 pb-3">
-          <p class="text-sm text-gray-500 py-4 shrink-0" data-i18n="home.loading_listings">Loading listings…</p>
+          <div class="contents" data-cf-skeleton="compact:3"></div>
         </div>
       </div>
     </section>
@@ -553,6 +554,7 @@
           row.appendChild(renderNewArrivalCard(car));
         });
         attachRow('newArrivalsRow');
+        if (window.CarfoxUI) CarfoxUI.stagger(row);
       }
 
       function loadNewArrivals(city) {
@@ -594,6 +596,7 @@
         });
         section.classList.remove('hidden');
         attachRow('topTrustRow');
+        if (window.CarfoxUI) CarfoxUI.stagger(row);
       }
       // ---- Category tiles (New / Used / Electric). Counts come from /api/cars/categories; null = the filter
       // section is switched off in admin, 0 = nothing to show — either way the tile is hidden.
@@ -648,6 +651,7 @@
         });
         section.classList.remove('hidden');
         attachRow('featuredRow');
+        if (window.CarfoxUI) CarfoxUI.stagger(row);
       }
       function loadFeatured() {
         fetch('/api/cars/featured?limit=' + HOME_SECTION_MAX)
@@ -683,6 +687,7 @@
           list.appendChild(renderLatestCarCard(car));
         });
         attachRow('latestCarsList');
+        if (window.CarfoxUI) CarfoxUI.stagger(list);
       }
 
       function rerenderListings() {

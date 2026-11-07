@@ -28,6 +28,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
     <script src="/js/carfox-pwa.js" defer></script>
+    <script src="/js/carfox-ui.js"></script>
   </head>
   <body class="bg-gray-50 text-gray-900 font-sans min-h-screen pb-24">
 
@@ -159,14 +160,14 @@
             .then(function (res) {
               if (!res.ok) {
                 return res.json().catch(function () { return {}; }).then(function (d) {
-                  alert(d.error || 'Action failed. Please try again.');
+                  CarfoxUI.toast(d.error || 'Action failed. Please try again.', 'error');
                   return false;
                 });
               }
               return true;
             })
             .catch(function () {
-              alert('Network error. Please try again.');
+              CarfoxUI.toast('Network error. Please try again.', 'error');
               return false;
             })
             .finally(function () {
