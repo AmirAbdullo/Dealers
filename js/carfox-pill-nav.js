@@ -14,7 +14,14 @@
  *   --cf-nav-space        distance from the viewport bottom to just above the pill (84px + safe area)
  *   .cf-above-nav         fixed bars that must sit above the pill (bottom: var(--cf-nav-space))
  *   .cf-hides-nav         a visible element with this class (e.g. a form action bar) hides the pill
- *   .cf-pill-spacer       appended to <body>: adds the safe area + 12px under the page's own bottom padding
+ *   .cf-pnav-spacer       appended to <body>: adds the safe area + 12px under the page's own bottom padding
+ *   .cf-safe-bottom       bars glued to the bottom edge (sheet footers, form action bars): in the installed app
+ *                         they get the home-indicator inset added to their bottom padding
+ *
+ * Installed PWA (display-mode: standalone / iOS navigator.standalone): <html> gets .cf-standalone and the
+ * viewport gains viewport-fit=cover so env(safe-area-inset-bottom) is real; the pill then sits 22px above the
+ * home-indicator area (Instagram-like) instead of 12px, and --cf-nav-space / the spacer grow to match.
+ * Regular browser tabs keep the 12px + safe-area offset.
  * Unread dots keep their hooks: [data-messages-unread-dot] (buyer More), [data-inquiries-unread-dot] (dealer).
  */
 (function (global) {
@@ -22,7 +29,7 @@
 
   function svg(inner, opts) {
     opts = opts || {};
-    return '<svg class="cf-pill-svg" viewBox="0 0 24 24" aria-hidden="true" ' +
+    return '<svg class="cf-pnav-svg" viewBox="0 0 24 24" aria-hidden="true" ' +
       (opts.fill ? 'fill="currentColor"' : 'fill="none" stroke="currentColor" stroke-width="' + (opts.sw || 1.8) + '" stroke-linecap="round" stroke-linejoin="round"') +
       '>' + inner + '</svg>';
   }
@@ -73,6 +80,29 @@
     ]
   };
 
+  // Installed app (display-mode: standalone, or iOS navigator.standalone): mark <html> with .cf-standalone and
+  // add viewport-fit=cover so iOS reports the real safe-area insets (without it env(safe-area-inset-bottom) is 0
+  // and bottom bars sit on the home indicator). Regular browser tabs are left untouched.
+  function applyStandaloneMode() {
+    var root = document.documentElement;
+    if (root.classList.contains('cf-standalone')) return true;
+    var standalone = (global.matchMedia && global.matchMedia('(display-mode: standalone)').matches) || global.navigator.standalone === true;
+    if (!standalone) return false;
+    root.classList.add('cf-standalone');
+    var vp = document.querySelector('meta[name="viewport"]');
+    if (vp && !/viewport-fit=cover/.test(vp.content)) vp.content = vp.content + ', viewport-fit=cover';
+    return true;
+  }
+
+  // Standalone-only layout rules; emitted twice: under the display-mode media query (CSS-only) and under
+  // html.cf-standalone (covers iOS versions that only expose navigator.standalone).
+  function standaloneRules(prefix) {
+    return prefix + '.cf-pnav-nav{bottom:calc(22px + env(safe-area-inset-bottom))}' +
+      prefix + '.cf-pnav-spacer{height:calc(22px + env(safe-area-inset-bottom))}' +
+      (prefix ? 'html.cf-standalone.cf-has-pill-nav' : 'html.cf-has-pill-nav') + '{--cf-nav-space:calc(94px + env(safe-area-inset-bottom))}' +
+      prefix + '.cf-above-nav{padding-bottom:0 !important}';
+  }
+
   var styleDone = false;
   function injectStyle() {
     if (styleDone) return;
@@ -80,39 +110,45 @@
     var s = document.createElement('style');
     s.id = 'cfPillNavStyle';
     s.textContent =
-      '.cf-pill-nav{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:100;margin:0 auto;max-width:28rem;height:60px;' +
+      '.cf-pnav-nav{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:100;margin:0 auto;max-width:28rem;height:60px;' +
         'border-radius:9999px;background:rgba(255,255,255,.95);-webkit-backdrop-filter:saturate(1.6) blur(18px);backdrop-filter:saturate(1.6) blur(18px);' +
         'box-shadow:0 10px 30px -8px rgba(15,31,61,.28),0 2px 6px rgba(15,31,61,.08),0 0 0 1px rgba(15,23,42,.06);transition:transform .25s ease,opacity .25s ease}' +
-      '@media (min-width:768px){.cf-pill-nav{display:none}}' +
-      '.cf-pill-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));height:100%;padding:0 6px}' +
-      '.cf-pill-item{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:#64748b;' +
+      '@media (min-width:768px){.cf-pnav-nav{display:none}}' +
+      '.cf-pnav-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));height:100%;padding:0 6px}' +
+      '.cf-pnav-item{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:#64748b;' +
         '-webkit-tap-highlight-color:transparent;text-decoration:none;transition:transform .32s cubic-bezier(.34,1.56,.64,1),color .2s ease;touch-action:manipulation}' +
-      '.cf-pill-item.is-pressed{transform:scale(.9);transition-duration:.09s}' +
-      '.cf-pill-item:focus-visible{outline:none}.cf-pill-item:focus-visible .cf-pill-ind{opacity:1;transform:scale(1);box-shadow:0 0 0 2px #fb923c}' +
-      '.cf-pill-ind{position:absolute;top:7px;left:50%;width:52px;height:30px;margin-left:-26px;border-radius:9999px;background:#fff1e6;' +
+      '.cf-pnav-item.is-pressed{transform:scale(.9);transition-duration:.09s}' +
+      '.cf-pnav-item:focus-visible{outline:none}.cf-pnav-item:focus-visible .cf-pnav-ind{opacity:1;transform:scale(1);box-shadow:0 0 0 2px #fb923c}' +
+      '.cf-pnav-ind{position:absolute;top:7px;left:50%;width:52px;height:30px;margin-left:-26px;border-radius:9999px;background:#fff1e6;' +
         'opacity:0;transform:scale(.55);transition:opacity .22s ease,transform .32s cubic-bezier(.34,1.56,.64,1)}' +
-      '.cf-pill-icon{position:relative;display:inline-flex;width:24px;height:24px;margin-top:1px}' +
-      '.cf-pill-svg{width:24px;height:24px}' +
-      '.cf-pill-icon .is-on{display:none}' +
-      '.cf-pill-label{position:relative;font-size:10.5px;line-height:1;font-weight:600;letter-spacing:.01em;white-space:nowrap}' +
-      '.cf-pill-item.is-active{color:#ea580c}' +
-      '.cf-pill-item.is-active .cf-pill-ind{opacity:1;transform:scale(1)}' +
-      '.cf-pill-item.is-active .is-on{display:inline}.cf-pill-item.is-active .is-off{display:none}' +
-      '.cf-pill-dot{position:absolute;top:-1px;right:-3px;width:9px;height:9px;border-radius:9999px;background:#ef4444;box-shadow:0 0 0 2px #fff}' +
-      '.cf-pill-spacer{display:none}' +
+      '.cf-pnav-icon{position:relative;display:inline-flex;width:24px;height:24px;margin-top:1px}' +
+      '.cf-pnav-svg{width:24px;height:24px}' +
+      '.cf-pnav-icon .is-on{display:none}' +
+      '.cf-pnav-label{position:relative;font-size:10.5px;line-height:1;font-weight:600;letter-spacing:.01em;white-space:nowrap}' +
+      '.cf-pnav-item.is-active{color:#ea580c}' +
+      '.cf-pnav-item.is-active .cf-pnav-ind{opacity:1;transform:scale(1)}' +
+      '.cf-pnav-item.is-active .is-on{display:inline}.cf-pnav-item.is-active .is-off{display:none}' +
+      '.cf-pnav-dot{position:absolute;top:-1px;right:-3px;width:9px;height:9px;border-radius:9999px;background:#ef4444;box-shadow:0 0 0 2px #fff}' +
+      '.cf-pnav-spacer{display:none}' +
       '@media (max-width:767.98px){' +
         'html.cf-has-pill-nav{--cf-nav-space:calc(84px + env(safe-area-inset-bottom))}' +
-        '.cf-pill-spacer{display:block;height:calc(12px + env(safe-area-inset-bottom))}' +
+        '.cf-pnav-spacer{display:block;height:calc(12px + env(safe-area-inset-bottom))}' +
         'html.cf-has-pill-nav .cf-above-nav{bottom:var(--cf-nav-space)}' +
+        // A bar hidden by sliding down its own height (translate-y-full) would stay on screen around the pill.
+        'html.cf-has-pill-nav .cf-above-nav.translate-y-full{transform:translateY(calc(100% + var(--cf-nav-space) + 24px))}' +
         'html.cf-has-pill-nav #cfInstallHint{bottom:calc(var(--cf-nav-space) + 4px)}' +
-        'body:has(.cf-hides-nav:not(.hidden)) .cf-pill-nav{opacity:0;transform:translateY(24px);pointer-events:none}' +
+        'body:has(.cf-hides-nav:not(.hidden)) .cf-pnav-nav{opacity:0;transform:translateY(24px);pointer-events:none}' +
       '}' +
-      '@media (prefers-reduced-motion:reduce){.cf-pill-item,.cf-pill-ind,.cf-pill-nav{transition:none}}';
+      '@media (display-mode:standalone) and (max-width:767.98px){' + standaloneRules('') + '}' +
+      '@media (max-width:767.98px){' + standaloneRules('html.cf-standalone ') + '}' +
+      '@media (display-mode:standalone){.cf-safe-bottom{padding-bottom:calc(1rem + env(safe-area-inset-bottom)) !important}}' +
+      'html.cf-standalone .cf-safe-bottom{padding-bottom:calc(1rem + env(safe-area-inset-bottom)) !important}' +
+      '@media (prefers-reduced-motion:reduce){.cf-pnav-item,.cf-pnav-ind,.cf-pnav-nav{transition:none}}';
     document.head.appendChild(s);
   }
 
   function setActive(nav, key) {
-    nav.querySelectorAll('.cf-pill-item').forEach(function (a) {
+    nav.querySelectorAll('.cf-pnav-item').forEach(function (a) {
       var on = a.getAttribute('data-pill-key') === key;
       a.classList.toggle('is-active', on);
       if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
@@ -124,28 +160,28 @@
     var items = PRESETS[preset] || PRESETS.buyer;
     var nav = document.createElement('nav');
     nav.id = 'cfBottomNav';
-    nav.className = 'cf-pill-nav';
+    nav.className = 'cf-pnav-nav';
     nav.setAttribute('aria-label', 'Main');
     nav.innerHTML =
-      '<div class="cf-pill-row" dir="ltr">' +
+      '<div class="cf-pnav-row" dir="ltr">' +
       items.map(function (it) {
         var ic = ICONS[it.icon];
-        return '<a href="' + it.href + '" class="cf-pill-item" data-pill-key="' + it.key + '"' + (it.attrs || '') + '>' +
-          '<span class="cf-pill-ind" aria-hidden="true"></span>' +
-          '<span class="cf-pill-icon"><span class="is-off">' + ic.off + '</span><span class="is-on">' + ic.on + '</span>' +
-          (it.dot ? '<span ' + it.dot + ' class="hidden cf-pill-dot" aria-hidden="true"></span>' : '') + '</span>' +
-          '<span class="cf-pill-label"' + (it.i18n ? ' data-i18n="' + it.i18n + '"' : '') + '>' + it.label + '</span>' +
+        return '<a href="' + it.href + '" class="cf-pnav-item" data-pill-key="' + it.key + '"' + (it.attrs || '') + '>' +
+          '<span class="cf-pnav-ind" aria-hidden="true"></span>' +
+          '<span class="cf-pnav-icon"><span class="is-off">' + ic.off + '</span><span class="is-on">' + ic.on + '</span>' +
+          (it.dot ? '<span ' + it.dot + ' class="hidden cf-pnav-dot" aria-hidden="true"></span>' : '') + '</span>' +
+          '<span class="cf-pnav-label"' + (it.i18n ? ' data-i18n="' + it.i18n + '"' : '') + '>' + it.label + '</span>' +
           '</a>';
       }).join('') +
       '</div>';
 
     // Press feedback that also works on iOS (where :active needs a touch listener).
     function release() { nav.querySelectorAll('.is-pressed').forEach(function (x) { x.classList.remove('is-pressed'); }); }
-    nav.addEventListener('pointerdown', function (e) { var a = e.target.closest('.cf-pill-item'); if (a) a.classList.add('is-pressed'); });
+    nav.addEventListener('pointerdown', function (e) { var a = e.target.closest('.cf-pnav-item'); if (a) a.classList.add('is-pressed'); });
     ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (t) { nav.addEventListener(t, release); });
     // Tapping another tab moves the active state right away (the capsule eases over) before the page changes.
     nav.addEventListener('click', function (e) {
-      var a = e.target.closest('.cf-pill-item');
+      var a = e.target.closest('.cf-pnav-item');
       if (a && !e.defaultPrevented && !e.metaKey && !e.ctrlKey) setActive(nav, a.getAttribute('data-pill-key'));
     });
 
@@ -156,19 +192,21 @@
     return nav;
   }
 
+  applyStandaloneMode();
+
   function mount(preset, activeKey, container) {
     if (document.getElementById('cfBottomNav')) return document.getElementById('cfBottomNav');
     var nav = create(preset, activeKey);
     (container || document.body).appendChild(nav);
     document.documentElement.classList.add('cf-has-pill-nav');
-    if (!document.querySelector('.cf-pill-spacer')) {
+    if (!document.querySelector('.cf-pnav-spacer')) {
       var sp = document.createElement('div');
-      sp.className = 'cf-pill-spacer';
+      sp.className = 'cf-pnav-spacer';
       sp.setAttribute('aria-hidden', 'true');
       document.body.appendChild(sp);
     }
     return nav;
   }
 
-  global.CarfoxPillNav = { create: create, mount: mount, setActive: setActive, PRESETS: PRESETS };
+  global.CarfoxPillNav = { create: create, mount: mount, setActive: setActive, PRESETS: PRESETS, applyStandaloneMode: applyStandaloneMode };
 })(typeof window !== 'undefined' ? window : this);

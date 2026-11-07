@@ -32,7 +32,20 @@
   }
 
   // ---- install hint ----
-  var isStandalone = (global.matchMedia && global.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+  // Installed app (display-mode: standalone, or iOS navigator.standalone): mark <html> with .cf-standalone and
+  // add viewport-fit=cover so iOS reports the real safe-area insets (without it env(safe-area-inset-bottom) is 0
+  // and bottom bars sit on the home indicator). Regular browser tabs are left untouched.
+  function applyStandaloneMode() {
+    var root = document.documentElement;
+    if (root.classList.contains('cf-standalone')) return true;
+    var standalone = (global.matchMedia && global.matchMedia('(display-mode: standalone)').matches) || global.navigator.standalone === true;
+    if (!standalone) return false;
+    root.classList.add('cf-standalone');
+    var vp = document.querySelector('meta[name="viewport"]');
+    if (vp && !/viewport-fit=cover/.test(vp.content)) vp.content = vp.content + ', viewport-fit=cover';
+    return true;
+  }
+  var isStandalone = applyStandaloneMode();
   var ua = navigator.userAgent || '';
   var isIOS = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   var isIOSSafari = isIOS && /Safari/i.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/i.test(ua);
