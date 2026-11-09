@@ -9,6 +9,10 @@
  *     being dismissed. Nothing here blocks normal browsing.
  *
  *   CarfoxPWA.showInstallHint() / CarfoxPWA.showIOSTip() exist for manual testing.
+ *
+ * Updates: the worker is re-checked whenever the page/app returns to the foreground (and hourly); when a new
+ * deploy's worker takes over an open page, a "New version available · Refresh" pill appears (never an
+ * automatic reload). CarfoxPWAUpdate.showUpdateBar() shows it for testing.
  */
 (function (global) {
   'use strict';
@@ -22,14 +26,49 @@
   function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (_) {} }
 
   // ---- service worker ----
+  // Pages are always fetched from the network (sw.js), but an open tab — or the installed app, which iOS/Android
+  // resume instead of reloading — keeps running the HTML it loaded. So: look for a new deploy whenever the app
+  // comes back to the foreground (plus hourly), and once a new worker has taken over, offer a one-tap refresh.
+  // Never auto-reload: that could throw away a half-filled form.
+  function showUpdateBar() {
+    if (!document.body || document.getElementById('cfUpdateBar')) return;
+    var bar = document.createElement('div');
+    bar.id = 'cfUpdateBar';
+    bar.setAttribute('role', 'status');
+    bar.style.cssText = 'position:fixed;left:0;right:0;margin:0 auto;width:max-content;max-width:min(calc(100vw - 24px),440px);' +
+      'bottom:calc(var(--cf-nav-space,12px) + 12px);z-index:1190;white-space:nowrap;' +
+      'display:flex;align-items:center;gap:10px;padding:8px 8px 8px 16px;border-radius:9999px;' +
+      'background:rgba(15,23,42,.94);color:#fff;font:600 14px/1.3 Inter,ui-sans-serif,system-ui,sans-serif;' +
+      'box-shadow:0 12px 30px -10px rgba(15,23,42,.45),0 2px 6px rgba(15,23,42,.18)';
+    bar.innerHTML = '<span style="overflow:hidden;text-overflow:ellipsis">New version available</span>' +
+      '<button type="button" data-cf-update style="flex:none;border:0;border-radius:9999px;background:#f97316;color:#fff;font:inherit;padding:6px 14px;cursor:pointer">Refresh</button>' +
+      '<button type="button" data-cf-update-close aria-label="Dismiss" style="flex:none;border:0;background:none;color:rgba(255,255,255,.7);font:inherit;font-size:18px;line-height:1;padding:4px 6px;cursor:pointer">&times;</button>';
+    bar.addEventListener('click', function (e) {
+      if (e.target.closest('[data-cf-update]')) global.location.reload();
+      else if (e.target.closest('[data-cf-update-close]')) bar.remove();
+    });
+    document.body.appendChild(bar);
+  }
+
   if ('serviceWorker' in navigator) {
+    var hadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      // First install (page had no worker yet) is not an update; a later takeover means a new deploy is live.
+      if (!hadController) { hadController = true; return; }
+      showUpdateBar();
+    });
     global.addEventListener('load', function () {
       navigator.serviceWorker.register('/sw.js').then(function (reg) {
-        // Pick up new deploys while the tab stays open; the new worker takes over on the next navigation.
-        setInterval(function () { reg.update().catch(function () {}); }, 60 * 60 * 1000);
+        function check() { reg.update().catch(function () {}); }
+        setInterval(check, 60 * 60 * 1000);
+        document.addEventListener('visibilitychange', function () {
+          if (document.visibilityState === 'visible') check();
+        });
+        global.addEventListener('pageshow', function (e) { if (e.persisted) check(); });
       }).catch(function () {});
     });
   }
+  global.CarfoxPWAUpdate = { showUpdateBar: showUpdateBar };
 
   // ---- install hint ----
   // Installed app (display-mode: standalone, or iOS navigator.standalone): mark <html> with .cf-standalone and
