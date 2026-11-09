@@ -75,6 +75,10 @@
   "card.egp": "جنيه",
   "card.km": "كم",
   "card.whatsapp_text": "السلام عليكم، مهتم بسيارة {title} المعروضة على كارفوكس: {url}",
+  "card.call": "اتصل الآن",
+  "card.save": "حفظ السيارة",
+  "card.unsave": "إزالة من المحفوظات",
+  "card.save_error": "تعذر تحديث السيارات المحفوظة. حاول مرة أخرى.",
 
   "account.dashboard": "لوحة التحكم",
   "account.inventory": "سياراتي",

@@ -74,7 +74,11 @@
   "card.price_on_request": "Price on request",
   "card.egp": "EGP",
   "card.km": "km",
-  "card.whatsapp_text": "Hi, I'm interested in the {title} listed on CarFox: {url}",
+  "card.whatsapp_text": "Hi, I'm interested in your {title} listed on CarFox: {url}",
+  "card.call": "Call Now",
+  "card.save": "Save car",
+  "card.unsave": "Remove from saved",
+  "card.save_error": "Could not update saved cars. Please try again.",
 
   "account.dashboard": "Dashboard",
   "account.inventory": "My Inventory",

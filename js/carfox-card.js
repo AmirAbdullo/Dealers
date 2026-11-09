@@ -8,8 +8,9 @@
  *     opts.featureTrust  true to feature the Trust Score badge large (Top Trust Scores row)
  *     opts.sold          true for a sold listing (muted photo + price, "Sold" tag)
  *     opts.compact       home page card (every home row): fixed 280/300px, photo on top with badges + photo
- *                        count, then title, price and one muted "mileage · governorate" line; the whole
- *                        card is a link (no specs, dealer row or contact buttons)
+ *                        count, then title + save heart, one muted spec line (km · fuel · gearbox · colour),
+ *                        large price, pin + governorate, and light "Call Now" / "WhatsApp" lead buttons; a
+ *                        stretched link opens the listing (heart + buttons stop propagation)
  *   Cars with condition 'new' get a small green "New" tag with the photo badges (used cars get none).
  *     opts.featured      promoted listing: amber "Featured" tag on the photo; clicks mark the car as reached
  *                        through a promotion (CarfoxTrack.markPromoted) for engagement attribution
@@ -93,7 +94,7 @@
     var i = i18n();
     var text = i && i.has && i.has('card.whatsapp_text')
       ? i.t('card.whatsapp_text', { title: title, url: url })
-      : "Hi, I'm interested in the " + title + ' listed on CarFox: ' + url;
+      : "Hi, I'm interested in your " + title + ' listed on CarFox: ' + url;
     return 'https://wa.me/' + digits + '?text=' + encodeURIComponent(text);
   }
 
@@ -220,17 +221,85 @@
     return el;
   }
 
-  // Home page compact card: photo on top (Featured / New / value / trust badges + photo count), then title, price
-  // and one muted "mileage · governorate" line. The card itself is the link to the listing.
+  // tel: link to the dealer's phone: +/00 numbers kept international, 0-prefixed Egyptian numbers get +20, a
+  // 10-digit 1… number is an Egyptian mobile missing its 0, 11+ digits are international without the +.
+  function telHref(car) {
+    var raw = car && car.dealer && car.dealer.phone ? String(car.dealer.phone).trim() : '';
+    var digits = raw.replace(/[^0-9]/g, '');
+    if (!digits) return '';
+    if (raw.charAt(0) === '+') return 'tel:+' + digits;
+    if (digits.indexOf('00') === 0) return 'tel:+' + digits.slice(2);
+    if (digits.indexOf('0') === 0) return 'tel:+20' + digits.slice(1);
+    if (digits.length === 10 && digits.charAt(0) === '1') return 'tel:+20' + digits;
+    if (digits.length >= 11) return 'tel:+' + digits;
+    return 'tel:' + digits; // short local number (e.g. landline without area code): dial as entered
+  }
+
+  // ---- Save hearts on home cards: one /api/saved-cars fetch per page for a signed-in buyer; everyone else is
+  // sent to the buyer sign-in when they tap a heart.
+  var saved = { ids: null, loading: null };
+  function buyerToken() {
+    try {
+      var t = localStorage.getItem('carfox_token');
+      var u = JSON.parse(localStorage.getItem('carfox_user') || 'null');
+      return t && u && u.role === 'buyer' ? t : null;
+    } catch (_) { return null; }
+  }
+  var HEART_ON = '<svg class="h-5 w-5" viewBox="0 0 24 24" fill="#ef4444" aria-hidden="true"><path d="M12 21s-6.7-4.9-9.3-7.6C.7 11.4.5 8.5 2.2 6.8 3.3 5.7 4.8 5.3 6.2 5.6c.9.2 1.8.8 2.5 1.5.7-.7 1.6-1.3 2.5-1.5 1.4-.3 2.9.1 4 1.2 1.7 1.7 1.5 4.6-.5 6.6C18.7 16.1 12 21 12 21z"/></svg>';
+  var HEART_OFF = '<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>';
+  function setHeart(btn, on) {
+    btn.innerHTML = on ? HEART_ON : HEART_OFF;
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btn.setAttribute('aria-label', on ? tx('card.unsave', 'Remove from saved') : tx('card.save', 'Save car'));
+  }
+  function syncHearts() {
+    document.querySelectorAll('[data-cf-save]').forEach(function (b) {
+      setHeart(b, !!(saved.ids && saved.ids.has(Number(b.getAttribute('data-cf-save')))));
+    });
+  }
+  function loadSaved() {
+    if (saved.loading) return saved.loading;
+    var token = buyerToken();
+    if (!token) { saved.ids = new Set(); saved.loading = Promise.resolve(saved.ids); return saved.loading; }
+    saved.loading = fetch('/api/saved-cars', { headers: { Authorization: 'Bearer ' + token } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) { saved.ids = new Set(((d && d.saved) || []).map(Number)); syncHearts(); return saved.ids; })
+      .catch(function () { saved.ids = new Set(); return saved.ids; });
+    return saved.loading;
+  }
+  function toggleSaved(carId, btn) {
+    var token = buyerToken();
+    if (!token) {
+      global.location.href = '/buyer/login.html?returnTo=' + encodeURIComponent(global.location.pathname + global.location.search);
+      return;
+    }
+    if (!saved.ids) saved.ids = new Set();
+    var was = saved.ids.has(carId);
+    if (was) saved.ids.delete(carId); else saved.ids.add(carId);
+    syncHearts();
+    if (global.CarfoxUI) CarfoxUI.heartPop(btn, !was);
+    fetch('/api/saved-cars/' + carId, { method: was ? 'DELETE' : 'POST', headers: { Authorization: 'Bearer ' + token } })
+      .then(function (r) { if (!r.ok) throw new Error('save failed'); })
+      .catch(function () {
+        if (was) saved.ids.add(carId); else saved.ids.delete(carId);
+        syncHearts();
+        if (global.CarfoxUI) CarfoxUI.toast(tx('card.save_error', 'Could not update saved cars. Please try again.'), 'error');
+      });
+  }
+
+  // Home page card (every home row): photo on top (Featured / New / value / trust badges + photo count); title
+  // with the save heart; one muted "mileage · fuel · transmission · colour" line; large navy price; pin +
+  // governorate; then light "Call Now" / "WhatsApp" lead buttons. A stretched link makes the whole card open the
+  // listing; the heart and lead buttons sit above it and stop propagation.
   function renderCompact(car, opts) {
     var featured = !!opts.featured;
     var featureTrust = !!opts.featureTrust;
     var title = [car.year, car.make, car.model].filter(Boolean).join(' ');
     var trust = Number(car.trust_score) || 0;
     var photoCount = Number(car.photo_count) || 0;
+    var href = '/cars/' + encodeURIComponent(car.id);
 
-    var el = document.createElement('a');
-    el.href = '/cars/' + encodeURIComponent(car.id);
+    var el = document.createElement('article');
     el.className = 'cf-card flex flex-col snap-start shrink-0 w-[280px] sm:w-[300px]' + (opts.className ? ' ' + opts.className : '');
     el.setAttribute('data-car-id', String(car.id));
 
@@ -241,9 +310,30 @@
     if (global.CarfoxTrust && (featureTrust || trust >= 40)) {
       badges += CarfoxTrust.badge(trust, { size: featureTrust ? 'lg' : 'md', className: 'shadow-md' });
     }
-    var line = [formatMileage(car.mileage), location(car)].filter(Boolean).join(' · ');
+
+    var km = car.mileage != null && Number(car.mileage) > 0
+      ? Number(car.mileage).toLocaleString('en-US') + ' ' + (isArabic() ? tx('card.km', 'km') : 'KM')
+      : '';
+    var specs = [km, car.fuel_type && trv('fuel', car.fuel_type), car.transmission && trv('transmission', car.transmission),
+      car.exterior_color && trv('color', car.exterior_color)].filter(Boolean).join(' · ');
+    var loc = location(car);
+
+    var tel = telHref(car);
+    var wa = whatsappHref(car);
+    var leadBtn = 'relative z-[2] inline-flex items-center justify-center gap-1.5 h-11 min-w-0 rounded-xl border text-[13px] font-semibold transition-colors ';
+    var leads = '';
+    if (tel) {
+      leads += '<a href="' + esc(tel) + '" data-lead="call" class="' + leadBtn + 'border-slate-200 bg-white text-[#0f1f3d] hover:bg-slate-50 active:bg-slate-100">' +
+        '<svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg>' +
+        '<span class="truncate">' + esc(tx('card.call', 'Call Now')) + '</span></a>';
+    }
+    if (wa) {
+      leads += '<a href="' + esc(wa) + '" target="_blank" rel="noopener" data-lead="whatsapp" class="' + leadBtn + 'border-emerald-200 bg-emerald-50/60 text-emerald-700 hover:bg-emerald-50 active:bg-emerald-100">' +
+        '<span class="text-emerald-600">' + ICONS.whatsapp + '</span><span class="truncate">' + esc(tx('card.whatsapp', 'WhatsApp')) + '</span></a>';
+    }
 
     el.innerHTML =
+      '<a href="' + href + '" class="absolute inset-0 z-[1] rounded-3xl" aria-label="' + esc((featured ? tx('card.featured', 'Featured') + ': ' : '') + title) + '"></a>' +
       '<div class="relative aspect-[4/3] bg-slate-100 overflow-hidden">' +
         (car.primary_photo_url
           ? '<img src="' + esc(car.primary_photo_url) + '" alt="" class="absolute inset-0 w-full h-full object-cover" loading="lazy" />'
@@ -253,11 +343,33 @@
           ? '<span class="absolute bottom-2 end-2 inline-flex items-center gap-1 rounded-md bg-black/55 text-white text-[11px] font-medium px-1.5 py-0.5">' + ICONS.camera + photoCount + '</span>'
           : '') +
       '</div>' +
-      '<div class="p-3">' +
-        '<p class="font-display font-bold text-[15px] text-slate-900 leading-snug truncate">' + esc(title) + '</p>' +
-        priceHtml(car.price, { className: 'text-lg mt-1' }) +
-        (line ? '<p class="mt-1 text-xs text-slate-500 truncate">' + esc(line) + '</p>' : '') +
+      '<div class="flex flex-col flex-1 px-3.5 pt-3 pb-3.5">' +
+        '<div class="flex items-start gap-2">' +
+          '<p class="flex-1 min-w-0 font-display font-bold text-base text-slate-900 leading-snug truncate">' + esc(title) + '</p>' +
+          '<button type="button" data-cf-save="' + esc(car.id) + '" class="relative z-[2] -mt-1.5 -me-1.5 shrink-0 h-9 w-9 inline-flex items-center justify-center rounded-full text-slate-400 hover:text-rose-500 hover:bg-rose-50"></button>' +
+        '</div>' +
+        (specs ? '<p class="mt-0.5 text-xs text-slate-500 truncate">' + esc(specs) + '</p>' : '') +
+        priceHtml(car.price, { className: 'text-[22px] mt-2' }) +
+        (loc ? '<p class="mt-1.5 inline-flex items-center gap-1 text-xs text-slate-500 min-w-0"><span class="text-slate-400">' + ICONS.pin + '</span><span class="truncate">' + esc(loc) + '</span></p>' : '') +
+        (leads ? '<div class="mt-auto pt-3 grid ' + (tel && wa ? 'grid-cols-2' : 'grid-cols-1') + ' gap-2">' + leads + '</div>' : '') +
       '</div>';
+
+    var heart = el.querySelector('[data-cf-save]');
+    setHeart(heart, !!(saved.ids && saved.ids.has(Number(car.id))));
+    heart.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleSaved(Number(car.id), heart);
+    });
+    loadSaved();
+
+    el.querySelectorAll('[data-lead]').forEach(function (a) {
+      a.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (featured && global.CarfoxTrack && CarfoxTrack.markPromoted) CarfoxTrack.markPromoted(car.id);
+        track(a.getAttribute('data-lead'), car.id);
+      });
+    });
 
     // Promoted card: later engagements on this car (detail page) are attributed to the promotion.
     if (featured && global.CarfoxTrack && CarfoxTrack.markPromoted) {
@@ -289,6 +401,7 @@
     formatPrice: formatPrice,
     formatMileage: formatMileage,
     whatsappHref: whatsappHref,
+    telHref: telHref,
     featuredTagHtml: featuredTagHtml,
     newTagHtml: newTagHtml,
     escape: esc

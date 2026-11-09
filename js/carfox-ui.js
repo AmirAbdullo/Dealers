@@ -113,11 +113,15 @@
   // ------------------------------------------------------------------ skeleton markup
   function bar(cls) { return '<div class="cf-skel ' + cls + '"></div>'; }
   var SKELETONS = {
-    // Home snap-row card (CarfoxCard compact): 4:3 photo, title, price, meta line.
+    // Home snap-row card (CarfoxCard compact): 4:3 photo, title + heart, spec line, price, location, lead buttons.
     compact: function () {
       return '<div class="cf-skel-card shrink-0 snap-start w-[280px] sm:w-[300px]" aria-hidden="true">' +
         '<div class="cf-skel cf-skel-photo aspect-[4/3]"></div>' +
-        '<div class="p-3 space-y-2">' + bar('h-4 w-3/4') + bar('h-5 w-1/3') + bar('h-3 w-1/2') + '</div></div>';
+        '<div class="px-3.5 pt-3 pb-3.5 space-y-2">' +
+          '<div class="flex justify-between gap-3">' + bar('h-4 w-3/4') + bar('h-6 w-6 rounded-full') + '</div>' +
+          bar('h-3 w-5/6') + bar('h-6 w-2/5') + bar('h-3 w-1/3') +
+          '<div class="grid grid-cols-2 gap-2 pt-1">' + bar('h-11 rounded-xl') + bar('h-11 rounded-xl') + '</div>' +
+        '</div></div>';
     },
     // Browse result (cars.html): photo on top on phones, 40% photo column from md.
     browse: function () {
