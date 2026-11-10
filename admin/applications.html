@@ -13,6 +13,7 @@
         @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold;
       }
     </style>
+    <script src="/js/carfox-admin-auth.js"></script>
     <script src="/js/carfox-ui.js"></script>
     <link rel="stylesheet" href="/css/app.css" />
   </head>
@@ -84,8 +85,8 @@
     </div>
 
     <script>
-      const TOKEN_KEY = 'carfox_token';
-      const USER_KEY = 'carfox_user';
+      const TOKEN_KEY = 'carfox_admin_token'; // admin session (js/carfox-admin-auth.js), never the site's carfox_token
+      const USER_KEY = 'carfox_admin_user';
       let currentStatus = 'pending';
       let rejectTarget = null;
 
@@ -228,15 +229,15 @@
       async function init() {
         const token = localStorage.getItem(TOKEN_KEY);
         if (!token) {
-          window.location.replace('/dealer/login.html');
+          window.location.replace(CarfoxAdminAuth.loginUrl());
           return;
         }
         try {
-          const me = await fetch('/api/auth/me', { headers: { 'Authorization': 'Bearer ' + token } });
+          const me = await fetch('/api/admin/me', { headers: { 'Authorization': 'Bearer ' + token } });
           if (me.status === 401) {
             localStorage.removeItem(TOKEN_KEY);
             localStorage.removeItem(USER_KEY);
-            window.location.replace('/dealer/login.html');
+            window.location.replace(CarfoxAdminAuth.loginUrl());
             return;
           }
           const meData = await me.json();
@@ -248,7 +249,7 @@
           const wanted = new URLSearchParams(location.search).get('status');
           await fetchApps(['pending', 'approved', 'rejected', 'all'].indexOf(wanted) !== -1 ? wanted : 'pending');
         } catch (e) {
-          window.location.replace('/dealer/login.html');
+          window.location.replace(CarfoxAdminAuth.loginUrl());
           return;
         }
       }
@@ -288,9 +289,7 @@
 
       // Sign out
       document.getElementById('signOutBtn').addEventListener('click', () => {
-        localStorage.removeItem(TOKEN_KEY);
-        localStorage.removeItem(USER_KEY);
-        window.location.replace('/');
+        CarfoxAdminAuth.signOut(); // clears the admin session only
       });
 
       init();

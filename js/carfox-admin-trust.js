@@ -10,7 +10,7 @@
 (function (global) {
   'use strict';
 
-  var TOKEN_KEY = 'carfox_token';
+  var TOKEN_KEY = 'carfox_admin_token'; // admin session (js/carfox-admin-auth.js)
   var host = null;
   var current = null;
 

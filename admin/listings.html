@@ -20,6 +20,7 @@
       .promo-opt input:checked + span { background:#fffbeb; border-color:#f59e0b; color:#92400e; }
       .promo-opt input:focus-visible + span { outline:2px solid #3b82f6; outline-offset:1px; }
     </style>
+    <script src="/js/carfox-admin-auth.js"></script>
     <script src="/js/carfox-ui.js"></script>
     <link rel="stylesheet" href="/css/app.css" />
   </head>
@@ -174,8 +175,8 @@
     <script src="/js/carfox-trust.js"></script>
     <script src="/js/carfox-admin-trust.js"></script>
     <script>
-      const TOKEN_KEY = 'carfox_token';
-      const USER_KEY = 'carfox_user';
+      const TOKEN_KEY = 'carfox_admin_token'; // admin session (js/carfox-admin-auth.js), never the site's carfox_token
+      const USER_KEY = 'carfox_admin_user';
       const state = { status: 'all', q: '', governorate: '', page: 1, pages: 1, total: 0 };
       let listings = [];
       let modalTarget = null;
@@ -322,7 +323,7 @@
           if (state.q) params.set('q', state.q);
           if (state.governorate) params.set('governorate', state.governorate);
           const res = await fetch('/api/admin/listings?' + params.toString(), { headers: authHeaders() });
-          if (res.status === 401 || res.status === 403) { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY); window.location.replace('/dealer/login.html'); return; }
+          if (res.status === 401 || res.status === 403) { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY); window.location.replace(CarfoxAdminAuth.loginUrl()); return; }
           if (!res.ok) throw new Error('HTTP ' + res.status);
           const data = await res.json();
           listings = data.listings;
@@ -484,15 +485,15 @@
         if (p.get('governorate')) state.governorate = p.get('governorate');
         if (Number(p.get('page')) > 1) state.page = Number(p.get('page'));
       })();
-      $('signOutBtn').addEventListener('click', () => { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY); window.location.replace('/'); });
+      $('signOutBtn').addEventListener('click', () => { CarfoxAdminAuth.signOut(); /* clears the admin session only */ });
 
       // ---------- init ----------
       (async function init() {
         const token = localStorage.getItem(TOKEN_KEY);
-        if (!token) { window.location.replace('/dealer/login.html'); return; }
+        if (!token) { window.location.replace(CarfoxAdminAuth.loginUrl()); return; }
         try {
-          const me = await fetch('/api/auth/me', { headers: authHeaders() });
-          if (me.status === 401) { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY); window.location.replace('/dealer/login.html'); return; }
+          const me = await fetch('/api/admin/me', { headers: authHeaders() });
+          if (me.status === 401) { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY); window.location.replace(CarfoxAdminAuth.loginUrl()); return; }
           const meData = await me.json();
           if (!meData || !meData.user || meData.user.role !== 'admin') { window.location.replace('/'); return; }
           $('adminEmail').textContent = meData.user.email || 'admin';

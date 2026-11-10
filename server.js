@@ -1252,6 +1252,30 @@ function signToken(userRow) {
   );
 }
 
+// ---- Admin sessions are separate from the site (buyer/dealer) session ----
+// Admin tokens are issued only by POST /api/admin/login, carry the 'carfox-admin' audience and expire after
+// 12h. requireAdmin accepts nothing else, and every site-token check (verifySiteToken / the require* middleware)
+// rejects admin tokens, so the two sessions can live side by side in one browser without crossing over.
+const ADMIN_AUDIENCE = 'carfox-admin';
+const ADMIN_TOKEN_TTL_SECONDS = 12 * 60 * 60;
+function signAdminToken(userRow) {
+  return jwt.sign(
+    { sub: userRow.id, email: userRow.email, scope: 'admin' },
+    JWT_SECRET,
+    { expiresIn: ADMIN_TOKEN_TTL_SECONDS, audience: ADMIN_AUDIENCE }
+  );
+}
+function isAdminTokenPayload(decoded) {
+  const aud = decoded && decoded.aud;
+  return aud === ADMIN_AUDIENCE || (Array.isArray(aud) && aud.indexOf(ADMIN_AUDIENCE) !== -1);
+}
+// Site (buyer/dealer) token: valid signature and NOT an admin token. Throws otherwise.
+function verifySiteToken(token) {
+  const decoded = jwt.verify(token, JWT_SECRET);
+  if (isAdminTokenPayload(decoded)) throw new Error('Admin tokens are not valid on site routes');
+  return decoded;
+}
+
 async function sendVerificationEmail(user) {
   const code = Math.floor(100000 + Math.random() * 900000).toString();
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
@@ -1597,7 +1621,7 @@ function authMiddleware(req, res, next) {
     return res.status(401).json({ error: 'Missing token' });
   }
   try {
-    req.auth = jwt.verify(parts[1], JWT_SECRET);
+    req.auth = verifySiteToken(parts[1]);
     return next();
   } catch (_) {
     return res.status(401).json({ error: 'Invalid token' });
@@ -1659,6 +1683,11 @@ app.post('/api/login', function (req, res) {
     return res.status(401).json({ error: 'Invalid email or password.' });
   }
 
+  // Admins have their own sign-in and session (/admin/login.html); the site login never issues them a token.
+  if (row.role === 'admin') {
+    return res.status(403).json({ error: 'Admin accounts sign in at /admin/login.html.', admin_login: '/admin/login.html' });
+  }
+
   if (!row.email_verified) {
     return res.status(403).json({ error: 'Please verify your email before logging in. Enter the 6-digit code we emailed you.' });
   }
@@ -1685,6 +1714,56 @@ app.post('/api/login', function (req, res) {
       role: row.role
     }
   });
+});
+
+// ---- Admin sign-in (separate session; see signAdminToken) ----
+// Failed attempts are limited per email (8) and per client IP (20) in a sliding 15-minute window.
+const ADMIN_LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const adminLoginFails = new Map();
+function adminLoginFailCount(key) {
+  const now = Date.now();
+  const recent = (adminLoginFails.get(key) || []).filter(function (t) { return now - t < ADMIN_LOGIN_WINDOW_MS; });
+  if (recent.length) adminLoginFails.set(key, recent); else adminLoginFails.delete(key);
+  return recent.length;
+}
+function noteAdminLoginFail(key) {
+  const list = adminLoginFails.get(key) || [];
+  list.push(Date.now());
+  adminLoginFails.set(key, list);
+}
+
+app.post('/api/admin/login', function (req, res) {
+  const body = req.body || {};
+  const email = normalizeEmail(body.email);
+  const password = body.password;
+  if (!email || password == null || password === '') {
+    return res.status(400).json({ error: 'Please enter email and password.' });
+  }
+  const emailKey = 'email:' + email;
+  const ipKey = 'ip:' + (req.ip || 'unknown');
+  if (adminLoginFailCount(emailKey) >= 8 || adminLoginFailCount(ipKey) >= 20) {
+    return res.status(429).json({ error: 'Too many sign-in attempts. Try again in 15 minutes.' });
+  }
+  const row = db.prepare('SELECT id, email, full_name, password_hash, role FROM users WHERE email = ?').get(email);
+  if (!row || !row.password_hash || !bcrypt.compareSync(String(password), row.password_hash)) {
+    noteAdminLoginFail(emailKey);
+    noteAdminLoginFail(ipKey);
+    return res.status(401).json({ error: 'Invalid email or password.' });
+  }
+  if (row.role !== 'admin') {
+    noteAdminLoginFail(ipKey);
+    return res.status(403).json({ error: 'This sign-in is for CarFox admins only. Dealers and buyers sign in on the main site.' });
+  }
+  adminLoginFails.delete(emailKey);
+  return res.json({
+    token: signAdminToken(row),
+    expires_in: ADMIN_TOKEN_TTL_SECONDS,
+    user: { id: row.id, email: row.email, full_name: row.full_name, role: 'admin' }
+  });
+});
+
+app.get('/api/admin/me', requireAdmin, function (req, res) {
+  return res.json({ user: { id: req.user.id, email: req.user.email, full_name: req.user.full_name, role: req.user.role } });
 });
 
 app.post('/api/auth/buyer-signup', function (req, res) {
@@ -2580,7 +2659,7 @@ app.get('/api/auth/me', function (req, res) {
   }
   let decoded;
   try {
-    decoded = jwt.verify(parts[1], JWT_SECRET);
+    decoded = verifySiteToken(parts[1]);
   } catch (_) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
@@ -2588,6 +2667,10 @@ app.get('/api/auth/me', function (req, res) {
     .prepare('SELECT id, email, full_name, role, phone, created_at, avatar_url, suspended, suspension_reason, suspended_at FROM users WHERE id = ?')
     .get(decoded.sub);
   if (!user) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  // Admins have no site session (they use /api/admin/me); a leftover admin site token from before the split is dead.
+  if (user.role === 'admin') {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   if (user.role === 'dealer') {
@@ -2651,7 +2734,7 @@ app.patch('/api/dealer/profile', function (req, res) {
   }
   let decoded;
   try {
-    decoded = jwt.verify(parts[1], JWT_SECRET);
+    decoded = verifySiteToken(parts[1]);
   } catch (_) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
@@ -2743,7 +2826,7 @@ app.post('/api/user/avatar', function (req, res, next) {
   }
   let decoded;
   try {
-    decoded = jwt.verify(parts[1], JWT_SECRET);
+    decoded = verifySiteToken(parts[1]);
   } catch (_) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
@@ -5491,13 +5574,14 @@ function adminPausedError(vehicle) {
   };
 }
 
-// True when the request carries a valid admin token (used to let admins preview hidden listings).
+// True when the request carries a valid admin session (used to let admins preview hidden listings on the public
+// pages). The admin token travels in its own X-Carfox-Admin header so the page's Authorization header can keep
+// carrying the visitor's buyer/dealer session.
 function requestIsAdmin(req) {
-  const header = req.headers.authorization || '';
-  const parts = header.split(' ');
-  if (parts[0] !== 'Bearer' || !parts[1]) return false;
+  const token = String(req.headers['x-carfox-admin'] || '').trim();
+  if (!token) return false;
   try {
-    const decoded = jwt.verify(parts[1], JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET, { audience: ADMIN_AUDIENCE });
     const user = db.prepare('SELECT role FROM users WHERE id = ?').get(decoded.sub);
     return !!user && user.role === 'admin';
   } catch (_) {
@@ -5830,7 +5914,7 @@ wss.on('connection', function (ws, req) {
   let viewer = null;
   let userId = null;
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = verifySiteToken(token);
     userId = decoded.sub;
     const dealerRow = db.prepare("SELECT d.id FROM dealerships d WHERE d.user_id = ? AND d.status = 'approved'").get(userId);
     if (dealerRow) {

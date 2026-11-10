@@ -126,6 +126,7 @@
     document.addEventListener('keydown', onKey);
     var headers = {};
     try { var tok = localStorage.getItem('carfox_token'); if (tok) headers.Authorization = 'Bearer ' + tok; } catch (_) {}
+    try { var adm = localStorage.getItem('carfox_admin_token'); if (adm) headers['X-Carfox-Admin'] = adm; } catch (_) {}
     fetch('/api/cars/' + encodeURIComponent(vehicleId) + '/value', { headers: headers })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (data) {

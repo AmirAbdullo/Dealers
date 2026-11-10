@@ -13,6 +13,7 @@ module.exports = function requireMessagingAuthFactory(db, jwtSecret) {
     let decoded;
     try {
       decoded = jwt.verify(parts[1], secret);
+      if (decoded && (decoded.aud === 'carfox-admin' || (Array.isArray(decoded.aud) && decoded.aud.indexOf('carfox-admin') !== -1))) throw new Error('admin token on a site route');
     } catch (_) {
       return res.status(401).json({ error: 'Unauthorized' });
     }

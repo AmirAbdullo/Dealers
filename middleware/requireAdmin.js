@@ -16,9 +16,11 @@ module.exports = function requireAdminFactory(db, jwtSecret) {
 
     let decoded;
     try {
-      decoded = jwt.verify(parts[1], secret);
+      // Only admin-session tokens (POST /api/admin/login: 'carfox-admin' audience, 12h) are accepted here;
+      // buyer/dealer site tokens fail the audience check.
+      decoded = jwt.verify(parts[1], secret, { audience: 'carfox-admin' });
     } catch (_) {
-      return res.status(401).json({ error: 'Invalid token' });
+      return res.status(401).json({ error: 'Admin session expired or invalid. Please sign in again.' });
     }
 
     const user = db

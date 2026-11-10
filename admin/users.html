@@ -16,6 +16,7 @@
       .tab-btn .n { margin-left:4px; font-weight:500; opacity:.75; }
       tr.is-suspended td:first-child { box-shadow: inset 4px 0 0 #dc2626; }
     </style>
+    <script src="/js/carfox-admin-auth.js"></script>
     <script src="/js/carfox-ui.js"></script>
     <link rel="stylesheet" href="/css/app.css" />
   </head>
@@ -182,8 +183,8 @@
     </div>
 
     <script>
-      const TOKEN_KEY = 'carfox_token';
-      const USER_KEY = 'carfox_user';
+      const TOKEN_KEY = 'carfox_admin_token'; // admin session (js/carfox-admin-auth.js), never the site's carfox_token
+      const USER_KEY = 'carfox_admin_user';
       const state = { role: 'all', q: '', page: 1, pages: 1, total: 0 };
       let users = [];
       let invitations = [];
@@ -338,7 +339,7 @@
           const params = new URLSearchParams({ role: state.role, page: String(state.page), limit: '25' });
           if (state.q) params.set('q', state.q);
           const res = await fetch('/api/admin/users?' + params.toString(), { headers: authHeaders() });
-          if (res.status === 401 || res.status === 403) { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY); window.location.replace('/dealer/login.html'); return; }
+          if (res.status === 401 || res.status === 403) { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY); window.location.replace(CarfoxAdminAuth.loginUrl()); return; }
           if (!res.ok) throw new Error('HTTP ' + res.status);
           const data = await res.json();
           users = data.users;
@@ -491,15 +492,15 @@
         if (p.get('q')) { state.q = p.get('q'); $('searchInput').value = state.q; }
         if (Number(p.get('page')) > 1) state.page = Number(p.get('page'));
       })();
-      $('signOutBtn').addEventListener('click', () => { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY); window.location.replace('/'); });
+      $('signOutBtn').addEventListener('click', () => { CarfoxAdminAuth.signOut(); /* clears the admin session only */ });
 
       // ---------- init ----------
       (async function init() {
         const token = localStorage.getItem(TOKEN_KEY);
-        if (!token) { window.location.replace('/dealer/login.html'); return; }
+        if (!token) { window.location.replace(CarfoxAdminAuth.loginUrl()); return; }
         try {
-          const me = await fetch('/api/auth/me', { headers: authHeaders() });
-          if (me.status === 401) { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY); window.location.replace('/dealer/login.html'); return; }
+          const me = await fetch('/api/admin/me', { headers: authHeaders() });
+          if (me.status === 401) { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY); window.location.replace(CarfoxAdminAuth.loginUrl()); return; }
           const meData = await me.json();
           if (!meData || !meData.user || meData.user.role !== 'admin') { window.location.replace('/'); return; }
           $('adminEmail').textContent = meData.user.email || 'admin';

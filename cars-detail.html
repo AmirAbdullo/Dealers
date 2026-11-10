@@ -837,6 +837,8 @@
 
         var detailHeaders = {};
         try { if (localStorage.getItem('carfox_token')) detailHeaders.Authorization = 'Bearer ' + localStorage.getItem('carfox_token'); } catch (_) {}
+        // Admin preview of hidden listings rides on its own header; the admin session never acts as the visitor.
+        try { if (localStorage.getItem('carfox_admin_token')) detailHeaders['X-Carfox-Admin'] = localStorage.getItem('carfox_admin_token'); } catch (_) {}
         fetch('/api/cars/' + vehicleId, { headers: detailHeaders })
           .then(function (res) {
             if (res.status === 404) return null;

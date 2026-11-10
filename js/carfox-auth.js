@@ -45,6 +45,13 @@
     } catch (_) {}
   }
 
+  // Admin sessions live under carfox_admin_token (js/carfox-admin-auth.js). A site session for an admin account
+  // (left over from before the split) is no longer valid anywhere, so drop it instead of showing an admin header.
+  (function dropLegacyAdminSiteSession() {
+    const u = getStoredUser();
+    if (u && String(u.role || '').toLowerCase() === 'admin') clearAuth();
+  })();
+
   function normalizeRole(user) {
     if (!user || user.role == null) return '';
     return String(user.role).trim().toLowerCase();
