@@ -24,11 +24,16 @@ module.exports = function requireAdminFactory(db, jwtSecret) {
     }
 
     const user = db
-      .prepare('SELECT id, email, full_name, role FROM users WHERE id = ?')
+      .prepare('SELECT id, email, full_name, role, password_changed_at FROM users WHERE id = ?')
       .get(decoded.sub);
     if (!user) {
       return res.status(401).json({ error: 'Invalid token' });
     }
+    // Sessions issued before the last password change are revoked.
+    if (user.password_changed_at && Number(decoded.iat || 0) < Number(user.password_changed_at)) {
+      return res.status(401).json({ error: 'Admin session expired or invalid. Please sign in again.' });
+    }
+    delete user.password_changed_at;
     if (user.role !== 'admin') {
       return res.status(403).json({ error: 'Admin access required' });
     }

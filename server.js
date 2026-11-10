@@ -1181,6 +1181,9 @@ addColumnIfMissing('conversations', 'buyer_notified_at', 'TEXT');
 addColumnIfMissing('users', 'notify_messages', 'INTEGER NOT NULL DEFAULT 1');
 addColumnIfMissing('users', 'notify_inquiries', 'INTEGER NOT NULL DEFAULT 1');
 addColumnIfMissing('users', 'notify_saved_cars', 'INTEGER NOT NULL DEFAULT 1');
+// Epoch seconds of the last password change. Admin tokens issued before it are rejected (requireAdmin /
+// requestIsAdmin), so changing the admin password signs out every other admin session.
+addColumnIfMissing('users', 'password_changed_at', 'INTEGER');
 
 // Buyer saved cars. Created here (not only in db/migrate-add-saved-cars.js) so a fresh
 // or production database gets the table without a manual migration step.
@@ -1200,20 +1203,43 @@ db.exec(`
 // These accounts are created automatically on every startup so you never need
 // to re-register after a redeploy. Passwords are fixed and memorable.
 //
-//  Admin  : admin@carfox.com    / Admin1234!
+//  Admin  : admin@carfox.com    / Admin1234!    (local dev only — see below)
 //  Dealer : dealer@carfox.com   / Dealer1234!   (approved, ready to list cars)
 //  Buyer  : buyer@carfox.com    / Buyer1234!
+//
+// Production (NODE_ENV=production or RENDER set) never seeds a known admin password: the admin is created
+// only when ADMIN_SEED_PASSWORD is set (and passes the password rules), otherwise admin seeding is skipped.
+// The seed only runs when the account is missing, so it never overwrites an existing admin's password.
 // ─────────────────────────────────────────────────────────────────────────────
+const IS_PRODUCTION = process.env.NODE_ENV === 'production' || !!process.env.RENDER;
+if (IS_PRODUCTION && !process.env.JWT_SECRET) {
+  console.error('WARNING: JWT_SECRET is not set; tokens are signed with the public dev secret. Set JWT_SECRET now.');
+}
 (function seedTestAccounts() {
   const now = new Date().toISOString();
 
   // Admin
   const adminEmail = 'admin@carfox.com';
   if (!db.prepare('SELECT id FROM users WHERE email = ?').get(adminEmail)) {
-    db.prepare(
-      "INSERT INTO users (email, password_hash, full_name, role, email_verified, auth_provider, created_at) VALUES (?, ?, ?, 'admin', 1, 'email', ?)"
-    ).run(adminEmail, bcrypt.hashSync('Admin1234!', 10), 'CarFox Admin', now);
-    console.log('Seeded admin account:', adminEmail);
+    let adminSeedPassword = null;
+    if (!IS_PRODUCTION) {
+      adminSeedPassword = 'Admin1234!';
+    } else if (process.env.ADMIN_SEED_PASSWORD) {
+      const pw = String(process.env.ADMIN_SEED_PASSWORD);
+      if (pw === 'Admin1234!' || pw.length < 12 || !/[0-9]/.test(pw) || !/[A-Z]/.test(pw) || !/[a-z]/.test(pw) || !/[^A-Za-z0-9]/.test(pw)) {
+        console.warn('ADMIN_SEED_PASSWORD is too weak (12+ chars with upper, lower, number and symbol; not the dev default); admin seeding skipped.');
+      } else {
+        adminSeedPassword = pw;
+      }
+    } else {
+      console.warn('Admin account ' + adminEmail + ' is missing and ADMIN_SEED_PASSWORD is not set; admin seeding skipped.');
+    }
+    if (adminSeedPassword) {
+      db.prepare(
+        "INSERT INTO users (email, password_hash, full_name, role, email_verified, auth_provider, created_at) VALUES (?, ?, ?, 'admin', 1, 'email', ?)"
+      ).run(adminEmail, bcrypt.hashSync(adminSeedPassword, 10), 'CarFox Admin', now);
+      console.log('Seeded admin account:', adminEmail);
+    }
   }
 
   // Dealer
@@ -1881,10 +1907,43 @@ app.post('/api/me/password', authMiddleware, function (req, res) {
     return res.status(400).json({ error: 'Your current password is not correct.', code: 'WRONG_PASSWORD' });
   }
   if (bcrypt.compareSync(next, row.password_hash)) return res.status(400).json({ error: 'Choose a password different from your current one.' });
-  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(bcrypt.hashSync(next, 10), userId);
+  db.prepare('UPDATE users SET password_hash = ?, password_changed_at = ? WHERE id = ?').run(bcrypt.hashSync(next, 10), Math.floor(now / 1000), userId);
   db.prepare('UPDATE password_reset_tokens SET used = 1 WHERE user_id = ?').run(userId);
   passwordChangeFailures.delete(userId);
   return res.json({ success: true });
+});
+
+// Admin change password (admin session only). Same rules and the same wrong-current-password limiter as
+// /api/me/password. Every other admin session for this account is revoked (password_changed_at); the caller
+// gets a fresh admin token so this tab stays signed in.
+app.patch('/api/admin/password', requireAdmin, function (req, res) {
+  var body = req.body || {};
+  var current = String(body.current_password || '');
+  var next = String(body.new_password || '');
+  var userId = Number(req.user.id);
+  var now = Date.now();
+  var fails = (passwordChangeFailures.get(userId) || []).filter(function (t) { return now - t < PASSWORD_CHANGE_WINDOW_MS; });
+  if (fails.length >= 5) return res.status(429).json({ error: 'Too many wrong attempts. Try again in 15 minutes.' });
+  if (!current) return res.status(400).json({ error: 'Enter your current password.' });
+  var ruleErr = passwordRuleError(next);
+  if (ruleErr) return res.status(400).json({ error: ruleErr });
+  var row = db.prepare('SELECT id, email, full_name, password_hash FROM users WHERE id = ?').get(userId);
+  if (!row) return res.status(404).json({ error: 'User not found.' });
+  if (!row.password_hash || !bcrypt.compareSync(current, row.password_hash)) {
+    fails.push(now);
+    passwordChangeFailures.set(userId, fails);
+    return res.status(400).json({ error: 'Your current password is not correct.', code: 'WRONG_PASSWORD' });
+  }
+  if (bcrypt.compareSync(next, row.password_hash)) return res.status(400).json({ error: 'Choose a password different from your current one.' });
+  db.prepare('UPDATE users SET password_hash = ?, password_changed_at = ? WHERE id = ?').run(bcrypt.hashSync(next, 10), Math.floor(now / 1000), userId);
+  db.prepare('UPDATE password_reset_tokens SET used = 1 WHERE user_id = ?').run(userId);
+  passwordChangeFailures.delete(userId);
+  return res.json({
+    success: true,
+    token: signAdminToken(row),
+    expires_in: ADMIN_TOKEN_TTL_SECONDS,
+    user: { id: row.id, email: row.email, full_name: row.full_name, role: 'admin' }
+  });
 });
 
 // Email preferences for the signed-in user (keys depend on role).
@@ -2149,7 +2208,7 @@ app.post('/api/auth/reset-password', function (req, res) {
   if (!record) return res.status(400).json({ error: 'Invalid or expired code.' });
   if (new Date(record.expires_at) < new Date()) return res.status(400).json({ error: 'Invalid or expired code.' });
 
-  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(bcrypt.hashSync(password, 10), user.id);
+  db.prepare('UPDATE users SET password_hash = ?, password_changed_at = ? WHERE id = ?').run(bcrypt.hashSync(password, 10), Math.floor(Date.now() / 1000), user.id);
   db.prepare('UPDATE password_reset_tokens SET used = 1 WHERE user_id = ?').run(user.id);
   return res.json({ success: true });
 });
@@ -5582,7 +5641,8 @@ function requestIsAdmin(req) {
   if (!token) return false;
   try {
     const decoded = jwt.verify(token, JWT_SECRET, { audience: ADMIN_AUDIENCE });
-    const user = db.prepare('SELECT role FROM users WHERE id = ?').get(decoded.sub);
+    const user = db.prepare('SELECT role, password_changed_at FROM users WHERE id = ?').get(decoded.sub);
+    if (user && user.password_changed_at && Number(decoded.iat || 0) < Number(user.password_changed_at)) return false;
     return !!user && user.role === 'admin';
   } catch (_) {
     return false;
