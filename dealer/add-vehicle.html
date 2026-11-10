@@ -110,11 +110,25 @@
             </select>
           </div>
           <div>
+            <label for="drive_type" class="block text-sm font-medium text-gray-700">Drive type <span class="font-normal text-gray-400">(optional)</span></label>
+            <select id="drive_type" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg bg-white">
+              <option value="">Select drive type...</option>
+              <option value="FWD">FWD — front-wheel drive</option>
+              <option value="RWD">RWD — rear-wheel drive</option>
+              <option value="4WD">4WD — four-wheel drive</option>
+              <option value="AWD">AWD — all-wheel drive</option>
+            </select>
+          </div>
+          <div>
             <label for="fuel_type" class="block text-sm font-medium text-gray-700">Fuel type</label>
             <select id="fuel_type" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg bg-white">
               <option value="">Select fuel type...</option>
               <option>Gasoline</option><option>Diesel</option><option>Hybrid</option><option>Electric</option><option>LPG</option><option>Other</option>
             </select>
+          </div>
+          <div>
+            <label for="engine" class="block text-sm font-medium text-gray-700">Engine <span class="font-normal text-gray-400">(optional)</span></label>
+            <input id="engine" type="text" maxlength="40" placeholder="e.g. 1.6L 4 Cyl" autocomplete="off" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg" />
           </div>
           <div>
             <label for="exterior_color" class="block text-sm font-medium text-gray-700">Exterior color</label>
@@ -218,6 +232,8 @@
       const bodyEl = document.getElementById('body_type');
       const transEl = document.getElementById('transmission');
       const fuelEl = document.getElementById('fuel_type');
+      const driveEl = document.getElementById('drive_type');
+      const engineEl = document.getElementById('engine');
       const extEl = document.getElementById('exterior_color');
       const intEl = document.getElementById('interior_color');
       const milesEl = document.getElementById('mileage');
@@ -311,6 +327,8 @@
           body_type: (bodyEl.value || '').trim() || null,
           transmission: (transEl.value || '').trim() || null,
           fuel_type: (fuelEl.value || '').trim() || null,
+          drive_type: (driveEl.value || '').trim() || null,
+          engine: (engineEl.value || '').trim() || null,
           exterior_color: (extEl.value || '').trim() || null,
           interior_color: (intEl.value || '').trim() || null,
           description: (descEl.value || '').trim() || null
@@ -641,6 +659,8 @@
         setSelectValue(bodyEl, v.body_type);
         setSelectValue(transEl, v.transmission);
         setSelectValue(fuelEl, v.fuel_type);
+        setSelectValue(driveEl, v.drive_type);
+        if (v.engine_spec || v.engine) engineEl.value = v.engine_spec || v.engine;
         if (v.exterior_color) extEl.value = v.exterior_color;
         if (v.interior_color) intEl.value = v.interior_color;
         if (v.description) descEl.value = v.description;
@@ -818,7 +838,7 @@
 
       attachFormattedNumberInput(milesEl);
       attachFormattedNumberInput(priceEl);
-      [trimEl, bodyEl, transEl, fuelEl, extEl, intEl, chassisEl, descEl, modelEl, modelTextEl, yearEl].forEach(attachAutosave);
+      [trimEl, bodyEl, transEl, fuelEl, driveEl, engineEl, extEl, intEl, chassisEl, descEl, modelEl, modelTextEl, yearEl].forEach(attachAutosave);
       conditionEls.forEach(function (r) { r.addEventListener('change', function () { clearTimeout(saveTimer); formDirty = true; flushAutosave(); }); });
 
       function validateForPreview() {

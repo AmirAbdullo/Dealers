@@ -166,9 +166,10 @@
         <a id="dealerAllCarsLink" href="#" class="hidden mt-3 inline-flex items-center gap-1 text-sm font-semibold text-blue-700 hover:underline">View all cars from this dealer →</a>
       </section>
 
-      <section class="px-4 py-4">
-        <h2 class="text-xl font-bold text-gray-900 mb-3">Specifications</h2>
-        <dl id="specGrid" class="grid grid-cols-2 gap-x-4 gap-y-3"></dl>
+      <!-- Vehicle Highlights: 2-column icon grid (label over bold value); rows without data are skipped -->
+      <section id="highlightsSection" class="px-4 py-4 md:px-0">
+        <h2 class="text-xl font-bold text-gray-900 mb-3">Vehicle Highlights</h2>
+        <dl id="specGrid" class="grid grid-cols-2 gap-x-3 gap-y-4 rounded-2xl border border-slate-200 bg-white p-4"></dl>
       </section>
 
       <section id="featuresSection" class="hidden px-4 py-4">
@@ -412,16 +413,34 @@
           section.classList.remove('hidden');
         }
 
-        function addSpec(label, value) {
+        // Vehicle Highlights icons: one muted 20px line set (stroke 1.75, currentColor).
+        const HIGHLIGHT_ICONS = {
+          price: '<path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h15A1.5 1.5 0 0 1 21 7.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 16.5z"/><circle cx="12" cy="12" r="2.5"/><path d="M6.5 9.5v5M17.5 9.5v5"/>',
+          mileage: '<path d="M4.6 17.5A8.5 8.5 0 1 1 19.4 17.5"/><path d="M12 13l3.5-3.5"/><circle cx="12" cy="13.5" r="1.25"/><path d="M7 12.5h1M16 12.5h1M12 7.5v1"/>',
+          body: '<path d="M3 15.5v-2.2c0-.6.4-1.1 1-1.3l2.2-.6 2.1-3.1a2 2 0 0 1 1.6-.8h4.7a2 2 0 0 1 1.6.8l2.4 3.1 1.5.4c.6.2 1 .7 1 1.3v2.4a1 1 0 0 1-1 1h-1"/><path d="M5 16.5H4a1 1 0 0 1-1-1"/><circle cx="7.5" cy="16.5" r="1.75"/><circle cx="16.5" cy="16.5" r="1.75"/><path d="M9.25 16.5h5.5"/>',
+          transmission: '<circle cx="6" cy="6" r="1.75"/><circle cx="12" cy="6" r="1.75"/><circle cx="18" cy="6" r="1.75"/><circle cx="6" cy="18" r="1.75"/><circle cx="12" cy="18" r="1.75"/><path d="M6 7.75v8.5M12 7.75v8.5M18 7.75V12H6"/>',
+          drive: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2"/><path d="M12 3.5V10M5 16l5.3-2.9M19 16l-5.3-2.9"/>',
+          engine: '<path d="M4 10h2V8h3V6h5v2h2.5l1.5 2h2v6h-2l-1.5 2H9l-2-2H6v-2H4z"/><path d="M2 12v2M11 6V4.5M9 4.5h4"/>',
+          fuel: '<path d="M5 20.5V5a1.5 1.5 0 0 1 1.5-1.5h6A1.5 1.5 0 0 1 14 5v15.5M3.5 20.5h12M7.5 8h4"/><path d="M14 10h1.5a1.5 1.5 0 0 1 1.5 1.5v4a1.25 1.25 0 0 0 2.5 0V8.5L17 6"/>',
+          condition: '<path d="M12 3l1.9 3.9 4.3.6-3.1 3 .7 4.3L12 12.8 8.2 14.8l.7-4.3-3.1-3 4.3-.6z"/><path d="M8.5 15.5 7 21l5-2.5 5 2.5-1.5-5.5"/>',
+          exterior: '<path d="M12 3.5s6 6.4 6 10.6a6 6 0 0 1-12 0c0-4.2 6-10.6 6-10.6z"/>',
+          interior: '<path d="M7 20.5v-3h10v3M7.5 17.5 6 9.5a2 2 0 0 1 2-2.3h1.2L10 4.5h4l.8 2.7H16a2 2 0 0 1 2 2.3l-1.5 8"/><path d="M5 13.5h14"/>'
+        };
+        function addSpec(label, value, icon) {
           if (value == null || value === '') return;
-          const dt = document.createElement('dt');
-          dt.className = 'text-sm text-gray-600';
-          dt.textContent = label;
-          const dd = document.createElement('dd');
-          dd.className = 'text-sm font-medium text-gray-900';
-          dd.textContent = value;
-          document.getElementById('specGrid').appendChild(dt);
-          document.getElementById('specGrid').appendChild(dd);
+          const item = document.createElement('div');
+          item.className = 'flex items-start gap-2.5 min-w-0';
+          item.innerHTML =
+            '<span class="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-400 ring-1 ring-slate-100">' +
+              '<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (HIGHLIGHT_ICONS[icon] || '') + '</svg>' +
+            '</span>' +
+            '<span class="min-w-0">' +
+              '<dt class="text-xs text-slate-500 leading-tight"></dt>' +
+              '<dd class="mt-0.5 text-sm font-semibold text-slate-900 leading-snug break-words"></dd>' +
+            '</span>';
+          item.querySelector('dt').textContent = label;
+          item.querySelector('dd').textContent = value;
+          document.getElementById('specGrid').appendChild(item);
         }
 
         function carIconSvg() {
@@ -595,19 +614,19 @@
             phoneEl.classList.add('hidden');
           }
 
+          // Vehicle Highlights (year / make / model / trim are in the title above).
           document.getElementById('specGrid').innerHTML = '';
-          addSpec('Condition', v.condition === 'new' ? 'New' : 'Used');
-          addSpec('Year', v.year ? String(v.year) : null);
-          addSpec('Make', v.make);
-          addSpec('Model', v.model);
-          addSpec('Trim', v.trim);
-          const mileage = formatMileage(v.mileage);
-          if (mileage) addSpec('Mileage', mileage);
-          addSpec('Body Type', v.body_type);
-          addSpec('Transmission', v.transmission);
-          addSpec('Fuel Type', v.fuel_type);
-          addSpec('Exterior Color', v.exterior_color);
-          addSpec('Interior Color', v.interior_color);
+          addSpec('Price', v.price > 0 ? formatPrice(v.price) : null, 'price');
+          addSpec('Mileage', formatMileage(v.mileage), 'mileage');
+          addSpec('Body Style', v.body_type, 'body');
+          addSpec('Transmission', v.transmission, 'transmission');
+          addSpec('Drive Type', v.drive_type, 'drive');
+          addSpec('Engine', v.engine, 'engine');
+          addSpec('Fuel', v.fuel_type, 'fuel');
+          addSpec('Condition', v.condition === 'new' ? 'New' : v.condition === 'used' ? 'Used' : null, 'condition');
+          addSpec('Exterior Color', v.exterior_color, 'exterior');
+          addSpec('Interior Color', v.interior_color, 'interior');
+          document.getElementById('highlightsSection').classList.toggle('hidden', !document.getElementById('specGrid').children.length);
           renderFeatures(v.features || []);
 
           const descSection = document.getElementById('descSection');

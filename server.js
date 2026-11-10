@@ -355,6 +355,11 @@ addColumnIfMissing('vehicles', 'promoted', 'INTEGER NOT NULL DEFAULT 0');
 // Vehicle condition: 'new' | 'used'. Column is car_condition (not "condition", to stay clear of SQL keyword
 // handling on Turso); the API calls it "condition". The default backfills every existing listing to 'used'.
 addColumnIfMissing('vehicles', 'car_condition', "TEXT NOT NULL DEFAULT 'used'");
+// Optional specs shown in the detail page's Vehicle Highlights: drive_type 'FWD' | 'RWD' | '4WD' | 'AWD', and a
+// free-text engine description (column engine_spec, API "engine" — kept off keyword-like names, as with
+// car_condition). Both belong to the physical-inspection trust factor.
+addColumnIfMissing('vehicles', 'drive_type', 'TEXT');
+addColumnIfMissing('vehicles', 'engine_spec', 'TEXT');
 addColumnIfMissing('vehicles', 'promoted_from', 'TEXT');
 addColumnIfMissing('vehicles', 'promoted_until', 'TEXT');
 addColumnIfMissing('vehicles', 'promoted_by', 'INTEGER');
@@ -597,7 +602,7 @@ const TRUST_FACTORS = [
   { key: 'documents', label: 'Documents verified', points: 15, fields: ['vin', 'year', 'make', 'model'] },
   { key: 'mileage', label: 'Mileage verified', points: 15, fields: ['mileage'] },
   { key: 'history', label: 'Accident / history info verified', points: 15, fields: ['description'] },
-  { key: 'inspection', label: 'Physical inspection', points: 15, fields: ['year', 'make', 'model', 'trim', 'body_type', 'transmission', 'fuel_type', 'exterior_color', 'interior_color'] },
+  { key: 'inspection', label: 'Physical inspection', points: 15, fields: ['year', 'make', 'model', 'trim', 'body_type', 'transmission', 'fuel_type', 'exterior_color', 'interior_color', 'drive_type', 'engine_spec'] },
   { key: 'media', label: 'Photos / video verified', points: 10, fields: ['photos'] },
   { key: 'ownership', label: 'Ownership consistency', points: 5, fields: [] },
   { key: 'service', label: 'Service history', points: 5, fields: [] }
@@ -610,7 +615,7 @@ const TRUST_KEY_FIELDS = ['vin', 'year', 'make', 'model', 'mileage', 'price', 'b
 const TRUST_FIELD_LABELS = {
   vin: 'chassis number', year: 'year', make: 'make', model: 'model', trim: 'trim', mileage: 'mileage', price: 'price',
   body_type: 'body type', transmission: 'transmission', fuel_type: 'fuel type', exterior_color: 'exterior colour',
-  interior_color: 'interior colour', description: 'description', photos: 'photos'
+  interior_color: 'interior colour', drive_type: 'drive type', engine_spec: 'engine', description: 'description', photos: 'photos'
 };
 
 function trustTier(score) {
@@ -4479,6 +4484,8 @@ function mapPublicVehicleDetail(row, photoRows) {
     condition: row.car_condition === 'new' ? 'new' : 'used',
     exterior_color: row.exterior_color,
     interior_color: row.interior_color,
+    drive_type: row.drive_type || null,
+    engine: row.engine_spec || null,
     description: row.description,
     vin: row.vin,
     status: row.status,
@@ -4710,6 +4717,7 @@ app.get('/api/cars/:id', function (req, res) {
       `SELECT
         v.id, v.year, v.make, v.model, v.trim, v.mileage, v.price,
         v.body_type, v.transmission, v.fuel_type, v.car_condition, v.exterior_color, v.interior_color,
+        v.drive_type, v.engine_spec,
         v.description, v.vin, v.status, v.published_at, COALESCE(v.views, 0) AS views,
         COALESCE(v.trust_score, 0) AS trust_score,
         v.value_rating, v.value_pct, v.value_median, v.value_comparables,
