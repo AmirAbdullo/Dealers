@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Admin • Reports • CarFox</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      .badge { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid; white-space:nowrap; }
+      .btn-xs { display:inline-flex; align-items:center; justify-content:center; border-radius:8px; padding:6px 10px; font-size:13px; font-weight:600; white-space:nowrap; }
+      .btn-xs:disabled { opacity:.5; cursor:not-allowed; }
+    </style>
+    <script src="/js/carfox-admin-auth.js"></script>
+    <script src="/js/carfox-admin-settings.js" defer></script>
+    <script src="/js/carfox-ui.js"></script>
+    <link rel="stylesheet" href="/css/app.css" />
+  </head>
+  <body class="bg-white text-gray-900 font-sans">
+    <header class="sticky top-0 z-40 bg-white border-b border-gray-200">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <div class="flex items-center gap-3 sm:gap-4 min-w-0">
+          <a href="/" class="text-lg font-extrabold tracking-tight shrink-0">
+            <span class="text-blue-700">Car</span><span class="text-orange-500">Fox</span>
+          </a>
+          <span class="text-sm text-gray-500 hidden sm:inline">Admin</span>
+          <nav class="flex items-center gap-1 text-sm font-semibold min-w-0 overflow-x-auto whitespace-nowrap">
+            <a href="/admin/index.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Dashboard</a>
+            <a href="/admin/applications.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Applications</a>
+            <a href="/admin/dealers.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Dealers</a>
+            <a href="/admin/listings.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Listings</a>
+            <a href="/admin/reports.html" class="rounded-lg px-3 py-1.5 bg-blue-50 text-blue-700" aria-current="page">Reports</a>
+            <a href="/admin/users.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Users</a>
+            <a href="/admin/trust-scores.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Trust</a>
+            <a href="/admin/car-value.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Value</a>
+            <a href="/admin/features.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Features</a>
+            <a href="/admin/catalog.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Catalog</a>
+          </nav>
+        </div>
+        <div class="flex items-center gap-3 text-sm shrink-0 pl-3">
+          <span id="adminEmail" class="text-gray-700 hidden sm:inline">—</span>
+          <button id="signOutBtn" class="text-gray-600 hover:text-gray-900 font-semibold">Sign Out</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-6 pb-16">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">Listing reports</h1>
+        <p id="subtext" class="mt-1 text-sm text-gray-600">Loading…</p>
+      </div>
+
+      <div id="tabs" class="mt-5 flex flex-wrap gap-2 text-sm font-semibold">
+        <button type="button" data-status="open" class="tab rounded-full px-4 py-2">Open <span data-count></span></button>
+        <button type="button" data-status="resolved" class="tab rounded-full px-4 py-2">Resolved <span data-count></span></button>
+        <button type="button" data-status="dismissed" class="tab rounded-full px-4 py-2">Dismissed <span data-count></span></button>
+        <button type="button" data-status="all" class="tab rounded-full px-4 py-2">All</button>
+      </div>
+
+      <div id="list" class="mt-5 space-y-3"></div>
+      <p id="empty" class="hidden mt-5 rounded-xl border border-gray-200 p-8 text-center text-sm text-gray-500">No reports here.</p>
+    </main>
+
+    <script>
+      const TOKEN_KEY = 'carfox_admin_token'; // admin session (js/carfox-admin-auth.js)
+      const USER_KEY = 'carfox_admin_user';
+      const $ = (id) => document.getElementById(id);
+      const authHeaders = () => ({ 'Content-Type': 'application/json', Authorization: 'Bearer ' + localStorage.getItem(TOKEN_KEY) });
+      const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      let current = new URLSearchParams(location.search).get('status') || 'open';
+
+      const STATUS_BADGE = {
+        open: 'bg-amber-50 border-amber-200 text-amber-800',
+        resolved: 'bg-green-50 border-green-200 text-green-800',
+        dismissed: 'bg-gray-50 border-gray-200 text-gray-600'
+      };
+      function fmtDate(iso) {
+        try { return new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch (_) { return iso || ''; }
+      }
+      function card(r) {
+        const title = [r.year, r.make, r.model, r.trim].filter(Boolean).join(' ') || ('Listing #' + r.vehicle_id + ' (deleted)');
+        const listingState = r.vehicle_status
+          ? (r.admin_paused ? 'Paused by admin' : r.vehicle_status.charAt(0).toUpperCase() + r.vehicle_status.slice(1))
+          : 'Deleted';
+        const actions = r.status === 'open'
+          ? '<button class="btn-xs bg-green-600 text-white hover:bg-green-700" data-set="resolved">Resolve</button>' +
+            '<button class="btn-xs border border-gray-300 text-gray-700 hover:bg-gray-50" data-set="dismissed">Dismiss</button>'
+          : '<button class="btn-xs border border-gray-300 text-gray-700 hover:bg-gray-50" data-set="open">Reopen</button>';
+        return '<article class="rounded-xl border border-gray-200 p-4" data-id="' + r.id + '">' +
+          '<div class="flex flex-wrap items-start justify-between gap-2">' +
+            '<div class="min-w-0">' +
+              '<p class="text-sm font-semibold text-gray-900">' + esc(r.reason_label) + ' <span class="badge ' + (STATUS_BADGE[r.status] || '') + '">' + esc(r.status) + '</span></p>' +
+              '<p class="mt-1 text-sm text-gray-700"><a href="/cars/' + r.vehicle_id + '" target="_blank" rel="noopener" class="font-semibold text-blue-700 hover:underline">' + esc(title) + '</a>' +
+                ' <span class="text-gray-500">· Ad #' + r.vehicle_id + (r.dealer_name ? ' · ' + esc(r.dealer_name) : '') + ' · ' + esc(listingState) + '</span></p>' +
+            '</div>' +
+            '<p class="text-xs text-gray-500">' + esc(fmtDate(r.created_at)) + '</p>' +
+          '</div>' +
+          (r.details ? '<p class="mt-2 whitespace-pre-line break-words rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-800">' + esc(r.details) + '</p>' : '') +
+          '<p class="mt-2 text-xs text-gray-500">Reporter: ' + (r.reporter_email ? '<a class="text-blue-700 hover:underline" href="mailto:' + esc(r.reporter_email) + '">' + esc(r.reporter_email) + '</a>' : 'anonymous') +
+            (r.reports_for_listing > 1 ? ' · <strong class="text-amber-700">' + r.reports_for_listing + ' reports on this listing</strong>' : '') + '</p>' +
+          (r.admin_note ? '<p class="mt-1 text-xs text-gray-500">Note: ' + esc(r.admin_note) + '</p>' : '') +
+          '<div class="mt-3 flex flex-wrap items-center gap-2">' + actions +
+            '<a class="btn-xs border border-gray-300 text-gray-700 hover:bg-gray-50" href="/admin/listings.html?q=' + r.vehicle_id + '">Moderate listing</a>' +
+          '</div>' +
+        '</article>';
+      }
+
+      async function load() {
+        document.querySelectorAll('#tabs .tab').forEach((t) => {
+          const on = t.dataset.status === current;
+          t.className = 'tab rounded-full px-4 py-2 ' + (on ? 'bg-blue-700 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200');
+        });
+        const res = await fetch('/api/admin/reports?status=' + encodeURIComponent(current), { headers: authHeaders() });
+        if (res.status === 401) { CarfoxAdminAuth.clear(); location.replace(CarfoxAdminAuth.loginUrl()); return; }
+        const data = await res.json();
+        document.querySelectorAll('#tabs [data-count]').forEach((c) => {
+          const n = data.counts[c.parentElement.dataset.status];
+          c.textContent = n != null ? '(' + n + ')' : '';
+        });
+        $('subtext').textContent = data.counts.open + ' open report' + (data.counts.open === 1 ? '' : 's') + ' to review.';
+        $('list').innerHTML = (data.reports || []).map(card).join('');
+        $('empty').classList.toggle('hidden', !!(data.reports || []).length);
+      }
+
+      $('tabs').addEventListener('click', (e) => {
+        const t = e.target.closest('[data-status]'); if (!t) return;
+        current = t.dataset.status;
+        history.replaceState(null, '', '?status=' + current);
+        load();
+      });
+      $('list').addEventListener('click', async (e) => {
+        const b = e.target.closest('[data-set]'); if (!b) return;
+        const id = b.closest('[data-id]').dataset.id;
+        const status = b.dataset.set;
+        let note = '';
+        if (status !== 'open') {
+          note = window.prompt(status === 'resolved' ? 'Optional note (what was done):' : 'Optional note (why dismissed):', '') || '';
+        }
+        b.disabled = true;
+        const res = await fetch('/api/admin/reports/' + id, { method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ status: status, note: note }) });
+        if (res.ok) { CarfoxUI.toast(status === 'open' ? 'Report reopened' : 'Report ' + status); load(); }
+        else { CarfoxUI.toast('Could not update the report', 'error'); b.disabled = false; }
+      });
+      $('signOutBtn').addEventListener('click', () => { CarfoxAdminAuth.signOut(); });
+
+      (async function init() {
+        const token = localStorage.getItem(TOKEN_KEY);
+        if (!token) { window.location.replace(CarfoxAdminAuth.loginUrl()); return; }
+        try {
+          const me = await fetch('/api/admin/me', { headers: authHeaders() });
+          if (me.status === 401) { CarfoxAdminAuth.clear(); window.location.replace(CarfoxAdminAuth.loginUrl()); return; }
+          const meData = await me.json();
+          $('adminEmail').textContent = (meData.user && meData.user.email) || 'admin';
+          await load();
+        } catch (e) { $('subtext').textContent = 'Could not load. Please refresh.'; }
+      })();
+    </script>
+  </body>
+</html>

@@ -346,6 +346,28 @@ db.exec(`
 db.exec('CREATE INDEX IF NOT EXISTS idx_engagement_dealership_created ON engagement_events(dealership_id, created_at)');
 db.exec('CREATE INDEX IF NOT EXISTS idx_engagement_vehicle ON engagement_events(vehicle_id)');
 
+// Buyer reports about a listing ("Report this listing" on the detail page -> /report-listing.html). Admins work
+// them on /admin/reports.html (status open | resolved | dismissed). reporter_* are cleared if the buyer deletes
+// their account; rows go with the listing on hard delete.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS listing_reports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    vehicle_id INTEGER NOT NULL,
+    reason TEXT NOT NULL,
+    details TEXT,
+    reporter_email TEXT,
+    reporter_user_id INTEGER,
+    reporter_ip TEXT,
+    status TEXT NOT NULL DEFAULT 'open',
+    admin_note TEXT,
+    created_at TEXT NOT NULL,
+    resolved_at TEXT,
+    resolved_by INTEGER
+  )
+`);
+db.exec('CREATE INDEX IF NOT EXISTS idx_listing_reports_status ON listing_reports(status, created_at)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_listing_reports_vehicle ON listing_reports(vehicle_id)');
+
 // Promoted listings (admin-controlled, no payments yet). A listing is featured while promoted = 1 and
 // promoted_from <= now < promoted_until. Dates are ISO UTC strings (toISOString format), so SQL compares them
 // as text against strftime(...'now') in the same format; expiry is therefore exact even between sweeps.
@@ -1998,6 +2020,7 @@ app.delete('/api/me', authMiddleware, async function (req, res) {
     });
     db.prepare('DELETE FROM conversations WHERE buyer_id = ?').run(user.id);
     db.prepare('DELETE FROM saved_cars WHERE buyer_id = ?').run(user.id);
+    db.prepare('UPDATE listing_reports SET reporter_user_id = NULL, reporter_email = NULL, reporter_ip = NULL WHERE reporter_user_id = ?').run(user.id);
     db.prepare("UPDATE inquiries SET buyer_name = 'Deleted user', buyer_email = '', buyer_phone = '', message = '(Removed: the buyer deleted their CarFox account.)' WHERE LOWER(buyer_email) = ?")
       .run(String(user.email || '').toLowerCase());
     db.prepare('DELETE FROM password_reset_tokens WHERE user_id = ?').run(user.id);
@@ -3013,9 +3036,12 @@ app.get('/api/admin/listings', requireAdmin, function (req, res) {
   else if (allowed[status] && status !== 'all') { where += ' AND v.status = ?'; params.push(status); }
   if (q) {
     const like = '%' + q.replace(/[%_\\]/g, function (ch) { return '\\' + ch; }) + '%';
+    // "23" or "#23" also matches the ad id (the Reports page links here with ?q=<id>).
+    const idQuery = /^#?\d+$/.test(q) ? parseInt(q.replace('#', ''), 10) : null;
     where += " AND (LOWER(COALESCE(v.year, '') || ' ' || COALESCE(v.make, '') || ' ' || COALESCE(v.model, '') || ' ' || COALESCE(v.trim, '')) LIKE ? ESCAPE '\\'" +
-      " OR LOWER(d.business_name) LIKE ? ESCAPE '\\')";
+      " OR LOWER(d.business_name) LIKE ? ESCAPE '\\'" + (idQuery ? ' OR v.id = ?' : '') + ')';
     params.push(like, like);
+    if (idQuery) params.push(idQuery);
   }
   if (governorate) { where += ' AND COALESCE(d.governorate, d.city) = ?'; params.push(governorate); }
 
@@ -5684,6 +5710,7 @@ async function hardDeleteVehicle(vehicleId) {
   db.prepare('DELETE FROM saved_cars WHERE vehicle_id = ?').run(vehicleId);
   db.prepare('DELETE FROM inquiries WHERE vehicle_id = ?').run(vehicleId);
   db.prepare('UPDATE engagement_events SET vehicle_id = NULL WHERE vehicle_id = ?').run(vehicleId);
+  db.prepare('DELETE FROM listing_reports WHERE vehicle_id = ?').run(vehicleId);
   db.prepare('UPDATE conversations SET vehicle_id = NULL WHERE vehicle_id = ?').run(vehicleId);
   db.prepare('DELETE FROM vehicles WHERE id = ?').run(vehicleId);
   return { photos: photos.length, photos_deleted_from_r2: photosDeleted };
@@ -5948,8 +5975,199 @@ app.patch('/api/vehicles/:vehicleId/photos/reorder', requireDealer, dealerSuspen
   return res.json({ photos: photos });
 });
 
+// ---- Listing reports ----
+const REPORT_REASONS = {
+  scam: 'Scam or fraud',
+  misleading: 'Wrong or misleading details',
+  sold: 'Car is already sold',
+  duplicate: 'Duplicate listing',
+  offensive: 'Offensive or inappropriate content',
+  other: 'Something else'
+};
+const REPORT_WINDOW_MS = 60 * 60 * 1000;
+const reportHits = new Map(); // ip -> [timestamps] (5 reports per IP per hour)
+function reportRateLimited(ip) {
+  const now = Date.now();
+  const recent = (reportHits.get(ip) || []).filter(function (t) { return now - t < REPORT_WINDOW_MS; });
+  reportHits.set(ip, recent);
+  return recent.length >= 5;
+}
+// Optional reporter session (buyer/dealer site token); reports work signed out too.
+function optionalSiteUser(req) {
+  const parts = String(req.headers.authorization || '').split(' ');
+  if (parts[0] !== 'Bearer' || !parts[1]) return null;
+  try {
+    const decoded = verifySiteToken(parts[1]);
+    return db.prepare('SELECT id, email FROM users WHERE id = ?').get(decoded.sub) || null;
+  } catch (_) { return null; }
+}
+
+app.post('/api/cars/:id/report', function (req, res) {
+  const vehicleId = parseInt(req.params.id, 10);
+  const body = req.body || {};
+  const reason = String(body.reason || '').trim();
+  const details = String(body.details || '').replace(/\r\n/g, '\n').trim();
+  const reporterUser = optionalSiteUser(req);
+  const email = normalizeEmail(body.email || (reporterUser && reporterUser.email) || '');
+  if (!vehicleId) return res.status(404).json({ error: 'Listing not found' });
+  if (!REPORT_REASONS[reason]) return res.status(400).json({ error: 'Please choose a reason.' });
+  if (details.length > 1000) return res.status(400).json({ error: 'Please keep the details under 1000 characters.' });
+  if (reason === 'other' && details.length < 10) return res.status(400).json({ error: 'Please tell us what is wrong (at least 10 characters).' });
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return res.status(400).json({ error: 'Please enter a valid email or leave it empty.' });
+
+  const vehicle = db.prepare(
+    "SELECT v.id, v.year, v.make, v.model, v.trim, d.business_name FROM vehicles v INNER JOIN dealerships d ON d.id = v.dealership_id " +
+    "WHERE v.id = ? AND d.status = 'approved' AND COALESCE(d.suspended, 0) = 0 AND v.status IN ('active', 'sold')"
+  ).get(vehicleId);
+  if (!vehicle) return res.status(404).json({ error: 'Listing not found' });
+
+  const ip = req.ip || 'unknown';
+  if (reportRateLimited(ip)) return res.status(429).json({ error: 'You have sent several reports recently. Please try again later.' });
+  const dup = db.prepare(
+    "SELECT id FROM listing_reports WHERE vehicle_id = ? AND status = 'open' AND (reporter_ip = ? OR (? != '' AND reporter_email = ?))"
+  ).get(vehicleId, ip, email, email);
+  if (dup) return res.json({ ok: true, duplicate: true });
+
+  const now = new Date().toISOString();
+  const info = db.prepare(
+    'INSERT INTO listing_reports (vehicle_id, reason, details, reporter_email, reporter_user_id, reporter_ip, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(vehicleId, reason, details || null, email || null, reporterUser ? reporterUser.id : null, ip, 'open', now);
+  reportHits.get(ip).push(Date.now());
+
+  sendListingReportEmail({
+    reportId: Number(info.lastInsertRowid),
+    vehicleId: vehicleId,
+    carTitle: [vehicle.year, vehicle.make, vehicle.model, vehicle.trim].filter(Boolean).join(' '),
+    dealerName: vehicle.business_name,
+    reason: REPORT_REASONS[reason],
+    details: details,
+    email: email
+  }).catch(function (e) { console.error('Report email failed:', e && e.message); });
+  return res.status(201).json({ ok: true });
+});
+
+// Admin notification for a new report: ADMIN_NOTIFY_EMAIL (comma-separated). Not set -> no email (the report
+// still shows on /admin/reports.html). Never mailed to seed/placeholder admin addresses.
+async function sendListingReportEmail(r) {
+  const to = String(process.env.ADMIN_NOTIFY_EMAIL || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+  if (!to.length || !process.env.RESEND_API_KEY) return;
+  const base = appBaseUrl();
+  const listingLink = base ? base + '/cars/' + r.vehicleId : '';
+  const adminLink = base ? base + '/admin/reports.html' : '';
+  await resend.emails.send({
+    from: 'CarFox <noreply@mawtiq.online>',
+    to: to,
+    subject: 'Listing reported: ' + (r.carTitle || 'listing #' + r.vehicleId) + ' — ' + r.reason,
+    html: emailShell(
+      'New listing report',
+      '<p><strong>Listing:</strong> ' + escapeHtmlForEmail(r.carTitle || '') + ' (Ad #' + r.vehicleId + ')' +
+        (r.dealerName ? ' · ' + escapeHtmlForEmail(r.dealerName) : '') + '</p>' +
+      '<p><strong>Reason:</strong> ' + escapeHtmlForEmail(r.reason) + '</p>' +
+      (r.details ? '<p><strong>Details:</strong><br>' + escapeHtmlForEmail(r.details).replace(/\n/g, '<br>') + '</p>' : '') +
+      '<p><strong>Reporter:</strong> ' + escapeHtmlForEmail(r.email || 'anonymous') + '</p>' +
+      (listingLink ? '<p><a href="' + listingLink + '">Open the listing</a>' + (adminLink ? ' · <a href="' + adminLink + '">Review in admin</a>' : '') + '</p>' : '')
+    )
+  });
+}
+
+app.get('/api/admin/reports', requireAdmin, function (req, res) {
+  const status = String(req.query.status || 'open');
+  const where = ['open', 'resolved', 'dismissed'].indexOf(status) !== -1 ? 'WHERE r.status = ?' : '';
+  const stmt = db.prepare(
+    'SELECT r.id, r.vehicle_id, r.reason, r.details, r.reporter_email, r.status, r.admin_note, r.created_at, r.resolved_at, ' +
+    '       v.year, v.make, v.model, v.trim, v.status AS vehicle_status, COALESCE(v.admin_paused, 0) AS admin_paused, ' +
+    '       d.id AS dealer_id, d.business_name AS dealer_name, ' +
+    '       (SELECT COUNT(*) FROM listing_reports r2 WHERE r2.vehicle_id = r.vehicle_id) AS reports_for_listing ' +
+    'FROM listing_reports r LEFT JOIN vehicles v ON v.id = r.vehicle_id LEFT JOIN dealerships d ON d.id = v.dealership_id ' +
+    where + ' ORDER BY r.created_at DESC LIMIT 200'
+  );
+  const rows = where ? stmt.all(status) : stmt.all();
+  const counts = {};
+  db.prepare('SELECT status, COUNT(*) AS n FROM listing_reports GROUP BY status').all().forEach(function (c) { counts[c.status] = c.n; });
+  return res.json({
+    reports: rows.map(function (r) {
+      return Object.assign({}, r, { reason_label: REPORT_REASONS[r.reason] || r.reason });
+    }),
+    counts: { open: counts.open || 0, resolved: counts.resolved || 0, dismissed: counts.dismissed || 0 }
+  });
+});
+
+app.patch('/api/admin/reports/:id', requireAdmin, function (req, res) {
+  const id = parseInt(req.params.id, 10);
+  const status = String((req.body || {}).status || '');
+  const note = String((req.body || {}).note || '').trim().slice(0, 500);
+  if (['open', 'resolved', 'dismissed'].indexOf(status) === -1) return res.status(400).json({ error: 'Invalid status' });
+  const row = db.prepare('SELECT id FROM listing_reports WHERE id = ?').get(id);
+  if (!row) return res.status(404).json({ error: 'Report not found' });
+  const closed = status !== 'open';
+  db.prepare('UPDATE listing_reports SET status = ?, admin_note = ?, resolved_at = ?, resolved_by = ? WHERE id = ?')
+    .run(status, note || null, closed ? new Date().toISOString() : null, closed ? req.user.id : null, id);
+  return res.json({ ok: true });
+});
+
+// ---- /cars/:id with server-rendered social previews (Open Graph + Twitter) ----
+// WhatsApp / Facebook / X crawlers don't run JS, so the listing's title, price, photo and summary are written
+// into the HTML head here. Hidden / unknown listings get generic CarFox tags (nothing private leaks).
+let detailTemplateCache = { mtime: 0, html: '' };
+function detailTemplate() {
+  const file = path.join(__dirname, 'cars-detail.html');
+  const mtime = fs.statSync(file).mtimeMs;
+  if (mtime !== detailTemplateCache.mtime) detailTemplateCache = { mtime: mtime, html: fs.readFileSync(file, 'utf8') };
+  return detailTemplateCache.html;
+}
+function escAttr(v) {
+  return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function listingSocialMeta(vehicleId, base) {
+  const v = db.prepare(
+    "SELECT v.id, v.year, v.make, v.model, v.trim, v.mileage, v.price, v.car_condition, v.transmission, v.fuel_type, v.status, " +
+    "       d.business_name, d.governorate, d.city, " +
+    "       (SELECT p.url FROM vehicle_photos p WHERE p.vehicle_id = v.id ORDER BY p.is_primary DESC, p.display_order ASC, p.id ASC LIMIT 1) AS photo " +
+    "FROM vehicles v INNER JOIN dealerships d ON d.id = v.dealership_id " +
+    "WHERE v.id = ? AND d.status = 'approved' AND COALESCE(d.suspended, 0) = 0 AND v.status IN ('active', 'sold')"
+  ).get(vehicleId);
+  const pageUrl = base + '/cars/' + vehicleId;
+  if (!v) {
+    return { title: 'CarFox — Verified Dealers Only', description: 'Browse cars from verified dealers across Egypt on CarFox.', url: pageUrl, image: base + '/icons/icon-512.png', alt: 'CarFox', large: false };
+  }
+  const name = [v.year, v.make, v.model].filter(Boolean).join(' ');
+  const price = Number(v.price) > 0 ? Math.round(Number(v.price) / 100).toLocaleString('en-US') + ' EGP' : 'Price on request';
+  const title = (v.status === 'sold' ? 'Sold: ' : '') + name + ' – ' + price;
+  const km = Number(v.mileage) > 0 ? Number(v.mileage).toLocaleString('en-US') + ' km' : (v.car_condition === 'new' ? 'New' : '');
+  const facts = [km, v.governorate || v.city, v.transmission, v.fuel_type].filter(Boolean).join(' · ');
+  const description = (facts ? facts + ' — ' : '') + (v.trim ? v.trim + '. ' : '') +
+    'Listed by ' + (v.business_name || 'a verified dealer') + ' on CarFox, verified dealers only.';
+  let image = v.photo ? String(v.photo) : '/icons/icon-512.png';
+  if (image.charAt(0) === '/') image = base + image;
+  return { title: title, description: description, url: pageUrl, image: image, alt: name, large: !!v.photo, found: true };
+}
+
 app.get('/cars/:id(\\d+)', function (req, res) {
-  res.sendFile(path.join(__dirname, 'cars-detail.html'));
+  const base = appBaseUrl() || (req.protocol + '://' + req.get('host'));
+  let meta;
+  try { meta = listingSocialMeta(parseInt(req.params.id, 10), base); } catch (e) {
+    console.error('social meta', e && e.message);
+    return res.sendFile(path.join(__dirname, 'cars-detail.html'));
+  }
+  const tags =
+    '<title>' + escAttr(meta.found ? meta.title + ' | CarFox' : meta.title) + '</title>\n' +
+    '    <meta name="description" content="' + escAttr(meta.description) + '" />\n' +
+    '    <link rel="canonical" href="' + escAttr(meta.url) + '" />\n' +
+    '    <meta property="og:type" content="website" />\n' +
+    '    <meta property="og:site_name" content="CarFox" />\n' +
+    '    <meta property="og:title" content="' + escAttr(meta.title) + '" />\n' +
+    '    <meta property="og:description" content="' + escAttr(meta.description) + '" />\n' +
+    '    <meta property="og:url" content="' + escAttr(meta.url) + '" />\n' +
+    '    <meta property="og:image" content="' + escAttr(meta.image) + '" />\n' +
+    '    <meta property="og:image:alt" content="' + escAttr(meta.alt) + '" />\n' +
+    '    <meta name="twitter:card" content="' + (meta.large ? 'summary_large_image' : 'summary') + '" />\n' +
+    '    <meta name="twitter:title" content="' + escAttr(meta.title) + '" />\n' +
+    '    <meta name="twitter:description" content="' + escAttr(meta.description) + '" />\n' +
+    '    <meta name="twitter:image" content="' + escAttr(meta.image) + '" />';
+  const html = detailTemplate().replace(/<title>[^<]*<\/title>/, function () { return tags; });
+  res.set('Content-Type', 'text/html; charset=utf-8');
+  res.set('Cache-Control', 'no-cache');
+  return res.send(html);
 });
 
 // Service worker: the deploy version is baked in (Render's git commit, else the server start time) so

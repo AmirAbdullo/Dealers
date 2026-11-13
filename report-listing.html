@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>CarFox — Report a listing</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#0f1f3d" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="CarFox" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+    <script src="/js/carfox-pwa.js" defer></script>
+    <script src="/js/carfox-ui.js"></script>
+    <link rel="stylesheet" href="/css/app.css" />
+  </head>
+  <body class="bg-gray-50 text-gray-900 font-sans">
+    <header class="sticky top-0 z-40 bg-white border-b border-gray-200">
+      <div class="mx-auto max-w-2xl px-4 h-14 flex items-center justify-between">
+        <a id="backLink" href="/cars.html" class="flex items-center gap-2 text-gray-700 hover:text-gray-900" aria-label="Back">
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+          <span class="text-sm font-semibold hidden sm:inline">Back</span>
+        </a>
+        <h1 class="text-base font-bold">Report a listing</h1>
+        <a href="/" class="text-lg font-extrabold tracking-tight"><span class="text-blue-700">Car</span><span class="text-orange-500">Fox</span></a>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-2xl px-4 py-5 pb-28 md:pb-10">
+      <div id="pageError" class="hidden rounded-2xl border border-gray-200 bg-white p-6 text-center text-sm text-gray-600">
+        We couldn't find this listing. It may have been removed. <a href="/cars.html" class="font-semibold text-blue-700 hover:underline">Browse cars</a>
+      </div>
+
+      <form id="reportForm" class="hidden space-y-4" novalidate>
+        <a id="listingCard" href="#" class="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-3 hover:border-gray-300">
+          <span class="h-14 w-20 shrink-0 overflow-hidden rounded-lg bg-slate-100"><img id="listingPhoto" alt="" class="hidden h-full w-full object-cover" /></span>
+          <span class="min-w-0">
+            <span id="listingTitle" class="block font-semibold text-gray-900 truncate"></span>
+            <span id="listingSub" class="block text-xs text-gray-500 truncate"></span>
+          </span>
+        </a>
+
+        <section class="rounded-2xl border border-gray-200 bg-white p-4">
+          <h2 class="font-semibold text-gray-900">What's wrong with this listing?</h2>
+          <p class="mt-1 text-xs text-gray-500">The CarFox team reviews every report. The dealer isn't told who reported it.</p>
+          <div id="reasonList" class="mt-3 space-y-2" role="radiogroup" aria-label="Reason">
+            <label class="flex items-center gap-3 rounded-xl border border-gray-200 px-3 py-2.5 text-sm cursor-pointer has-[:checked]:border-blue-600 has-[:checked]:bg-blue-50"><input type="radio" name="reason" value="scam" class="accent-blue-700" /> Scam or fraud</label>
+            <label class="flex items-center gap-3 rounded-xl border border-gray-200 px-3 py-2.5 text-sm cursor-pointer has-[:checked]:border-blue-600 has-[:checked]:bg-blue-50"><input type="radio" name="reason" value="misleading" class="accent-blue-700" /> Wrong or misleading details</label>
+            <label class="flex items-center gap-3 rounded-xl border border-gray-200 px-3 py-2.5 text-sm cursor-pointer has-[:checked]:border-blue-600 has-[:checked]:bg-blue-50"><input type="radio" name="reason" value="sold" class="accent-blue-700" /> Car is already sold</label>
+            <label class="flex items-center gap-3 rounded-xl border border-gray-200 px-3 py-2.5 text-sm cursor-pointer has-[:checked]:border-blue-600 has-[:checked]:bg-blue-50"><input type="radio" name="reason" value="duplicate" class="accent-blue-700" /> Duplicate listing</label>
+            <label class="flex items-center gap-3 rounded-xl border border-gray-200 px-3 py-2.5 text-sm cursor-pointer has-[:checked]:border-blue-600 has-[:checked]:bg-blue-50"><input type="radio" name="reason" value="offensive" class="accent-blue-700" /> Offensive or inappropriate content</label>
+            <label class="flex items-center gap-3 rounded-xl border border-gray-200 px-3 py-2.5 text-sm cursor-pointer has-[:checked]:border-blue-600 has-[:checked]:bg-blue-50"><input type="radio" name="reason" value="other" class="accent-blue-700" /> Something else</label>
+          </div>
+
+          <label for="details" class="block mt-4 text-sm font-medium text-gray-700">Details <span id="detailsHint" class="font-normal text-gray-400">(optional)</span></label>
+          <textarea id="details" rows="4" maxlength="1000" placeholder="Tell us what you noticed…" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+          <p class="mt-1 text-right text-xs text-gray-400"><span id="detailsCount">0</span>/1000</p>
+
+          <label for="email" class="block mt-2 text-sm font-medium text-gray-700">Your email <span class="font-normal text-gray-400">(optional, in case we need more information)</span></label>
+          <input id="email" type="email" autocomplete="email" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+
+          <p id="formError" class="hidden mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert"></p>
+          <button id="submitBtn" type="submit" class="mt-4 w-full rounded-xl bg-blue-700 hover:bg-blue-800 disabled:opacity-60 text-white font-semibold py-3">Send report</button>
+        </section>
+      </form>
+
+      <div id="doneState" class="hidden rounded-2xl border border-gray-200 bg-white p-6 text-center">
+        <span class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-50 text-green-600">
+          <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>
+        </span>
+        <h2 class="mt-3 text-lg font-bold text-gray-900">Thanks — report received</h2>
+        <p class="mt-1 text-sm text-gray-600">Our team will review this listing. You don't need to do anything else.</p>
+        <a id="doneBack" href="/cars.html" class="mt-4 inline-block rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">Back to the listing</a>
+      </div>
+    </main>
+
+    <script src="/js/carfox-auth.js"></script>
+    <script src="/js/carfox-pill-nav.js"></script>
+    <script src="/js/carfox-buyer-nav.js"></script>
+    <script>
+      (function () {
+        const $ = (id) => document.getElementById(id);
+        const params = new URLSearchParams(location.search);
+        const id = parseInt(params.get('id'), 10);
+        const listingHref = id ? '/cars/' + id : '/cars.html';
+        $('backLink').href = listingHref;
+        $('doneBack').href = listingHref;
+        $('backLink').addEventListener('click', function (e) {
+          if (history.length > 1) { e.preventDefault(); history.back(); }
+        });
+
+        function siteToken() { try { return localStorage.getItem('carfox_token') || ''; } catch (_) { return ''; } }
+        try {
+          const u = JSON.parse(localStorage.getItem('carfox_user') || 'null');
+          if (u && u.email) $('email').value = u.email;
+        } catch (_) {}
+
+        if (!id) { $('pageError').classList.remove('hidden'); return; }
+        // Prefill from the link while the listing loads; the server copy wins.
+        if (params.get('title')) $('listingTitle').textContent = params.get('title');
+        $('listingCard').href = listingHref;
+        fetch('/api/cars/' + id)
+          .then((r) => (r.ok ? r.json() : null))
+          .then((data) => {
+            const v = data && data.vehicle;
+            if (!v) { $('pageError').classList.remove('hidden'); return; }
+            $('listingTitle').textContent = [v.year, v.make, v.model, v.trim].filter(Boolean).join(' ');
+            $('listingSub').textContent = 'Ad #' + v.id + (v.dealer && v.dealer.business_name ? ' · ' + v.dealer.business_name : '');
+            const photo = (v.photos || [])[0];
+            if (photo && photo.url) { $('listingPhoto').src = photo.url; $('listingPhoto').classList.remove('hidden'); }
+            $('reportForm').classList.remove('hidden');
+          })
+          .catch(() => { $('pageError').classList.remove('hidden'); });
+
+        $('details').addEventListener('input', function () { $('detailsCount').textContent = String(this.value.length); });
+        $('reasonList').addEventListener('change', function () {
+          const other = (document.querySelector('input[name="reason"]:checked') || {}).value === 'other';
+          $('detailsHint').textContent = other ? '(required)' : '(optional)';
+        });
+
+        function showError(msg) { $('formError').textContent = msg; $('formError').classList.remove('hidden'); }
+
+        $('reportForm').addEventListener('submit', async function (e) {
+          e.preventDefault();
+          $('formError').classList.add('hidden');
+          const reason = (document.querySelector('input[name="reason"]:checked') || {}).value;
+          const details = $('details').value.trim();
+          const email = $('email').value.trim();
+          if (!reason) { showError('Please choose a reason.'); return; }
+          if (reason === 'other' && details.length < 10) { showError('Please tell us what is wrong (at least 10 characters).'); return; }
+          const btn = $('submitBtn');
+          btn.disabled = true;
+          btn.textContent = 'Sending…';
+          try {
+            const headers = { 'Content-Type': 'application/json' };
+            if (siteToken()) headers.Authorization = 'Bearer ' + siteToken();
+            const res = await fetch('/api/cars/' + id + '/report', { method: 'POST', headers: headers, body: JSON.stringify({ reason: reason, details: details, email: email }) });
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok) { showError(body.error || 'Could not send the report. Please try again.'); return; }
+            $('reportForm').classList.add('hidden');
+            $('doneState').classList.remove('hidden');
+            window.scrollTo(0, 0);
+          } catch (_) {
+            showError('Network error. Please try again.');
+          } finally {
+            btn.disabled = false;
+            btn.textContent = 'Send report';
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>
