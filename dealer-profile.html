@@ -110,7 +110,13 @@
           <h2 class="text-lg font-bold text-gray-900">Cars from this dealer</h2>
           <span id="listingsCountInline" class="text-sm text-gray-500"></span>
         </div>
+        <div id="conditionTabs" class="hidden mb-3 inline-flex rounded-full bg-gray-100 p-1 text-sm font-semibold" role="tablist" aria-label="Filter by condition">
+          <button type="button" role="tab" data-cond="all" class="cond-tab rounded-full px-4 py-1.5">All <span data-count class="font-normal"></span></button>
+          <button type="button" role="tab" data-cond="new" class="cond-tab rounded-full px-4 py-1.5">New <span data-count class="font-normal"></span></button>
+          <button type="button" role="tab" data-cond="used" class="cond-tab rounded-full px-4 py-1.5">Used <span data-count class="font-normal"></span></button>
+        </div>
         <div id="vehicleGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+        <div id="tabEmpty" class="hidden rounded-xl border border-gray-200 bg-white p-8 text-center text-gray-600"></div>
         <div id="emptyState" class="hidden rounded-xl border border-gray-200 bg-white p-8 text-center text-gray-600">This dealer has no active listings right now.</div>
       </section>
     </main>
@@ -197,10 +203,34 @@
           $('callBtn').addEventListener('click', () => track('call'));
           $('dealerWebsite').addEventListener('click', () => track('website'));
 
+          // All / New / Used tabs above the grid (filtering the loaded listings; empty tabs are disabled).
           const grid = $('vehicleGrid');
-          grid.innerHTML = '';
+          const condOf = (car) => (car.condition === 'new' ? 'new' : 'used');
+          const counts = { all: vehicles.length, new: vehicles.filter((c) => condOf(c) === 'new').length };
+          counts.used = counts.all - counts.new;
+          const tabs = Array.from(document.querySelectorAll('#conditionTabs [data-cond]'));
+          function showTab(cond) {
+            tabs.forEach((t) => {
+              const on = t.dataset.cond === cond;
+              t.setAttribute('aria-selected', on ? 'true' : 'false');
+              t.className = 'cond-tab rounded-full px-4 py-1.5 ' + (on ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900') +
+                (counts[t.dataset.cond] ? '' : ' opacity-40 cursor-not-allowed');
+            });
+            const list = cond === 'all' ? vehicles : vehicles.filter((c) => condOf(c) === cond);
+            grid.innerHTML = '';
+            list.forEach((car) => grid.appendChild(renderCard(car)));
+            const tabEmpty = $('tabEmpty');
+            tabEmpty.textContent = cond === 'new' ? 'No new cars from this dealer right now.' : 'No used cars from this dealer right now.';
+            tabEmpty.classList.toggle('hidden', !!list.length || !vehicles.length);
+          }
+          tabs.forEach((t) => {
+            t.querySelector('[data-count]').textContent = '(' + counts[t.dataset.cond] + ')';
+            t.disabled = !counts[t.dataset.cond];
+            t.addEventListener('click', () => { if (!t.disabled) showTab(t.dataset.cond); });
+          });
           if (!vehicles.length) $('emptyState').classList.remove('hidden');
-          vehicles.forEach((car) => grid.appendChild(renderCard(car)));
+          else $('conditionTabs').classList.remove('hidden');
+          showTab('all');
 
           $('pageLoading').classList.add('hidden');
           $('pageContent').classList.remove('hidden');

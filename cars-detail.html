@@ -113,7 +113,9 @@
       </div>
       </div>
 
-      <!-- Right column on desktop: price, badges, dealer, specs, features, description -->
+      <!-- Right column on desktop; phones read the same order top to bottom:
+           title → price + mileage/location → Value/Trust badges → Vehicle Highlights → Features → Description →
+           Dealer Details (with the WhatsApp / Call / Contact actions). Reviews/ratings will slot in later. -->
       <div class="md:col-span-5 md:min-w-0">
       <div id="soldBannerMobile" class="hidden md:!hidden bg-white px-4 pt-2">
         <div class="rounded-lg border border-gray-300 bg-gray-100 px-4 py-3 text-sm text-gray-800">
@@ -121,49 +123,11 @@
           This car has been sold. <a data-sold-similar href="/cars.html" class="font-semibold text-blue-700 hover:underline">Browse similar cars</a>
         </div>
       </div>
-      <section class="px-4 py-4 bg-white md:rounded-xl md:border md:border-gray-200 md:mb-4">
+      <section class="px-4 pt-3 pb-4 bg-white md:rounded-xl md:border md:border-gray-200 md:p-4 md:mb-2">
         <h1 id="listingTitle" class="text-2xl md:text-3xl font-bold text-gray-900"></h1>
-        <p id="listingPrice" class="text-3xl font-bold text-blue-700 mt-2"></p>
+        <p id="listingPrice" class="font-display font-extrabold text-[34px] md:text-4xl leading-none text-[#0f1f3d] mt-3"></p>
+        <p id="listingMeta" class="hidden mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500"></p>
         <div id="trustBadgeWrap" class="hidden mt-3 flex items-center gap-2 flex-wrap"></div>
-      </section>
-      <!-- Phones: contact actions sit in the page flow; a slim bar takes over once these scroll away -->
-      <section id="contactInline" class="hidden px-4 pb-4 bg-white md:rounded-xl md:border md:border-gray-200 md:p-4 md:mb-4">
-        <div class="grid grid-cols-2 gap-3">
-          <button type="button" id="contactDealerBtnInline"
-                  class="col-span-2 w-full bg-blue-700 hover:bg-blue-800 text-white px-4 py-3.5 rounded-xl font-semibold text-base">
-            Contact Dealer
-          </button>
-          <a id="whatsappDealerBtnInline" href="#" target="_blank" rel="noopener noreferrer"
-             class="hidden bg-green-500 hover:bg-green-600 text-white rounded-xl py-3 font-semibold flex items-center justify-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.882 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-            WhatsApp
-          </a>
-          <a id="callDealerBtnInline" href="#"
-             class="hidden bg-white border border-blue-700 text-blue-700 hover:bg-blue-50 rounded-xl py-3 font-semibold flex items-center justify-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 0 1 2-2h2.6a1 1 0 0 1 .95.68l1.2 3.6a1 1 0 0 1-.25 1.02L8.1 9.7a12.05 12.05 0 0 0 6.2 6.2l1.4-1.4a1 1 0 0 1 1.02-.25l3.6 1.2a1 1 0 0 1 .68.95V19a2 2 0 0 1-2 2h-1C9.7 21 3 14.3 3 6V5z"/></svg>
-            Call
-          </a>
-        </div>
-      </section>
-
-      <section class="mx-4 mb-4 bg-white border border-gray-200 rounded-lg p-4 md:mx-0 md:rounded-xl">
-        <p class="text-xs text-gray-500 uppercase tracking-wider">Listed by</p>
-        <div class="mt-2 flex items-center gap-3">
-          <a id="dealerLogoLink" href="#" class="shrink-0 w-14 h-14 rounded-xl bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
-            <span id="dealerInitials" class="text-lg font-bold text-gray-500">?</span>
-            <img id="dealerLogo" alt="" class="hidden w-full h-full object-contain bg-white" />
-          </a>
-          <div class="min-w-0">
-            <p id="dealerName" class="text-lg font-semibold text-gray-900 leading-tight truncate"></p>
-            <span class="inline-flex items-center gap-1 mt-1 rounded-full bg-green-50 text-green-800 text-xs font-semibold px-2.5 py-0.5 border border-green-200">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>
-              Verified Dealer
-            </span>
-          </div>
-        </div>
-        <p id="dealerLocation" class="text-sm text-gray-600 mt-2"></p>
-        <p id="dealerPhone" class="hidden text-sm text-gray-700 mt-1"></p>
-        <a id="dealerAllCarsLink" href="#" class="hidden mt-3 inline-flex items-center gap-1 text-sm font-semibold text-blue-700 hover:underline">View all cars from this dealer →</a>
       </section>
 
       <!-- Vehicle Highlights: 2-column icon grid (label over bold value); rows without data are skipped -->
@@ -172,14 +136,67 @@
         <dl id="specGrid" class="grid grid-cols-2 gap-x-3 gap-y-4 rounded-2xl border border-slate-200 bg-white p-4"></dl>
       </section>
 
-      <section id="featuresSection" class="hidden px-4 py-4">
-        <h2 class="text-xl font-bold text-gray-900 mb-3">Features</h2>
-        <div id="featureGroups" class="space-y-4"></div>
+      <section id="featuresSection" class="hidden px-4 py-4 md:px-0">
+        <div class="flex items-baseline justify-between mb-3">
+          <h2 class="text-xl font-bold text-gray-900">Features</h2>
+          <span id="featureCount" class="text-sm text-slate-500"></span>
+        </div>
+        <div id="featureGroups" class="rounded-2xl border border-slate-200 bg-white divide-y divide-slate-100"></div>
       </section>
 
-      <section id="descSection" class="hidden px-4 py-4">
+      <section id="descSection" class="hidden px-4 py-4 md:px-0">
         <h2 class="text-xl font-bold text-gray-900 mb-3">Description</h2>
-        <p id="listingDesc" class="text-gray-700 whitespace-pre-line"></p>
+        <div class="rounded-2xl border border-slate-200 bg-white p-4">
+          <p id="listingDesc" class="text-[15px] leading-relaxed text-slate-700 whitespace-pre-line break-words"></p>
+        </div>
+      </section>
+
+      <!-- Dealer Details: logo + name, address, governorate, Directions / Website / Inventory tiles, contact actions -->
+      <section id="dealerSection" class="px-4 py-4 md:px-0">
+        <h2 class="text-xl font-bold text-gray-900 mb-3">Dealer Details</h2>
+        <div class="rounded-2xl border border-slate-200 bg-white p-4">
+          <div class="flex items-center gap-3">
+            <a id="dealerLogoLink" href="#" class="shrink-0 w-14 h-14 rounded-xl bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
+              <span id="dealerInitials" class="text-lg font-bold text-gray-500">?</span>
+              <img id="dealerLogo" alt="" class="hidden w-full h-full object-contain bg-white" />
+            </a>
+            <div class="min-w-0">
+              <p id="dealerName" class="text-lg font-semibold text-gray-900 leading-tight truncate"></p>
+              <span class="inline-flex items-center gap-1 mt-1 rounded-full bg-green-50 text-green-800 text-xs font-semibold px-2.5 py-0.5 border border-green-200">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>
+                Verified Dealer
+              </span>
+            </div>
+          </div>
+          <ul class="mt-3 space-y-1.5 text-sm text-slate-600">
+            <li id="dealerAddress" class="hidden flex items-start gap-2"><span class="mt-0.5 text-slate-400"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6-5.3-6-11a6 6 0 1 1 12 0c0 5.7-6 11-6 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span><span id="dealerAddressText" class="min-w-0 break-words"></span></li>
+            <li id="dealerLocation" class="hidden flex items-start gap-2"><span class="mt-0.5 text-slate-400"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3.5 6v14L9 18l6 2 5.5-2V4L15 6z"/><path d="M9 4v14M15 6v14"/></svg></span><span id="dealerLocationText" class="min-w-0"></span></li>
+            <li id="dealerPhone" class="hidden flex items-start gap-2"><span class="mt-0.5 text-slate-400"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg></span><span id="dealerPhoneText" class="min-w-0"></span></li>
+          </ul>
+          <div class="mt-4 grid grid-cols-3 gap-2">
+            <a id="dealerDirectionsTile" href="#" target="_blank" rel="noopener noreferrer" class="hidden min-w-0 flex flex-col items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2 py-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300"><span class="text-[#0f1f3d]"><svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5 21.5 12 12 21.5 2.5 12z"/><path d="M9 13.5V11a1 1 0 0 1 1-1h5"/><path d="m13 8 2 2-2 2"/></svg></span>Directions</a>
+            <a id="dealerWebsiteTile" href="#" target="_blank" rel="noopener noreferrer nofollow" class="hidden min-w-0 flex flex-col items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2 py-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300"><span class="text-[#0f1f3d]"><svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></span>Website</a>
+            <a id="dealerInventoryTile" href="#" class="hidden min-w-0 flex flex-col items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2 py-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300"><span class="text-[#0f1f3d]"><svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 16v-3l1.6-4.1A2 2 0 0 1 7.5 7.6h9a2 2 0 0 1 1.9 1.3L20 13v3"/><path d="M4 13h16v3a1 1 0 0 1-1 1h-1M6 17H5a1 1 0 0 1-1-1"/><circle cx="7.5" cy="17" r="1.5"/><circle cx="16.5" cy="17" r="1.5"/></svg></span>Inventory</a>
+          </div>
+          <div id="contactInline" class="hidden mt-4 border-t border-slate-100 pt-4">
+            <div class="grid grid-cols-2 gap-3">
+              <button type="button" id="contactDealerBtnInline"
+                      class="col-span-2 w-full bg-blue-700 hover:bg-blue-800 text-white px-4 py-3.5 rounded-xl font-semibold text-base">
+                Contact Dealer
+              </button>
+              <a id="whatsappDealerBtnInline" href="#" target="_blank" rel="noopener noreferrer"
+                 class="hidden bg-green-500 hover:bg-green-600 text-white rounded-xl py-3 font-semibold flex items-center justify-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.882 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                WhatsApp
+              </a>
+              <a id="callDealerBtnInline" href="#"
+                 class="hidden bg-white border border-blue-700 text-blue-700 hover:bg-blue-50 rounded-xl py-3 font-semibold flex items-center justify-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 0 1 2-2h2.6a1 1 0 0 1 .95.68l1.2 3.6a1 1 0 0 1-.25 1.02L8.1 9.7a12.05 12.05 0 0 0 6.2 6.2l1.4-1.4a1 1 0 0 1 1.02-.25l3.6 1.2a1 1 0 0 1 .68.95V19a2 2 0 0 1-2 2h-1C9.7 21 3 14.3 3 6V5z"/></svg>
+                Call
+              </a>
+            </div>
+          </div>
+        </div>
       </section>
       </div>
       </div>
@@ -197,7 +214,7 @@
     <!-- Phones: slim sticky bar directly above the bottom nav; slides in once the in-page buttons scroll out of view -->
     <div id="contactSlim" class="cf-above-nav fixed bottom-16 md:bottom-0 left-0 right-0 z-30 h-14 bg-white border-t border-gray-200 shadow-[0_-6px_20px_-12px_rgba(15,31,61,.35)] translate-y-full transition-transform duration-200 ease-out will-change-transform" aria-hidden="true">
       <div class="mx-auto h-full max-w-6xl px-4 md:px-6 flex items-center justify-between gap-3">
-      <p id="slimPrice" class="text-lg font-bold text-blue-700 truncate"></p>
+      <p id="slimPrice" class="font-display text-lg font-extrabold text-[#0f1f3d] truncate"></p>
       <div class="flex items-center gap-2 shrink-0">
         <a id="whatsappDealerBtnSlim" href="#" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp"
            class="hidden h-10 w-10 rounded-full bg-green-500 hover:bg-green-600 text-white flex items-center justify-center">
@@ -314,7 +331,9 @@
           document.getElementById('contactDealerBtnInline').classList.toggle('col-span-2', extras !== 1);
         }
 
-        // Slim bar: shown only while the in-page buttons are scrolled above the viewport (never for sold cars).
+        // Slim bar: the contact actions live in the Dealer Details card near the end of the page, so the bar is
+        // shown whenever those buttons are out of view (above or below) and hidden while they are on screen.
+        // Never for sold cars.
         const contactInline = document.getElementById('contactInline');
         const contactSlim = document.getElementById('contactSlim');
         let slimAllowed = false;
@@ -322,12 +341,18 @@
           contactSlim.classList.toggle('translate-y-full', !show);
           contactSlim.setAttribute('aria-hidden', show ? 'false' : 'true');
         }
+        function inlineInView() {
+          if (contactInline.classList.contains('hidden')) return false;
+          const r = contactInline.getBoundingClientRect();
+          return r.bottom > 0 && r.top < window.innerHeight;
+        }
+        function refreshSlim() { setSlimVisible(slimAllowed && !inlineInView()); }
         if ('IntersectionObserver' in window) {
           new IntersectionObserver(function (entries) {
-            const entry = entries[0];
-            const scrolledPast = !entry.isIntersecting && entry.boundingClientRect.bottom < 0;
-            setSlimVisible(slimAllowed && scrolledPast);
+            setSlimVisible(slimAllowed && !entries[0].isIntersecting);
           }, { threshold: 0 }).observe(contactInline);
+        } else {
+          window.addEventListener('scroll', refreshSlim, { passive: true });
         }
 
         function track(type) {
@@ -396,20 +421,23 @@
           if (!list || !list.length) { section.classList.add('hidden'); return; }
           const cats = [];
           list.forEach(function (f) { if (cats.indexOf(f.category) === -1) cats.push(f.category); });
+          // One white card, a block per category, checkmark rows.
           cats.forEach(function (cat) {
             const wrap = document.createElement('div');
-            wrap.innerHTML = '<p class="text-xs font-semibold uppercase tracking-wide text-gray-500">' + escapeHtml(cat) + '</p>';
+            wrap.className = 'p-4';
+            wrap.innerHTML = '<p class="text-sm font-bold text-slate-900">' + escapeHtml(cat) + '</p>';
             const ul = document.createElement('ul');
-            ul.className = 'mt-2 grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2';
+            ul.className = 'mt-2.5 grid grid-cols-2 gap-x-4 gap-y-2';
             list.filter(function (f) { return f.category === cat; }).forEach(function (f) {
               const li = document.createElement('li');
-              li.className = 'flex items-center gap-2 text-sm text-gray-800';
-              li.innerHTML = '<span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-green-100 text-green-700 shrink-0"><svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span><span>' + escapeHtml(f.name) + '</span>';
+              li.className = 'flex items-start gap-2 text-sm text-slate-700 min-w-0';
+              li.innerHTML = '<svg class="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg><span class="min-w-0 break-words">' + escapeHtml(f.name) + '</span>';
               ul.appendChild(li);
             });
             wrap.appendChild(ul);
             host.appendChild(wrap);
           });
+          document.getElementById('featureCount').textContent = list.length + (list.length === 1 ? ' feature' : ' features');
           section.classList.remove('hidden');
         }
 
@@ -568,6 +596,42 @@
           initPhotoSwipeWhenReady();
         }
 
+        // ---- Dealer Details card: address / governorate / phone rows + Directions, Website, Inventory tiles ----
+        function showRow(id, textId, text) {
+          const row = document.getElementById(id);
+          document.getElementById(textId).textContent = text || '';
+          row.classList.toggle('hidden', !text);
+        }
+        function safeWebsite(raw) {
+          let w = String(raw || '').trim();
+          if (!w) return '';
+          if (!/^https?:\/\//i.test(w)) w = 'https://' + w;
+          try {
+            const u = new URL(w);
+            return (u.protocol === 'http:' || u.protocol === 'https:') && u.hostname.indexOf('.') !== -1 ? u.href : '';
+          } catch (_) { return ''; }
+        }
+        function renderDealerDetails(dealer, profileHref) {
+          showRow('dealerAddress', 'dealerAddressText', dealer.address);
+          const gov = dealer.governorate || [dealer.city, dealer.state].filter(Boolean).join(', ');
+          showRow('dealerLocation', 'dealerLocationText', gov);
+          showRow('dealerPhone', 'dealerPhoneText', isSignedInBuyer() && dealer.phone ? dealer.phone : '');
+
+          const dir = document.getElementById('dealerDirectionsTile');
+          const hasPin = dealer.lat != null && dealer.lng != null && isFinite(dealer.lat) && isFinite(dealer.lng);
+          if (hasPin) dir.href = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(Number(dealer.lat) + ',' + Number(dealer.lng));
+          dir.classList.toggle('hidden', !hasPin);
+
+          const web = document.getElementById('dealerWebsiteTile');
+          const site = safeWebsite(dealer.website);
+          if (site) web.href = site;
+          web.classList.toggle('hidden', !site);
+
+          const inv = document.getElementById('dealerInventoryTile');
+          if (profileHref) inv.href = profileHref;
+          inv.classList.toggle('hidden', !profileHref);
+        }
+
         function renderVehicle(v) {
           currentVehicle = v;
           photos = v.photos || [];
@@ -582,7 +646,22 @@
               '<button type="button" data-trust-open="' + v.id + '" class="text-xs font-semibold text-blue-700 hover:underline">How is this scored?</button>';
             trustWrap.classList.remove('hidden');
           }
-          document.getElementById('listingPrice').textContent = formatPrice(v.price);
+          const priceEl = document.getElementById('listingPrice');
+          if (v.price > 0) {
+            priceEl.innerHTML = Math.round(Number(v.price) / 100).toLocaleString('en-EG') +
+              '<span class="ms-1.5 text-base font-semibold text-slate-400 align-baseline">EGP</span>';
+          } else {
+            priceEl.textContent = 'Price on request';
+          }
+          // Mileage + location on one line under the price
+          const metaEl = document.getElementById('listingMeta');
+          const metaKm = formatMileage(v.mileage) || (v.condition === 'new' ? '0 km' : null);
+          const metaLoc = (v.dealer && (v.dealer.governorate || v.dealer.city)) || '';
+          const metaParts = [];
+          if (metaKm) metaParts.push('<span class="inline-flex items-center gap-1.5"><span class="text-slate-400"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.6 17.5A8.5 8.5 0 1 1 19.4 17.5"/><path d="M12 13l3.5-3.5"/></svg></span>' + escapeHtml(metaKm) + '</span>');
+          if (metaLoc) metaParts.push('<span class="inline-flex items-center gap-1.5"><span class="text-slate-400"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6-5.3-6-11a6 6 0 1 1 12 0c0 5.7-6 11-6 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span>' + escapeHtml(metaLoc) + '</span>');
+          metaEl.innerHTML = metaParts.join('<span class="text-slate-300" aria-hidden="true">·</span>');
+          metaEl.classList.toggle('hidden', !metaParts.length);
 
           const dealer = v.dealer || {};
           const dealerNameEl = document.getElementById('dealerName');
@@ -591,9 +670,6 @@
           if (profileHref) {
             dealerNameEl.innerHTML = '<a href="' + profileHref + '" class="hover:text-blue-700 hover:underline">' + escapeHtml(dealerName) + '</a>';
             document.getElementById('dealerLogoLink').href = profileHref;
-            const allLink = document.getElementById('dealerAllCarsLink');
-            allLink.href = profileHref;
-            allLink.classList.remove('hidden');
           } else {
             dealerNameEl.textContent = dealerName;
           }
@@ -604,15 +680,7 @@
             logo.classList.remove('hidden');
             document.getElementById('dealerInitials').classList.add('hidden');
           }
-          document.getElementById('dealerLocation').textContent =
-            dealer.governorate || [dealer.city, dealer.state].filter(Boolean).join(', ') || '';
-          const phoneEl = document.getElementById('dealerPhone');
-          if (isSignedInBuyer() && dealer.phone) {
-            phoneEl.textContent = dealer.phone;
-            phoneEl.classList.remove('hidden');
-          } else {
-            phoneEl.classList.add('hidden');
-          }
+          renderDealerDetails(dealer, profileHref);
 
           // Vehicle Highlights (year / make / model / trim are in the title above).
           document.getElementById('specGrid').innerHTML = '';
@@ -648,6 +716,7 @@
           slimAllowed = !isSold;
           if (isSold) setSlimVisible(false);
           document.getElementById('slimPrice').textContent = formatPrice(v.price);
+          refreshSlim();
 
         }
 
@@ -762,6 +831,7 @@
           document.getElementById(id).addEventListener('click', function () { track('whatsapp'); });
         });
         document.getElementById('callDealerBtnInline').addEventListener('click', function () { track('call'); });
+        document.getElementById('dealerWebsiteTile').addEventListener('click', function () { track('website'); });
         document.getElementById('detailShareBtn').addEventListener('click', shareListing);
         document.getElementById('mobShareBtn').addEventListener('click', shareListing);
 

@@ -4510,7 +4510,12 @@ function mapPublicVehicleDetail(row, photoRows) {
       phone: row.dealer_phone,
       whatsapp: row.dealer_whatsapp || null,
       governorate: row.dealer_governorate || row.dealer_city || null,
-      logo_url: row.dealer_logo_url || null
+      logo_url: row.dealer_logo_url || null,
+      // Dealer Details card on the listing page: showroom address, website, and the saved map pin (Directions).
+      address: row.dealer_address || null,
+      website: row.dealer_website || null,
+      lat: row.dealer_lat != null ? Number(row.dealer_lat) : null,
+      lng: row.dealer_lng != null ? Number(row.dealer_lng) : null
     }
   };
 }
@@ -4724,7 +4729,8 @@ app.get('/api/cars/:id', function (req, res) {
         COALESCE(v.admin_paused, 0) AS admin_paused, v.admin_pause_reason,
         d.id AS dealer_id, d.business_name AS dealer_business_name,
         d.city AS dealer_city, d.state AS dealer_state, d.phone AS dealer_phone,
-        d.whatsapp AS dealer_whatsapp, d.governorate AS dealer_governorate, d.logo_url AS dealer_logo_url
+        d.whatsapp AS dealer_whatsapp, d.governorate AS dealer_governorate, d.logo_url AS dealer_logo_url,
+        d.address AS dealer_address, d.website AS dealer_website, d.lat AS dealer_lat, d.lng AS dealer_lng
       ${PUBLIC_CARS_FROM_SQL}
       WHERE v.id = ?` + visibility
     )
