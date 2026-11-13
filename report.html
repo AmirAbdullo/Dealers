@@ -1,28 +1,13 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CarFox - Vehicle Report</title>
-  <style>
-    body { margin: 0; font-family: Arial, sans-serif; background: #f4f7fb; color: #0f172a; }
-    .wrap { width: min(980px, 92%); margin: 0 auto; }
-    header { background: #fff; border-bottom: 1px solid #d9e2ec; }
-    .top { min-height: 64px; display: flex; align-items: center; justify-content: space-between; }
-    .logo { font-size: 1.4rem; font-weight: 800; text-decoration: none; color: #0f172a; }
-    .logo span { color: #ea580c; }
-    nav a { text-decoration: none; color: #64748b; margin-left: 10px; font-weight: 600; }
-    .head { margin: 22px 0; background: #fff; border: 1px solid #d9e2ec; border-radius: 12px; padding: 16px; }
-    h1 { margin: 0 0 6px; font-size: 1.5rem; }
-    .vin { color: #64748b; margin: 0; }
-    .badge { display: inline-block; margin-top: 10px; padding: 5px 9px; border-radius: 999px; background: #dcfce7; color: #166534; border: 1px solid #86efac; font-weight: 700; font-size: 0.8rem; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 22px; }
-    .card { background: #fff; border: 1px solid #d9e2ec; border-radius: 12px; padding: 14px; }
-    .card h2 { margin-top: 0; font-size: 1rem; }
-    ul { margin: 0; padding-left: 18px; }
-    li { margin-bottom: 6px; color: #334155; }
-    @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } nav { display: none; } }
-  </style>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>CarFox — Vehicle history reports (coming soon)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- PWA -->
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#0f1f3d" />
@@ -35,85 +20,147 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
     <script src="/js/carfox-pwa.js" defer></script>
     <script src="/js/carfox-ui.js"></script>
+    <link rel="stylesheet" href="/css/app.css" />
   </head>
-<body>
-  <header>
-    <div class="wrap top">
-      <a class="logo" href="index.html">Car<span>Fox</span></a>
-      <nav>
-        <a href="index.html">Home</a>
-        <a href="check-car.html">Check</a>
-        <a href="report.html">Report</a>
-        <a href="pricing.html">Pricing</a>
-      </nav>
-    </div>
-  </header>
+  <body class="bg-gray-50 text-gray-900 font-sans">
+    <header class="sticky top-0 z-40 bg-white border-b border-gray-200">
+      <div class="mx-auto max-w-2xl px-4 h-14 flex items-center justify-between">
+        <a id="backLink" href="/check-car.html" class="flex items-center gap-2 text-gray-700 hover:text-gray-900" aria-label="Back">
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+          <span class="text-sm font-semibold hidden sm:inline">Back</span>
+        </a>
+        <h1 class="text-base font-bold">Vehicle history</h1>
+        <a href="/" class="text-lg font-extrabold tracking-tight"><span class="text-blue-700">Car</span><span class="text-orange-500">Fox</span></a>
+      </div>
+    </header>
 
-  <main class="wrap">
-    <section class="head">
-      <h1>Vehicle History Report</h1>
-      <p class="vin">Record ID: <span id="record-id">N/A</span></p>
-      <span class="badge">No major red flags found</span>
-    </section>
+    <main class="mx-auto max-w-2xl px-4 py-5 pb-28 md:pb-10 space-y-4">
+      <section class="rounded-2xl border border-gray-200 bg-white p-5">
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-orange-50 px-2.5 py-1 text-xs font-bold text-orange-700 ring-1 ring-orange-200">
+          <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          Coming soon
+        </span>
+        <h2 id="headline" class="mt-3 text-xl font-bold text-gray-900">Vehicle history reports are coming soon</h2>
+        <p class="mt-2 text-sm text-gray-600">We don't have history records for this car yet. We won't show a report until we can back it with real data, so there's nothing to check today.</p>
 
-    <section class="grid">
-      <article class="card">
-        <h2>Vehicle Summary</h2>
-        <ul>
-          <li>Brand/Model: <span id="vehicle-make-model">Toyota Corolla</span></li>
-          <li>Year: 2020</li>
-          <li>Fuel Type: Petrol</li>
-          <li>Transmission: Automatic</li>
-          <li>Market: Egypt</li>
+        <h3 class="mt-5 text-sm font-semibold text-gray-900">What we're planning to include</h3>
+        <ul class="mt-2 space-y-1.5 text-sm text-gray-600">
+          <li class="flex gap-2"><span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-gray-300"></span>Registration and ownership history</li>
+          <li class="flex gap-2"><span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-gray-300"></span>Reported accidents and damage</li>
+          <li class="flex gap-2"><span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-gray-300"></span>Mileage readings over time</li>
+          <li class="flex gap-2"><span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-gray-300"></span>Service records shared by dealers</li>
         </ul>
-      </article>
+        <p class="mt-2 text-xs text-gray-500">What a report can show will depend on the records available in Egypt, so some of this may change.</p>
+      </section>
 
-      <article class="card">
-        <h2>Ownership & Registration</h2>
-        <ul>
-          <li>Registered owners: 2</li>
-          <li>Last ownership transfer: 2024-06</li>
-          <li>Current registration: Active</li>
-          <li>Registration city: Cairo</li>
-        </ul>
-      </article>
+      <!-- Notify me -->
+      <section class="rounded-2xl border border-gray-200 bg-white p-5">
+        <form id="notifyForm" novalidate>
+          <h2 class="font-semibold text-gray-900">Get notified when reports launch</h2>
+          <p id="notifyFor" class="mt-1 text-sm text-gray-600">We'll send you one email when vehicle history reports are available.</p>
+          <label for="notifyEmail" class="sr-only">Email</label>
+          <div class="mt-3 flex flex-col sm:flex-row gap-2">
+            <input id="notifyEmail" type="email" autocomplete="email" placeholder="you@example.com" required
+                   class="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+            <button id="notifyBtn" type="submit" class="rounded-lg bg-blue-700 hover:bg-blue-800 disabled:opacity-60 px-5 py-2.5 text-sm font-semibold text-white">Notify me</button>
+          </div>
+          <p id="notifyError" class="hidden mt-2 text-sm text-red-600" role="alert"></p>
+          <p class="mt-2 text-xs text-gray-500">We'll only use your email for this announcement.</p>
+        </form>
+        <div id="notifyDone" class="hidden flex items-start gap-3" role="status">
+          <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-50 text-green-600">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>
+          </span>
+          <div>
+            <p class="font-semibold text-gray-900">You're on the list</p>
+            <p id="notifyDoneText" class="mt-0.5 text-sm text-gray-600"></p>
+          </div>
+        </div>
+      </section>
 
-      <article class="card">
-        <h2>Accident & Damage</h2>
-        <ul>
-          <li>Major accidents: 0</li>
-          <li>Minor damage claims: 1</li>
-          <li>Airbag deployment: No record</li>
-          <li>Flood/fire record: Not found</li>
-        </ul>
-      </article>
+      <!-- Meanwhile -->
+      <section class="space-y-2">
+        <a id="browseLink" href="/cars.html" class="flex items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white p-4 text-sm font-semibold text-gray-900 hover:border-gray-300">
+          <span id="browseText">Browse cars on CarFox</span>
+          <svg class="h-4 w-4 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="m9 5 7 7-7 7"/></svg>
+        </a>
+        <a href="/cars.html?min_trust=60" class="flex items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white p-4 hover:border-gray-300">
+          <span class="min-w-0">
+            <span class="block text-sm font-semibold text-gray-900">Available today: the Car Trust Score</span>
+            <span class="mt-0.5 block text-xs text-gray-600">See what our team has verified on each listing.</span>
+          </span>
+          <svg class="h-4 w-4 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="m9 5 7 7-7 7"/></svg>
+        </a>
+      </section>
+    </main>
 
-      <article class="card">
-        <h2>Mileage & Service</h2>
-        <ul>
-          <li>Latest odometer: 74,100 km</li>
-          <li>Odometer rollback: Not detected</li>
-          <li>Last service: 2025-10</li>
-          <li>Service consistency: Good</li>
-        </ul>
-      </article>
-    </section>
-  </main>
+    <script src="/js/carfox-auth.js"></script>
+    <script src="/js/carfox-pill-nav.js"></script>
+    <script src="/js/carfox-buyer-nav.js"></script>
+    <script>
+      (function () {
+        const $ = (id) => document.getElementById(id);
+        const params = new URLSearchParams(location.search);
+        const clean = (v) => String(v || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+        // Legacy links passed ?id= (an old mock record id); it carries no car, so it is ignored.
+        const brand = clean(params.get('brand'));
+        const model = brand ? clean(params.get('model')) : '';
+        const car = [brand, model].filter(Boolean).join(' ');
 
-  <script>
-    var params = new URLSearchParams(window.location.search);
-    var id = params.get('id');
-    var brand = params.get('brand');
-    var model = params.get('model');
-    if (id) {
-      document.getElementById('record-id').textContent = id;
-    } else if (brand && model) {
-      document.getElementById('record-id').textContent = brand + ' ' + model;
-      document.getElementById('vehicle-make-model').textContent = brand + ' ' + model;
-    } else if (brand) {
-      document.getElementById('record-id').textContent = brand;
-      document.getElementById('vehicle-make-model').textContent = brand;
-    }
-  </script>
-</body>
+        $('backLink').addEventListener('click', function (e) {
+          if (history.length > 1) { e.preventDefault(); history.back(); }
+        });
+
+        if (car) {
+          $('headline').textContent = 'History reports for the ' + car + ' are coming soon';
+          $('notifyFor').textContent = "We'll email you once when vehicle history reports are available, starting with your interest in the " + car + '.';
+          const q = new URLSearchParams();
+          q.set('make', brand);
+          if (model) q.set('model', model);
+          $('browseLink').href = '/cars.html?' + q.toString();
+          $('browseText').textContent = 'Browse ' + car + ' listings on CarFox';
+        }
+
+        try {
+          const u = JSON.parse(localStorage.getItem('carfox_user') || 'null');
+          if (u && u.email) $('notifyEmail').value = u.email;
+        } catch (_) {}
+
+        $('notifyForm').addEventListener('submit', async function (e) {
+          e.preventDefault();
+          const email = $('notifyEmail').value.trim();
+          const err = $('notifyError');
+          err.classList.add('hidden');
+          if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+            err.textContent = 'Please enter a valid email address.';
+            err.classList.remove('hidden');
+            return;
+          }
+          const btn = $('notifyBtn');
+          btn.disabled = true;
+          btn.textContent = 'Saving…';
+          try {
+            const headers = { 'Content-Type': 'application/json' };
+            try { const t = localStorage.getItem('carfox_token'); if (t) headers.Authorization = 'Bearer ' + t; } catch (_) {}
+            const res = await fetch('/api/history-waitlist', { method: 'POST', headers: headers, body: JSON.stringify({ email: email, brand: brand, model: model }) });
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok) {
+              err.textContent = body.error || 'Could not save your email. Please try again.';
+              err.classList.remove('hidden');
+              return;
+            }
+            $('notifyDoneText').textContent = (body.already ? "You'd already signed up — we'll" : "We'll") + ' email ' + email + ' when vehicle history reports launch.';
+            $('notifyForm').classList.add('hidden');
+            $('notifyDone').classList.remove('hidden');
+          } catch (_) {
+            err.textContent = 'Network error. Please try again.';
+            err.classList.remove('hidden');
+          } finally {
+            btn.disabled = false;
+            btn.textContent = 'Notify me';
+          }
+        });
+      })();
+    </script>
+  </body>
 </html>

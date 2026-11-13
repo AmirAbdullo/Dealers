@@ -368,6 +368,21 @@ db.exec(`
 db.exec('CREATE INDEX IF NOT EXISTS idx_listing_reports_status ON listing_reports(status, created_at)');
 db.exec('CREATE INDEX IF NOT EXISTS idx_listing_reports_vehicle ON listing_reports(vehicle_id)');
 
+// Vehicle history reports are not built yet; report.html collects "notify me" emails (optionally for a make /
+// model). One row per email + make + model. Removed if the buyer deletes their account.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS history_waitlist (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL,
+    brand TEXT NOT NULL DEFAULT '',
+    model TEXT NOT NULL DEFAULT '',
+    user_id INTEGER,
+    ip TEXT,
+    created_at TEXT NOT NULL
+  )
+`);
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_history_waitlist_unique ON history_waitlist(email, brand, model)');
+
 // Promoted listings (admin-controlled, no payments yet). A listing is featured while promoted = 1 and
 // promoted_from <= now < promoted_until. Dates are ISO UTC strings (toISOString format), so SQL compares them
 // as text against strftime(...'now') in the same format; expiry is therefore exact even between sweeps.
@@ -2021,6 +2036,7 @@ app.delete('/api/me', authMiddleware, async function (req, res) {
     db.prepare('DELETE FROM conversations WHERE buyer_id = ?').run(user.id);
     db.prepare('DELETE FROM saved_cars WHERE buyer_id = ?').run(user.id);
     db.prepare('UPDATE listing_reports SET reporter_user_id = NULL, reporter_email = NULL, reporter_ip = NULL WHERE reporter_user_id = ?').run(user.id);
+    db.prepare('DELETE FROM history_waitlist WHERE user_id = ? OR email = ?').run(user.id, normalizeEmail(user.email));
     db.prepare("UPDATE inquiries SET buyer_name = 'Deleted user', buyer_email = '', buyer_phone = '', message = '(Removed: the buyer deleted their CarFox account.)' WHERE LOWER(buyer_email) = ?")
       .run(String(user.email || '').toLowerCase());
     db.prepare('DELETE FROM password_reset_tokens WHERE user_id = ?').run(user.id);
@@ -3786,6 +3802,13 @@ app.get('/api/admin/dashboard', requireAdmin, function (req, res) {
     });
 
   res.set('Cache-Control', 'no-store');
+  // Vehicle history waitlist (report.html "notify me"): total sign-ups and the last 7 days.
+  const historyWaitlist = {
+    total: db.prepare('SELECT COUNT(*) AS n FROM history_waitlist').get().n,
+    people: db.prepare('SELECT COUNT(DISTINCT email) AS n FROM history_waitlist').get().n,
+    last7: db.prepare('SELECT COUNT(*) AS n FROM history_waitlist WHERE created_at >= ?').get(new Date(Date.now() - 7 * DAY).toISOString()).n
+  };
+  const openReports = db.prepare("SELECT COUNT(*) AS n FROM listing_reports WHERE status = 'open'").get().n;
   return res.json({
     generated_at: nowIso,
     totals: { dealers: dealers, buyers: buyers, listings: listings, sold: sold, pending_applications: dealers.pending },
@@ -3793,7 +3816,9 @@ app.get('/api/admin/dashboard', requireAdmin, function (req, res) {
     charts: { listings_per_week: listingWeeks, users_per_week: userWeeks },
     recent_listings: recentListings,
     newest_dealers: newestDealers,
-    pending_applications: pendingApplications
+    pending_applications: pendingApplications,
+    history_waitlist: historyWaitlist,
+    open_reports: openReports
   });
 });
 
@@ -6103,6 +6128,30 @@ app.patch('/api/admin/reports/:id', requireAdmin, function (req, res) {
   db.prepare('UPDATE listing_reports SET status = ?, admin_note = ?, resolved_at = ?, resolved_by = ? WHERE id = ?')
     .run(status, note || null, closed ? new Date().toISOString() : null, closed ? req.user.id : null, id);
   return res.json({ ok: true });
+});
+
+// ---- Vehicle history waitlist ("notify me" on report.html) ----
+const waitlistHits = new Map(); // ip -> [timestamps], 10 sign-ups per IP per hour
+app.post('/api/history-waitlist', function (req, res) {
+  const body = req.body || {};
+  const user = optionalSiteUser(req);
+  const email = normalizeEmail(body.email || (user && user.email) || '');
+  const clean = function (v) { return String(v || '').replace(/\s+/g, ' ').trim().slice(0, 60); };
+  const brand = clean(body.brand);
+  const model = brand ? clean(body.model) : '';
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || email.length > 200) {
+    return res.status(400).json({ error: 'Please enter a valid email address.' });
+  }
+  const ip = req.ip || 'unknown';
+  const now = Date.now();
+  const recent = (waitlistHits.get(ip) || []).filter(function (t) { return now - t < 60 * 60 * 1000; });
+  if (recent.length >= 10) return res.status(429).json({ error: 'Too many sign-ups from this connection. Please try again later.' });
+  recent.push(now);
+  waitlistHits.set(ip, recent);
+  const info = db.prepare(
+    'INSERT OR IGNORE INTO history_waitlist (email, brand, model, user_id, ip, created_at) VALUES (?, ?, ?, ?, ?, ?)'
+  ).run(email, brand, model, user ? user.id : null, ip, new Date().toISOString());
+  return res.status(info.changes ? 201 : 200).json({ ok: true, already: !info.changes });
 });
 
 // ---- /cars/:id with server-rendered social previews (Open Graph + Twitter) ----
