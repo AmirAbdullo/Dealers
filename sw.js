@@ -7,7 +7,9 @@
  *   - pages (navigations): network first; the /offline.html fallback only when the network fails
  *   - /api/*: never intercepted (always live)
  *   - static shell (/css, /js, /icons, manifest): cached, served immediately and refreshed in the
- *     background (stale-while-revalidate) so loads are fast and never permanently stale
+ *     background (stale-while-revalidate) so loads are fast and never permanently stale. Pages
+ *     reference CSS / JS with ?v=<VERSION>, so the first view after a deploy (still controlled by
+ *     the previous worker) misses that worker's cache and loads the new files from the network.
  */
 const VERSION = '__CACHE_VERSION__';
 const SHELL_CACHE = 'carfox-shell-' + VERSION;
@@ -34,11 +36,17 @@ const SHELL = [
   '/icons/apple-touch-icon.png'
 ];
 
+// Pages reference CSS / JS as `<path>?v=<VERSION>` (the server stamps them; the i18n loader adds the same
+// stamp to its dictionaries), so precache those exact URLs.
+function shellUrl(url) {
+  return /^\/(css|js)\/.+\.(css|js|json)$/.test(url) ? url + '?v=' + VERSION : url;
+}
+
 self.addEventListener('install', function (event) {
   event.waitUntil(
     caches.open(SHELL_CACHE).then(function (cache) {
       // One missing asset must not block the install: add each file on its own.
-      return Promise.all(SHELL.map(function (url) {
+      return Promise.all(SHELL.map(shellUrl).map(function (url) {
         return cache.add(new Request(url, { cache: 'reload' })).catch(function () {});
       }));
     }).then(function () { return self.skipWaiting(); })

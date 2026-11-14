@@ -4,6 +4,13 @@
 (function (global) {
   'use strict';
 
+  // The server stamps page asset URLs with ?v=<deploy>; scripts loaded from here reuse it so they match
+  // this deploy (and the service worker's cache keys) too.
+  var ASSET_V = (function () {
+    var m = document.currentScript && /[?&]v=([^&#]+)/.exec(document.currentScript.src);
+    return m ? '?v=' + m[1] : '';
+  })();
+
   const TOKEN_KEY = 'carfox_token';
   const USER_KEY = 'carfox_user';
 
@@ -181,10 +188,10 @@
   // The floating pill itself lives in /js/carfox-pill-nav.js (shared with the dealer nav); pages include it
   // before this file, and it is loaded on demand if a page does not.
   function loadScriptOnce(src, cb) {
-    var existing = document.querySelector('script[src="' + src + '"]');
+    var existing = document.querySelector('script[src^="' + src + '"]');
     if (existing && !existing.dataset.cfLoaded) { existing.addEventListener('load', cb); return; }
     var s = document.createElement('script');
-    s.src = src;
+    s.src = src + ASSET_V;
     s.dataset.cfLoaded = '';
     s.onload = cb;
     document.body.appendChild(s);
@@ -203,9 +210,9 @@
     // Labels carry data-i18n keys: pages that load /js/i18n/i18n.js translate them, others stay English.
     if (global.CarfoxI18n && CarfoxI18n.isReady && CarfoxI18n.isReady()) CarfoxI18n.apply(nav);
     // The Search tab opens the results page; the helper script carries current filters over.
-    if (!global.CarfoxQuickSearch && !document.querySelector('script[src="/js/carfox-quick-search.js"]')) {
+    if (!global.CarfoxQuickSearch && !document.querySelector('script[src^="/js/carfox-quick-search.js"]')) {
       var s = document.createElement('script');
-      s.src = '/js/carfox-quick-search.js';
+      s.src = '/js/carfox-quick-search.js' + ASSET_V;
       document.body.appendChild(s);
     }
   }
@@ -293,9 +300,9 @@
     if (slot) slot.outerHTML = buyerDesktopHeaderHtml();
     else document.body.insertAdjacentHTML('afterbegin', buyerDesktopHeaderHtml());
     if (global.CarfoxAuth && CarfoxAuth.initBuyerNav) CarfoxAuth.initBuyerNav();
-    if (!global.CarfoxQuickSearch && !document.querySelector('script[src="/js/carfox-quick-search.js"]')) {
+    if (!global.CarfoxQuickSearch && !document.querySelector('script[src^="/js/carfox-quick-search.js"]')) {
       var s = document.createElement('script');
-      s.src = '/js/carfox-quick-search.js';
+      s.src = '/js/carfox-quick-search.js' + ASSET_V;
       document.body.appendChild(s);
     }
   }

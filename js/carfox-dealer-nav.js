@@ -4,6 +4,13 @@
 (function (global) {
   'use strict';
 
+  // The server stamps page asset URLs with ?v=<deploy>; scripts loaded from here reuse it so they match
+  // this deploy (and the service worker's cache keys) too.
+  var ASSET_V = (function () {
+    var m = document.currentScript && /[?&]v=([^&#]+)/.exec(document.currentScript.src);
+    return m ? '?v=' + m[1] : '';
+  })();
+
   const TOKEN_KEY = 'carfox_token';
   const USER_KEY = 'carfox_user';
 
@@ -276,7 +283,7 @@
     if (!container) return;
     if (!global.CarfoxPillNav) {
       var s = document.createElement('script');
-      s.src = '/js/carfox-pill-nav.js';
+      s.src = '/js/carfox-pill-nav.js' + ASSET_V;
       s.onload = function () { mountDealerBottomNav(container, activeTab); };
       document.body.appendChild(s);
       return;

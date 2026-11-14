@@ -22,6 +22,13 @@
 (function (global) {
   'use strict';
 
+  // The server stamps page asset URLs with ?v=<deploy>; scripts loaded from here reuse it so they match
+  // this deploy (and the service worker's cache keys) too.
+  var ASSET_V = (function () {
+    var m = document.currentScript && /[?&]v=([^&#]+)/.exec(document.currentScript.src);
+    return m ? '?v=' + m[1] : '';
+  })();
+
   var LANG_KEY = 'carfox_lang';
   var SUPPORTED = { en: true, ar: true };
   var BASE = '/js/i18n/';
@@ -84,7 +91,7 @@
   function fetchDict(l) {
     if (dicts[l]) return Promise.resolve(dicts[l]);
     if (pending[l]) return pending[l];
-    pending[l] = fetch(BASE + l + '.json', { cache: 'no-cache' })
+    pending[l] = fetch(BASE + l + '.json' + ASSET_V, { cache: 'no-cache' })
       .then(function (r) { return r.ok ? r.json() : {}; })
       .catch(function () { return {}; })
       .then(function (d) {

@@ -6154,6 +6154,41 @@ app.post('/api/history-waitlist', function (req, res) {
   return res.status(info.changes ? 201 : 200).json({ ok: true, already: !info.changes });
 });
 
+// ---- Deploy version + versioned asset URLs ----
+// The deploy version is Render's git commit (else the server start time). It is baked into /sw.js (fresh
+// worker + cache per deploy) and stamped onto every local /css and /js reference in served HTML
+// (`/css/app.css?v=<version>`). The service worker caches by full URL, so on the first page view after a
+// deploy — while the previous deploy's worker still controls the page — the new HTML's asset URLs miss its
+// cache and come from the network, instead of new HTML being paired with the old stylesheet / scripts.
+const SW_VERSION = String(process.env.RENDER_GIT_COMMIT || '').slice(0, 12) || String(Date.now());
+const ASSET_REF_RE = /(\s(?:src|href)=")((?:\/|(?:\.\.\/)*)?(?:css|js)\/[^"?#]+\.(?:css|js))"/g;
+function versionAssetRefs(html) {
+  return html.replace(ASSET_REF_RE, function (_, attr, url) { return attr + url + '?v=' + SW_VERSION + '"'; });
+}
+// Static .html pages (and directory index.html) go through here so their asset references are versioned;
+// everything else falls through to express.static. Cached per file by mtime.
+const htmlPageCache = new Map();
+function serveVersionedHtml(req, res, next) {
+  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+  let rel;
+  try { rel = decodeURIComponent(req.path); } catch (_) { return next(); }
+  if (/\/$/.test(rel)) rel += 'index.html';
+  if (!/\.html$/i.test(rel)) return next();
+  const file = path.join(__dirname, path.normalize(rel));
+  if (file.indexOf(__dirname + path.sep) !== 0) return next();
+  let stat;
+  try { stat = fs.statSync(file); } catch (_) { return next(); }
+  if (!stat.isFile()) return next();
+  let hit = htmlPageCache.get(file);
+  if (!hit || hit.mtime !== stat.mtimeMs) {
+    hit = { mtime: stat.mtimeMs, html: versionAssetRefs(fs.readFileSync(file, 'utf8')) };
+    htmlPageCache.set(file, hit);
+  }
+  res.set('Content-Type', 'text/html; charset=utf-8');
+  res.set('Cache-Control', 'no-cache');
+  return res.send(hit.html);
+}
+
 // ---- /cars/:id with server-rendered social previews (Open Graph + Twitter) ----
 // WhatsApp / Facebook / X crawlers don't run JS, so the listing's title, price, photo and summary are written
 // into the HTML head here. Hidden / unknown listings get generic CarFox tags (nothing private leaks).
@@ -6161,7 +6196,7 @@ let detailTemplateCache = { mtime: 0, html: '' };
 function detailTemplate() {
   const file = path.join(__dirname, 'cars-detail.html');
   const mtime = fs.statSync(file).mtimeMs;
-  if (mtime !== detailTemplateCache.mtime) detailTemplateCache = { mtime: mtime, html: fs.readFileSync(file, 'utf8') };
+  if (mtime !== detailTemplateCache.mtime) detailTemplateCache = { mtime: mtime, html: versionAssetRefs(fs.readFileSync(file, 'utf8')) };
   return detailTemplateCache.html;
 }
 function escAttr(v) {
@@ -6219,9 +6254,8 @@ app.get('/cars/:id(\\d+)', function (req, res) {
   return res.send(html);
 });
 
-// Service worker: the deploy version is baked in (Render's git commit, else the server start time) so
-// every deploy installs a fresh worker and cache; the browser must never cache the worker file itself.
-const SW_VERSION = String(process.env.RENDER_GIT_COMMIT || '').slice(0, 12) || String(Date.now());
+// Service worker: the deploy version (SW_VERSION, above) is baked in so every deploy installs a fresh
+// worker and cache; the browser must never cache the worker file itself.
 app.get('/sw.js', function (req, res) {
   const src = require('fs').readFileSync(require('path').join(__dirname, 'sw.js'), 'utf8');
   res.set('Content-Type', 'application/javascript; charset=utf-8');
@@ -6239,6 +6273,7 @@ app.use(function (req, res, next) {
   if (PRIVATE_STATIC_RE.test(p.replace(/\\/g, '/').replace(/\/{2,}/g, '/'))) return res.status(404).send('Not found');
   next();
 });
+app.use(serveVersionedHtml);
 app.use(express.static(__dirname));
 
 const server = http.createServer(app);
