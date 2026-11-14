@@ -111,7 +111,9 @@
       </section>
 
       <!-- 2. Inventory, straight after the header -->
-      <section id="inventory" class="mt-6 scroll-mt-20" aria-labelledby="inventoryTitle">
+      <!-- id is not "inventory" on purpose: the browser's own #inventory jump would fire when this appears and hide
+           the dealer header even when the cars are already on screen; the script below decides instead. -->
+      <section id="inventorySection" class="mt-6 scroll-mt-20" aria-labelledby="inventoryTitle">
         <div class="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <h2 id="inventoryTitle" class="text-xl font-bold text-gray-900">Inventory <span id="inventoryCount" class="font-semibold text-gray-500"></span></h2>
           <div id="conditionTabs" class="hidden inline-flex rounded-full bg-gray-100 p-1 text-sm font-semibold" role="tablist" aria-label="Filter by condition">
@@ -360,8 +362,8 @@
           // From a listing's "Inventory" tile (#inventory): make sure the cars are on screen, without hiding the
           // dealer header when the grid already starts above the fold.
           if (location.hash === '#inventory') {
-            const top = $('inventory').getBoundingClientRect().top;
-            if (top > window.innerHeight * 0.55) $('inventory').scrollIntoView({ block: 'start' });
+            const top = $('inventorySection').getBoundingClientRect().top;
+            if (top > window.innerHeight * 0.55) $('inventorySection').scrollIntoView({ block: 'start' });
           }
         }
 
