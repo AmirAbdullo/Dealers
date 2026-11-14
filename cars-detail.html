@@ -705,7 +705,8 @@
           web.classList.toggle('hidden', !site);
 
           const inv = document.getElementById('dealerInventoryTile');
-          if (profileHref) inv.href = profileHref;
+          // The profile shows the inventory right under the dealer header; #inventory makes sure it is on screen.
+          if (profileHref) inv.href = profileHref + '#inventory';
           inv.classList.toggle('hidden', !profileHref);
         }
 

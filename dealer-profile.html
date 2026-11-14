@@ -9,7 +9,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/css/carfox-brand.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
     <style>
       #dealerMap { height: 220px; }
       @media (min-width: 768px) { #dealerMap { height: 300px; } }
@@ -25,6 +24,13 @@
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+    <script>
+      // Start loading the dealer + first page of inventory right away, in parallel with the page's scripts.
+      (function () {
+        var id = parseInt(new URLSearchParams(location.search).get('id'), 10);
+        if (id > 0) window.__cfDealerProfile = fetch('/api/dealers/' + id + '/profile');
+      })();
+    </script>
     <script src="/js/carfox-pwa.js" defer></script>
     <script src="/js/carfox-ui.js"></script>
     <link rel="stylesheet" href="/css/app.css" />
@@ -41,7 +47,22 @@
       </div>
     </header>
 
-    <div id="pageLoading" class="px-4 py-16 text-center text-sm text-gray-600">Loading dealer profile…</div>
+    <!-- Loading: header card + inventory grid placeholders in the real layout -->
+    <div id="pageLoading" class="max-w-5xl mx-auto px-4 py-4" aria-busy="true" aria-label="Loading dealer profile">
+      <div class="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
+        <div class="flex items-start gap-4">
+          <div class="cf-skel shrink-0 w-20 h-20 md:w-24 md:h-24 rounded-2xl"></div>
+          <div class="flex-1 space-y-2.5 pt-1">
+            <div class="cf-skel h-6 w-2/3"></div>
+            <div class="cf-skel h-4 w-1/3"></div>
+            <div class="cf-skel h-3 w-1/4"></div>
+          </div>
+        </div>
+        <div class="mt-4 flex gap-2"><div class="cf-skel h-10 flex-1"></div><div class="cf-skel h-10 flex-1"></div></div>
+      </div>
+      <div class="mt-6 mb-3 cf-skel h-7 w-40"></div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" data-cf-skeleton="grid:6"></div>
+    </div>
 
     <div id="pageError" class="hidden px-4 py-16 text-center">
       <p class="text-lg font-semibold text-gray-900">Dealer not found.</p>
@@ -49,7 +70,7 @@
     </div>
 
     <main id="pageContent" class="hidden max-w-5xl mx-auto px-4 py-4">
-      <!-- Header card -->
+      <!-- 1. Dealer header card -->
       <section class="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
         <div class="flex items-start gap-4">
           <div class="shrink-0 w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
@@ -74,11 +95,6 @@
               <span id="dealerWebsiteText"></span>
             </a>
           </div>
-          <div class="hidden sm:block shrink-0">
-            <span class="inline-flex items-center gap-1 bg-blue-700 text-white text-sm font-semibold px-3 py-1.5 rounded-full">
-              <span id="listingsCount">0 cars</span>
-            </span>
-          </div>
         </div>
 
         <div class="mt-4 flex gap-2">
@@ -94,8 +110,26 @@
         <p id="contactNote" class="hidden mt-2 text-xs text-gray-500">This dealer has not added contact details yet. Message them from any of their listings.</p>
       </section>
 
-      <!-- Map -->
-      <section id="mapSection" class="hidden mt-4 bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+      <!-- 2. Inventory, straight after the header -->
+      <section id="inventory" class="mt-6 scroll-mt-20" aria-labelledby="inventoryTitle">
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <h2 id="inventoryTitle" class="text-xl font-bold text-gray-900">Inventory <span id="inventoryCount" class="font-semibold text-gray-500"></span></h2>
+          <div id="conditionTabs" class="hidden inline-flex rounded-full bg-gray-100 p-1 text-sm font-semibold" role="tablist" aria-label="Filter by condition">
+            <button type="button" role="tab" data-cond="all" class="cond-tab rounded-full px-4 py-1.5">All <span data-count class="font-normal"></span></button>
+            <button type="button" role="tab" data-cond="new" class="cond-tab rounded-full px-4 py-1.5">New <span data-count class="font-normal"></span></button>
+            <button type="button" role="tab" data-cond="used" class="cond-tab rounded-full px-4 py-1.5">Used <span data-count class="font-normal"></span></button>
+          </div>
+        </div>
+        <div id="vehicleGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" aria-live="polite"></div>
+        <div id="tabEmpty" class="hidden rounded-xl border border-gray-200 bg-white p-8 text-center text-gray-600"></div>
+        <div id="emptyState" class="hidden rounded-xl border border-gray-200 bg-white p-8 text-center text-gray-600">This dealer has no active listings right now.</div>
+        <div class="mt-4 text-center">
+          <button type="button" id="moreBtn" class="hidden rounded-xl border border-gray-300 bg-white px-6 py-2.5 text-sm font-semibold text-gray-800 hover:border-gray-400 disabled:opacity-60">Show more cars</button>
+        </div>
+      </section>
+
+      <!-- 3. Location, at the bottom (Leaflet loads only when this is about to scroll into view) -->
+      <section id="mapSection" class="hidden mt-8 bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
         <div class="px-4 py-3 flex items-center justify-between">
           <h2 class="font-semibold text-gray-900">Location</h2>
           <a id="directionsLink" href="#" target="_blank" rel="noopener noreferrer" class="text-sm font-semibold text-blue-700 hover:underline">Open in maps</a>
@@ -103,25 +137,8 @@
         <div id="dealerMap" class="relative z-0 w-full bg-gray-100"></div>
         <p id="mapNote" class="hidden px-4 py-2 text-xs text-gray-500 bg-gray-50">Approximate location based on governorate.</p>
       </section>
-
-      <!-- Listings -->
-      <section class="mt-6">
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-lg font-bold text-gray-900">Cars from this dealer</h2>
-          <span id="listingsCountInline" class="text-sm text-gray-500"></span>
-        </div>
-        <div id="conditionTabs" class="hidden mb-3 inline-flex rounded-full bg-gray-100 p-1 text-sm font-semibold" role="tablist" aria-label="Filter by condition">
-          <button type="button" role="tab" data-cond="all" class="cond-tab rounded-full px-4 py-1.5">All <span data-count class="font-normal"></span></button>
-          <button type="button" role="tab" data-cond="new" class="cond-tab rounded-full px-4 py-1.5">New <span data-count class="font-normal"></span></button>
-          <button type="button" role="tab" data-cond="used" class="cond-tab rounded-full px-4 py-1.5">Used <span data-count class="font-normal"></span></button>
-        </div>
-        <div id="vehicleGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
-        <div id="tabEmpty" class="hidden rounded-xl border border-gray-200 bg-white p-8 text-center text-gray-600"></div>
-        <div id="emptyState" class="hidden rounded-xl border border-gray-200 bg-white p-8 text-center text-gray-600">This dealer has no active listings right now.</div>
-      </section>
     </main>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
     <script src="/js/carfox-trust.js"></script>
     <script src="/js/carfox-card.js"></script>
     <script src="/js/carfox-value.js"></script>
@@ -134,8 +151,8 @@
       (function () {
         const $ = (id) => document.getElementById(id);
         const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        const fmtPrice = (cents) => (!cents || cents <= 0) ? 'Price on request' : Math.round(Number(cents) / 100).toLocaleString('en-EG') + ' EGP';
-        const fmtMileage = (km) => (km == null || Number(km) <= 0) ? '' : Number(km).toLocaleString('en-US') + ' km';
+        const LEAFLET_CSS = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
+        const LEAFLET_JS = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
 
         function whatsappDigits(raw) {
           let d = String(raw || '').replace(/[^0-9]/g, '');
@@ -146,26 +163,61 @@
         }
 
         function renderCard(car) {
-          return CarfoxCard.render(car, { variant: 'grid', actions: false });
+          return CarfoxCard.render(car, { variant: 'grid', actions: false, dealerRow: false });
         }
 
-        function renderMap(dealer) {
+        // ---- Location (bottom of the page): Leaflet is fetched only when the card nears the viewport ----
+        let leafletPromise = null;
+        function loadLeaflet() {
+          if (window.L) return Promise.resolve();
+          if (!leafletPromise) {
+            leafletPromise = new Promise(function (resolve, reject) {
+              const link = document.createElement('link');
+              link.rel = 'stylesheet';
+              link.href = LEAFLET_CSS;
+              document.head.appendChild(link);
+              const s = document.createElement('script');
+              s.src = LEAFLET_JS;
+              s.onload = resolve;
+              s.onerror = reject;
+              document.head.appendChild(s);
+            });
+          }
+          return leafletPromise;
+        }
+        function setupMap(dealer) {
           let coords = (dealer.lat != null && dealer.lng != null && CarfoxGeo.isInEgypt(Number(dealer.lat), Number(dealer.lng))) ? [Number(dealer.lat), Number(dealer.lng)] : null;
           let approximate = false;
           if (!coords) { coords = CarfoxGeo.centroidFor(dealer.governorate); approximate = !!coords; }
-          if (!coords || typeof L === 'undefined') return;
+          if (!coords) return;
           $('mapSection').classList.remove('hidden');
           $('mapNote').classList.toggle('hidden', !approximate);
           $('directionsLink').href = 'https://www.openstreetmap.org/?mlat=' + coords[0] + '&mlon=' + coords[1] + '#map=15/' + coords[0] + '/' + coords[1];
-          const map = L.map('dealerMap', { scrollWheelZoom: false }).setView(coords, approximate ? 11 : 15);
-          L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
-          L.marker(coords).addTo(map).bindPopup(esc(dealer.business_name || 'Dealer'));
-          setTimeout(() => map.invalidateSize(), 200);
+          let drawn = false;
+          const draw = function () {
+            if (drawn) return;
+            drawn = true;
+            loadLeaflet().then(function () {
+              const map = L.map('dealerMap', { scrollWheelZoom: false }).setView(coords, approximate ? 11 : 15);
+              L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+              L.marker(coords).addTo(map).bindPopup(esc(dealer.business_name || 'Dealer'));
+              setTimeout(() => map.invalidateSize(), 200);
+            }).catch(function () {
+              $('dealerMap').innerHTML = '<p class="px-4 py-8 text-center text-sm text-gray-500">The map could not be loaded. Use “Open in maps” above.</p>';
+            });
+          };
+          if ('IntersectionObserver' in window) {
+            const io = new IntersectionObserver(function (entries) {
+              if (entries.some((e) => e.isIntersecting)) { io.disconnect(); draw(); }
+            }, { rootMargin: '400px 0px' });
+            io.observe($('mapSection'));
+          } else {
+            draw();
+          }
         }
 
-        function renderDealer(data) {
-          const dealer = data.dealer || {};
-          const vehicles = data.vehicles || [];
+        // ---- Header card ----
+        function renderHeader(dealer) {
           const name = dealer.business_name || 'Dealer';
           document.title = 'CarFox — ' + name;
           $('dealerName').textContent = name;
@@ -184,10 +236,6 @@
             $('dealerWebsiteText').textContent = dealer.website.replace(/^https?:\/\//, '').replace(/\/$/, '');
             a.classList.remove('hidden');
           }
-          const count = vehicles.length;
-          $('listingsCount').textContent = count + (count === 1 ? ' car' : ' cars');
-          $('listingsCountInline').textContent = count + ' active';
-
           const wa = whatsappDigits(dealer.whatsapp);
           if (wa) {
             $('whatsappBtn').href = 'https://wa.me/' + wa + '?text=' + encodeURIComponent('Hi, I found ' + name + ' on CarFox and would like to ask about your cars.');
@@ -202,58 +250,140 @@
           $('whatsappBtn').addEventListener('click', () => track('whatsapp'));
           $('callBtn').addEventListener('click', () => track('call'));
           $('dealerWebsite').addEventListener('click', () => track('website'));
+        }
 
-          // All / New / Used tabs above the grid (filtering the loaded listings; empty tabs are disabled).
-          const grid = $('vehicleGrid');
-          const condOf = (car) => (car.condition === 'new' ? 'new' : 'used');
-          const counts = { all: vehicles.length, new: vehicles.filter((c) => condOf(c) === 'new').length };
-          counts.used = counts.all - counts.new;
-          const tabs = Array.from(document.querySelectorAll('#conditionTabs [data-cond]'));
-          function showTab(cond) {
-            tabs.forEach((t) => {
-              const on = t.dataset.cond === cond;
-              t.setAttribute('aria-selected', on ? 'true' : 'false');
-              t.className = 'cond-tab rounded-full px-4 py-1.5 ' + (on ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900') +
-                (counts[t.dataset.cond] ? '' : ' opacity-40 cursor-not-allowed');
-            });
-            const list = cond === 'all' ? vehicles : vehicles.filter((c) => condOf(c) === cond);
+        // ---- Inventory: All / New / Used tabs, 24 cards per page, "Show more" ----
+        // Each tab keeps its own loaded list. When the whole inventory fits in the first page, New / Used are
+        // filtered locally; otherwise a tab fetches its own pages from the server.
+        const grid = $('vehicleGrid');
+        const condOf = (car) => (car.condition === 'new' ? 'new' : 'used');
+        const lists = {};
+        let counts = { all: 0, new: 0, used: 0 };
+        let current = 'all';
+        let dealerId = 0;
+
+        function profileUrl(cond, offset) {
+          return '/api/dealers/' + dealerId + '/profile?condition=' + cond + '&offset=' + offset;
+        }
+        function paint(cond, appended) {
+          const state = lists[cond];
+          if (appended) {
+            const frag = document.createDocumentFragment();
+            appended.forEach((car) => frag.appendChild(renderCard(car)));
+            grid.appendChild(frag);
+          } else {
             grid.innerHTML = '';
-            list.forEach((car) => grid.appendChild(renderCard(car)));
-            const tabEmpty = $('tabEmpty');
-            tabEmpty.textContent = cond === 'new' ? 'No new cars from this dealer right now.' : 'No used cars from this dealer right now.';
-            tabEmpty.classList.toggle('hidden', !!list.length || !vehicles.length);
+            const frag = document.createDocumentFragment();
+            state.items.forEach((car) => frag.appendChild(renderCard(car)));
+            grid.appendChild(frag);
+            if (window.CarfoxUI && CarfoxUI.stagger) CarfoxUI.stagger(grid);
           }
-          tabs.forEach((t) => {
+          const tabEmpty = $('tabEmpty');
+          tabEmpty.textContent = cond === 'new' ? 'No new cars from this dealer right now.' : 'No used cars from this dealer right now.';
+          tabEmpty.classList.toggle('hidden', !!state.items.length || !counts.all);
+          $('moreBtn').classList.toggle('hidden', !state.hasMore);
+        }
+        function setTabs(cond) {
+          document.querySelectorAll('#conditionTabs [data-cond]').forEach((t) => {
+            const on = t.dataset.cond === cond;
+            t.setAttribute('aria-selected', on ? 'true' : 'false');
+            t.className = 'cond-tab rounded-full px-4 py-1.5 ' + (on ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900') +
+              (counts[t.dataset.cond] ? '' : ' opacity-40 cursor-not-allowed');
+          });
+        }
+        function showTab(cond) {
+          current = cond;
+          setTabs(cond);
+          if (lists[cond]) { paint(cond); return; }
+          grid.innerHTML = window.CarfoxUI ? CarfoxUI.skeleton('grid', Math.min(6, counts[cond] || 3)) : '';
+          $('moreBtn').classList.add('hidden');
+          $('tabEmpty').classList.add('hidden');
+          fetch(profileUrl(cond, 0))
+            .then((r) => { if (!r.ok) throw new Error('load'); return r.json(); })
+            .then((data) => {
+              lists[cond] = { items: data.vehicles || [], hasMore: !!data.has_more };
+              if (current === cond) paint(cond);
+            })
+            .catch(() => {
+              if (current !== cond) return;
+              grid.innerHTML = '';
+              if (window.CarfoxUI) CarfoxUI.toast('Could not load cars. Please try again.', { kind: 'error' });
+            });
+        }
+        $('moreBtn').addEventListener('click', function () {
+          const btn = this;
+          const cond = current;
+          const state = lists[cond];
+          if (!state || !state.hasMore) return;
+          btn.disabled = true;
+          btn.textContent = 'Loading…';
+          fetch(profileUrl(cond, state.items.length))
+            .then((r) => { if (!r.ok) throw new Error('load'); return r.json(); })
+            .then((data) => {
+              const seen = new Set(state.items.map((c) => c.id));
+              const more = (data.vehicles || []).filter((c) => !seen.has(c.id));
+              state.items = state.items.concat(more);
+              state.hasMore = !!data.has_more && more.length > 0;
+              if (current === cond) paint(cond, more);
+            })
+            .catch(() => { if (window.CarfoxUI) CarfoxUI.toast('Could not load more cars. Please try again.', { kind: 'error' }); })
+            .finally(() => { btn.disabled = false; btn.textContent = 'Show more cars'; });
+        });
+
+        function renderInventory(data) {
+          counts = data.counts || { all: (data.vehicles || []).length, new: 0, used: 0 };
+          const first = data.vehicles || [];
+          lists.all = { items: first, hasMore: !!data.has_more };
+          if (!data.has_more) {
+            // Everything is loaded: New / Used come from the same list, no extra requests.
+            lists.new = { items: first.filter((c) => condOf(c) === 'new'), hasMore: false };
+            lists.used = { items: first.filter((c) => condOf(c) === 'used'), hasMore: false };
+          }
+          $('inventoryCount').textContent = '(' + counts.all + ')';
+          document.querySelectorAll('#conditionTabs [data-cond]').forEach((t) => {
             t.querySelector('[data-count]').textContent = '(' + counts[t.dataset.cond] + ')';
             t.disabled = !counts[t.dataset.cond];
-            t.addEventListener('click', () => { if (!t.disabled) showTab(t.dataset.cond); });
+            t.addEventListener('click', () => { if (!t.disabled && t.dataset.cond !== current) showTab(t.dataset.cond); });
           });
-          if (!vehicles.length) $('emptyState').classList.remove('hidden');
+          if (!counts.all) $('emptyState').classList.remove('hidden');
           else $('conditionTabs').classList.remove('hidden');
-          showTab('all');
+          setTabs('all');
+          paint('all');
+        }
 
+        function render(data) {
+          renderHeader(data.dealer || {});
           $('pageLoading').classList.add('hidden');
           $('pageContent').classList.remove('hidden');
-          renderMap(dealer);
+          renderInventory(data);
+          setupMap(data.dealer || {});
+          // From a listing's "Inventory" tile (#inventory): make sure the cars are on screen, without hiding the
+          // dealer header when the grid already starts above the fold.
+          if (location.hash === '#inventory') {
+            const top = $('inventory').getBoundingClientRect().top;
+            if (top > window.innerHeight * 0.55) $('inventory').scrollIntoView({ block: 'start' });
+          }
         }
 
         $('backLink').addEventListener('click', function (e) {
           if (window.history.length > 1) { e.preventDefault(); window.history.back(); }
         });
 
-        const dealerId = parseInt(new URLSearchParams(window.location.search).get('id'), 10);
+        dealerId = parseInt(new URLSearchParams(window.location.search).get('id'), 10);
         if (!dealerId) {
           $('pageLoading').classList.add('hidden');
           $('pageError').classList.remove('hidden');
           return;
         }
-        fetch('/api/dealers/' + dealerId + '/profile')
+        (window.__cfDealerProfile || fetch('/api/dealers/' + dealerId + '/profile'))
           .then((res) => { if (res.status === 404) return null; if (!res.ok) throw new Error('load'); return res.json(); })
           .then((data) => {
             if (!data || !data.dealer) { $('pageLoading').classList.add('hidden'); $('pageError').classList.remove('hidden'); return; }
-            renderDealer(data);
+            render(data);
           })
-          .catch(() => { $('pageLoading').textContent = 'Could not load dealer profile. Please refresh.'; });
+          .catch(() => {
+            $('pageLoading').innerHTML = '<p class="py-16 text-center text-sm text-gray-600">Could not load dealer profile. Please refresh.</p>';
+          });
 
         if (window.CarfoxAuth) CarfoxAuth.initBuyerNav();
       })();

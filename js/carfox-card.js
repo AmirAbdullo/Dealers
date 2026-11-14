@@ -5,6 +5,7 @@
  *   CarfoxCard.render(car, opts) -> <article> element
  *     opts.variant       'grid' (default) | 'scroll' (fixed width inside a horizontal snap row)
  *     opts.actions       false to omit the WhatsApp / Message buttons (default true)
+ *     opts.dealerRow     false to omit the location + dealer row (dealer profile: every card is that dealer)
  *     opts.featureTrust  true to feature the Trust Score badge large (Top Trust Scores row)
  *     opts.sold          true for a sold listing (muted photo + price, "Sold" tag)
  *     opts.compact       home page card (every home row): fixed 280/300px, photo on top with badges + photo
@@ -213,7 +214,7 @@
       (subtitle ? '<p class="text-xs text-slate-500 mt-0.5 truncate">' + esc(subtitle) + '</p>' : '') +
       priceHtml(car.price, { className: 'text-xl mt-2', muted: sold }) +
       specGridHtml(car, { className: 'mt-2.5' }) +
-      dealerRowHtml(car, { className: 'mt-2.5' }) +
+      (opts.dealerRow === false ? '' : dealerRowHtml(car, { className: 'mt-2.5' })) +
       actions +
       '</div>';
 

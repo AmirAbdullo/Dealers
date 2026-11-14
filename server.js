@@ -945,6 +945,9 @@ db.exec(`
   )
 `);
 db.exec('CREATE INDEX IF NOT EXISTS idx_vehicle_features_feature ON vehicle_features(feature_id)');
+// Per-card photo subqueries (count, first 5 URLs, primary photo) and dealer inventories (profile page, dashboards).
+db.exec('CREATE INDEX IF NOT EXISTS idx_vehicle_photos_vehicle ON vehicle_photos(vehicle_id, is_primary)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_vehicles_dealer_status ON vehicles(dealership_id, status, published_at)');
 
 const FEATURE_CATEGORIES = ['Comfort', 'Tech', 'Safety', 'Other'];
 const FEATURE_SEED = {
@@ -4193,6 +4196,18 @@ app.get('/api/dealers/:id/profile', function (req, res) {
     return res.status(404).json({ error: 'Dealer not found' });
   }
 
+  // Inventory page: 24 cards at a time (newest first), optionally only new / used. `counts` cover the whole
+  // active inventory so the All / New / Used tabs are right before every page is loaded.
+  const PAGE = 24;
+  const offset = Math.max(0, Math.min(10000, parseInt(req.query.offset, 10) || 0));
+  const condition = req.query.condition === 'new' || req.query.condition === 'used' ? req.query.condition : 'all';
+  const condSql = condition === 'new' ? " AND v.car_condition = 'new'" : condition === 'used' ? " AND COALESCE(v.car_condition, '') != 'new'" : '';
+  const countRow = db
+    .prepare("SELECT COUNT(*) AS total, COALESCE(SUM(CASE WHEN car_condition = 'new' THEN 1 ELSE 0 END), 0) AS new_count FROM vehicles WHERE dealership_id = ? AND status = 'active'")
+    .get(dealerId);
+  const counts = { all: Number(countRow.total) || 0, new: Number(countRow.new_count) || 0 };
+  counts.used = counts.all - counts.new;
+
   const vehicleRows = db
     .prepare(
       `SELECT
@@ -4200,24 +4215,32 @@ app.get('/api/dealers/:id/profile', function (req, res) {
         v.body_type, v.transmission, v.fuel_type, v.car_condition, v.exterior_color,
         v.published_at,
         p.url AS primary_photo_url, COALESCE(v.trust_score, 0) AS trust_score, v.value_rating, v.value_pct, v.value_median, v.value_comparables,
+        (SELECT COUNT(*) FROM vehicle_photos ph WHERE ph.vehicle_id = v.id) AS photo_count,
         d.id AS dealer_id,
         d.business_name AS dealer_business_name,
         d.city AS dealer_city,
-        d.state AS dealer_state
+        d.state AS dealer_state,
+        d.governorate AS dealer_governorate,
+        d.logo_url AS dealer_logo_url
        FROM vehicles v
        INNER JOIN dealerships d ON d.id = v.dealership_id
        LEFT JOIN vehicle_photos p ON p.vehicle_id = v.id AND p.is_primary = 1
-       WHERE v.dealership_id = ? AND v.status = 'active' AND d.status = 'approved' AND COALESCE(d.suspended, 0) = 0
-       ORDER BY v.published_at DESC
-       LIMIT 24`
+       WHERE v.dealership_id = ? AND v.status = 'active' AND d.status = 'approved' AND COALESCE(d.suspended, 0) = 0${condSql}
+       ORDER BY v.published_at DESC, v.id DESC
+       LIMIT ? OFFSET ?`
     )
-    .all(dealerId);
+    .all(dealerId, PAGE, offset);
+  const matching = condition === 'all' ? counts.all : counts[condition];
 
   const memberSince = dealer.created_at
     ? new Date(dealer.created_at).getFullYear()
     : null;
 
   return res.json({
+    counts: counts,
+    condition: condition,
+    offset: offset,
+    has_more: offset + vehicleRows.length < matching,
     dealer: {
       id: dealer.id,
       business_name: dealer.business_name,
