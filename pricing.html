@@ -22,7 +22,20 @@
     <link rel="stylesheet" href="/css/app.css" />
   </head>
   <body class="bg-gray-50 text-gray-900 font-sans">
-    <header class="bg-white border-b border-gray-200">
+    <!-- Signed-in dealers (e.g. "View plans" on the dashboard) get the dealer chrome instead: this phone top bar,
+         the dealer desktop header and bottom nav, so the only way to the public site stays "View Site". -->
+    <header id="dealerTopBar" class="hidden md:hidden sticky top-0 z-40 bg-white border-b border-gray-200">
+      <div class="px-4 h-16 flex items-center justify-between">
+        <a href="/dealer/dashboard.html" class="text-lg font-extrabold tracking-tight">
+          <span class="text-blue-700">Car</span><span class="text-orange-500">Fox</span>
+        </a>
+        <a href="/dealer/dashboard.html" class="inline-flex items-center gap-1 text-sm font-semibold text-gray-700 hover:text-gray-900">
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+          Dashboard
+        </a>
+      </div>
+    </header>
+    <header id="publicHeader" class="bg-white border-b border-gray-200">
       <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         <a href="/" class="text-xl font-extrabold tracking-tight">
           <span class="text-blue-700">Car</span><span class="text-orange-500">Fox</span>
@@ -108,5 +121,25 @@
     <footer class="border-t border-gray-200 py-8 text-center text-xs text-gray-500">
       CarFox · Verified dealers only
     </footer>
+    <div id="dealerBottomNav"></div>
+
+    <script src="/js/carfox-pill-nav.js"></script>
+    <script src="/js/carfox-dealer-nav.js"></script>
+    <script>
+      (function () {
+        let user = null;
+        let token = '';
+        try {
+          user = JSON.parse(localStorage.getItem('carfox_user') || 'null');
+          token = localStorage.getItem('carfox_token') || '';
+        } catch (_) {}
+        if (!token || !user || user.role !== 'dealer' || !window.CarfoxDealerNav) return;
+        document.getElementById('publicHeader').classList.add('hidden');
+        document.getElementById('dealerTopBar').classList.remove('hidden');
+        document.body.classList.add('pb-24', 'md:pb-0');
+        CarfoxDealerNav.mountDealerDesktopHeader(null);
+        CarfoxDealerNav.mountDealerBottomNav(document.getElementById('dealerBottomNav'), null);
+      })();
+    </script>
   </body>
 </html>
