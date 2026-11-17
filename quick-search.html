@@ -132,7 +132,7 @@
         const STEPS = ['main', 'region', 'make', 'model', 'price', 'mileage'];
         const TITLES = { main: 'Search', region: 'Region', make: 'Make', model: 'Model', price: 'Price', mileage: 'Mileage' };
         const FILTER_KEYS = ['city', 'make', 'model', 'min_price', 'max_price', 'min_mileage', 'max_mileage'];
-        // Defaults until /api/catalog answers; admins edit these on /admin/catalog.html (Filters tab).
+        // Defaults until /api/catalog answers (the filter settings come from the catalog).
         let PRICE_PICKS = [['Under 300,000', null, 300000], ['300,000 – 600,000', 300000, 600000], ['600,000 – 1,000,000', 600000, 1000000], ['1,000,000 – 2,000,000', 1000000, 2000000], ['2,000,000 and up', 2000000, null]];
         let MILEAGE_PICKS = [['Under 20,000 km', null, 20000], ['20,000 – 50,000 km', 20000, 50000], ['50,000 – 100,000 km', 50000, 100000], ['100,000 – 150,000 km', 100000, 150000], ['150,000 km and up', 150000, null]];
         let GOV_LIST = CarfoxQuickSearch.GOVERNORATES.slice();

@@ -45,8 +45,8 @@
     } catch (_) {}
   }
 
-  // Admin sessions live under carfox_admin_token (js/carfox-admin-auth.js). A site session for an admin account
-  // (left over from before the split) is no longer valid anywhere, so drop it instead of showing an admin header.
+  // The site never issues admin sessions; a stored site session for an admin account (left over from before
+  // admins got their own sign-in) is dropped on load.
   (function dropLegacyAdminSiteSession() {
     const u = getStoredUser();
     if (u && String(u.role || '').toLowerCase() === 'admin') clearAuth();
@@ -58,9 +58,7 @@
   }
 
   function isBuyerUser(user) {
-    const role = normalizeRole(user);
-    if (role === 'dealer' || role === 'admin') return false;
-    return role === 'buyer';
+    return normalizeRole(user) === 'buyer';
   }
 
   function isBuyerSession() {
@@ -68,7 +66,6 @@
     const user = getStoredUser();
     if (!token || !user) return false;
     const role = normalizeRole(user);
-    if (role === 'dealer' || role === 'admin') return false;
     return role === 'buyer' || role === '';
   }
 
@@ -79,7 +76,6 @@
     const role = normalizeRole(user);
     if (role === 'buyer') return '/buyer/account.html';
     if (role === 'dealer') return '/dealer/dashboard.html';
-    if (role === 'admin') return '/admin/applications.html';
     return '/buyer/login.html';
   }
 
@@ -173,7 +169,7 @@
           }
           if (data && data.user) {
             const role = normalizeRole(data.user);
-            if (role === 'dealer' || role === 'admin') return false;
+            if (role !== 'buyer' && role !== '') return false;
           }
           return isBuyerSession();
         });

@@ -1738,6 +1738,7 @@ app.post('/api/signup', function (req, res) {
   });
 });
 
+const LOGIN_DUMMY_HASH = bcrypt.hashSync('carfox-login-timing-placeholder', 10);
 app.post('/api/login', function (req, res) {
   var email = normalizeEmail(req.body.email);
   var password = req.body.password;
@@ -1750,13 +1751,12 @@ app.post('/api/login', function (req, res) {
     'SELECT id, email, full_name, password_hash, role, email_verified FROM users WHERE email = ?'
   ).get(email);
 
-  if (!row || !bcrypt.compareSync(String(password), row.password_hash)) {
+  // The password is always checked (against a dummy hash for unknown emails) so response time doesn't reveal
+  // whether an account exists. Admin accounts never sign in here and get exactly the same answer as a wrong
+  // password: the public site reveals nothing about admin accounts or where they sign in.
+  var passwordOk = bcrypt.compareSync(String(password), row ? row.password_hash : LOGIN_DUMMY_HASH);
+  if (!row || !passwordOk || row.role === 'admin') {
     return res.status(401).json({ error: 'Invalid email or password.' });
-  }
-
-  // Admins have their own sign-in and session (/admin/login.html); the site login never issues them a token.
-  if (row.role === 'admin') {
-    return res.status(403).json({ error: 'Admin accounts sign in at /admin/login.html.', admin_login: '/admin/login.html' });
   }
 
   if (!row.email_verified) {
@@ -2193,7 +2193,8 @@ app.post('/api/auth/verify-otp', function (req, res) {
   if (!email || !code) return res.status(400).json({ error: 'Email and code are required.' });
 
   const user = db.prepare('SELECT id, email, full_name, role FROM users WHERE email = ?').get(email);
-  if (!user) return res.status(400).json({ error: 'Invalid code.' });
+  // Admin accounts never get a site session (not even from a verification code).
+  if (!user || user.role === 'admin') return res.status(400).json({ error: 'Invalid code.' });
 
   const record = db.prepare(
     'SELECT * FROM email_verification_tokens WHERE user_id = ? AND token = ? AND used = 0 ORDER BY id DESC LIMIT 1'

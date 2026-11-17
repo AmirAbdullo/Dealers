@@ -97,7 +97,7 @@
           document.getElementById('whoSub').textContent = u.email ? u.email + (role ? ' · ' + role : '') : role;
           const action = document.getElementById('whoAction');
           action.textContent = 'Profile';
-          action.href = role === 'dealer' ? '/dealer/account.html' : role === 'admin' ? '/admin/applications.html' : '/buyer/account.html';
+          action.href = role === 'dealer' ? '/dealer/account.html' : '/buyer/account.html';
           document.querySelectorAll('[data-account-link]').forEach(function (a) { a.href = action.href; });
           document.getElementById('signOutSection').classList.remove('hidden');
           if (role === 'dealer') document.getElementById('dealerSection').classList.remove('hidden');

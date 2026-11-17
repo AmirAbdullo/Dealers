@@ -316,9 +316,6 @@
             if (user.role === 'dealer') {
               if (savedLink) savedLink.classList.add('hidden'); // dealers don't save cars
               if (msgLink) msgLink.href = '/dealer/chat.html';
-            } else if (user.role === 'admin') {
-              if (savedLink) savedLink.classList.add('hidden');
-              if (msgLink) msgLink.classList.add('hidden');
             }
 
             var menuLinks;
@@ -328,8 +325,6 @@
                 menuLink('/dealer/inventory.html', 'account.inventory', 'My Inventory') +
                 menuLink('/dealer/chat.html', 'account.messages', 'Messages') +
                 menuLink('/dealer/account.html', 'account.my_account', 'My Account');
-            } else if (user.role === 'admin') {
-              menuLinks = menuLink('/admin', 'account.admin_panel', 'Admin Panel');
             } else {
               menuLinks =
                 menuLink('/buyer/account.html', 'account.my_account', 'My Account') +

@@ -257,8 +257,7 @@
               localStorage.setItem('carfox_user', JSON.stringify(body.user));
             } catch (_) {}
             let dest = '/';
-            if (role === 'admin') dest = '/admin/applications.html';
-            else if (role === 'dealer') dest = '/dealer/dashboard.html';
+            if (role === 'dealer') dest = '/dealer/dashboard.html';
             const returnTo = new URLSearchParams(window.location.search).get('returnTo');
             if (returnTo && returnTo.startsWith('/dealer/')) dest = returnTo;
             window.location.href = dest;
