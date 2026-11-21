@@ -127,13 +127,13 @@
     <script src="/js/carfox-dealer-nav.js"></script>
     <script>
       (function () {
-        let user = null;
-        let token = '';
-        try {
-          user = JSON.parse(localStorage.getItem('carfox_user') || 'null');
-          token = localStorage.getItem('carfox_token') || '';
-        } catch (_) {}
-        if (!token || !user || user.role !== 'dealer' || !window.CarfoxDealerNav) return;
+        // Dealer chrome when a dealer session exists and either no buyer is signed in (public pages prefer the
+        // buyer session) or the visit came from the dealer area ("View plans" on the dashboard adds ?from=dealer).
+        if (!window.CarfoxDealerNav || !CarfoxDealerNav.getToken()) return;
+        let buyerSignedIn = false;
+        try { buyerSignedIn = !!localStorage.getItem('carfox_token'); } catch (_) {}
+        const fromDealer = new URLSearchParams(location.search).get('from') === 'dealer';
+        if (buyerSignedIn && !fromDealer) return;
         document.getElementById('publicHeader').classList.add('hidden');
         document.getElementById('dealerTopBar').classList.remove('hidden');
         document.body.classList.add('pb-24', 'md:pb-0');

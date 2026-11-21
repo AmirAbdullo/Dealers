@@ -200,8 +200,10 @@
       </div>
     </div>
 
+    <!-- Loaded before the page script: it owns the dealer session keys (and moves an old dealer session once). -->
+    <script src="/js/carfox-dealer-nav.js"></script>
     <script>
-      const TOKEN_KEY = 'carfox_token';
+      const TOKEN_KEY = 'carfox_dealer_token';
       const CURRENT_YEAR = 2026;
       const MAX_PARALLEL = 3;
       const AUTOSAVE_MS = 500;
@@ -960,7 +962,6 @@
     </script>
     <div id="dealerBottomNav"></div>
     <script src="/js/carfox-pill-nav.js"></script>
-    <script src="/js/carfox-dealer-nav.js"></script>
     <script>
       CarfoxDealerNav.mountDealerBottomNav(document.getElementById('dealerBottomNav'), 'inventory');
       CarfoxDealerNav.mountDealerDesktopHeader('add');

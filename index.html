@@ -293,9 +293,11 @@
       }
 
       function initDesktopAuth() {
-        var token = localStorage.getItem('carfox_token');
+        // Buyer session first; with only a dealer session signed in, the dealer menu shows.
+        var session = window.CarfoxAuth ? CarfoxAuth.getPublicSession() : null;
         var authEl = document.getElementById('desktopAuth');
-        if (!token || !authEl) return;
+        if (!session || !authEl) return;
+        var token = session.token;
         fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + token } })
           .then(function (r) { return r.json(); })
           .then(function (data) {
@@ -355,7 +357,7 @@
             var signOutBtn = document.getElementById('profileSignOutBtn');
             if (signOutBtn) {
               signOutBtn.addEventListener('click', function () {
-                localStorage.removeItem('carfox_token');
+                session.clear(); // only the session this menu belongs to
                 window.location.href = '/';
               });
             }

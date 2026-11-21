@@ -330,8 +330,10 @@
             });
             const data = await res.json().catch(() => ({}));
             if (res.ok && data.token) {
-              localStorage.setItem('carfox_token', data.token);
-              if (data.user) localStorage.setItem('carfox_user', JSON.stringify(data.user));
+              // Dealer accounts get the dealer session keys (a buyer session in this browser is left alone).
+              const dealer = data.role === 'dealer';
+              localStorage.setItem(dealer ? 'carfox_dealer_token' : 'carfox_token', data.token);
+              if (data.user) localStorage.setItem(dealer ? 'carfox_dealer_user' : 'carfox_user', JSON.stringify(data.user));
               window.location.href = data.role === 'dealer' ? '/dealer/dashboard.html' : '/';
               return;
             }

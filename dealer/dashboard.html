@@ -105,7 +105,7 @@
             <span class="font-semibold text-gray-900" id="planUsageText">— of — listings used</span>
             <span class="ml-2 inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700" id="planUsageBadge">—</span>
           </div>
-          <a href="/pricing.html" class="text-sm font-semibold text-blue-700 hover:text-blue-800">View plans</a>
+          <a href="/pricing.html?from=dealer" class="text-sm font-semibold text-blue-700 hover:text-blue-800">View plans</a>
         </div>
         <div class="mt-2 h-2 w-full rounded-full bg-gray-200 overflow-hidden">
           <div id="planUsageBar" class="h-2 rounded-full bg-blue-600 transition-all" style="width: 0%"></div>
@@ -182,8 +182,8 @@
       })();
 
       (async function init() {
-        const TOKEN_KEY = 'carfox_token';
-        const USER_KEY = 'carfox_user';
+        const TOKEN_KEY = 'carfox_dealer_token';
+        const USER_KEY = 'carfox_dealer_user';
         const token = (typeof localStorage !== 'undefined') ? localStorage.getItem(TOKEN_KEY) : null;
         if (!token) {
           window.location.replace('/dealer/login.html');
@@ -486,8 +486,8 @@
       if (signOutBtn) {
         signOutBtn.addEventListener('click', () => {
           try {
-            localStorage.removeItem('carfox_token');
-            localStorage.removeItem('carfox_user');
+            localStorage.removeItem('carfox_dealer_token');
+            localStorage.removeItem('carfox_dealer_user');
           } catch (_) {}
           window.location.replace('/');
         });

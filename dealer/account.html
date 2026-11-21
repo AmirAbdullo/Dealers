@@ -326,7 +326,7 @@
             return;
           }
           if (!blob) return; // cancelled
-          const token = localStorage.getItem('carfox_token');
+          const token = localStorage.getItem('carfox_dealer_token');
           const formData = new FormData();
           formData.append('logo', blob, 'logo.png');
           const status = document.getElementById('logoStatus');
@@ -389,7 +389,7 @@
           try {
             const res = await fetch('/api/dealer/profile', {
               method: 'PATCH',
-              headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + localStorage.getItem('carfox_token') },
+              headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + localStorage.getItem('carfox_dealer_token') },
               body: JSON.stringify({ lat: ll.lat, lng: ll.lng })
             });
             const data = await res.json().catch(function () { return {}; });
@@ -491,7 +491,7 @@
 
         async function saveDealershipInfo() {
           const editBtn = document.getElementById('dealershipEditBtn');
-          const token = localStorage.getItem('carfox_token');
+          const token = localStorage.getItem('carfox_dealer_token');
           if (!token) {
             showErrorToast('You are not signed in. Please sign in again.');
             return;
@@ -613,7 +613,7 @@
               listEl: document.getElementById('accountSettings'),
               role: 'dealer',
               user: session.user,
-              token: localStorage.getItem('carfox_token'),
+              token: localStorage.getItem('carfox_dealer_token'),
               toast: function (kind, msg) { if (kind === 'error') showErrorToast(msg); else showSuccessToast(msg); }
             });
           }
@@ -634,7 +634,7 @@
           }
           if (!blob) return; // cancelled
 
-          const token = localStorage.getItem('carfox_token');
+          const token = localStorage.getItem('carfox_dealer_token');
           const formData = new FormData();
           formData.append('photo', blob, 'avatar.jpg');
 

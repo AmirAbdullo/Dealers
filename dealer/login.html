@@ -253,8 +253,8 @@
               return;
             }
             try {
-              localStorage.setItem('carfox_token', body.token);
-              localStorage.setItem('carfox_user', JSON.stringify(body.user));
+              localStorage.setItem('carfox_dealer_token', body.token);
+              localStorage.setItem('carfox_dealer_user', JSON.stringify(body.user));
             } catch (_) {}
             let dest = '/';
             if (role === 'dealer') dest = '/dealer/dashboard.html';

@@ -1,12 +1,34 @@
 /**
  * Shared buyer auth helpers for public pages.
- * Keys: carfox_token, carfox_user
+ * Buyer session: carfox_token + carfox_user. Dealer session (own keys, see carfox-dealer-nav.js):
+ * carfox_dealer_token + carfox_dealer_user. Both can exist in one browser; signing out of one never
+ * touches the other. Public pages that show "who is signed in" use getPublicSession(), which prefers the buyer.
  */
 (function (global) {
   'use strict';
 
   const TOKEN_KEY = 'carfox_token';
   const USER_KEY = 'carfox_user';
+  const DEALER_TOKEN_KEY = 'carfox_dealer_token';
+  const DEALER_USER_KEY = 'carfox_dealer_user';
+
+  // Dealer sessions used to live under the buyer keys. Move one over once (same code in carfox-dealer-nav.js),
+  // so dealers stay signed in and the buyer keys only ever hold a buyer session.
+  (function moveLegacyDealerSession() {
+    try {
+      const raw = localStorage.getItem(USER_KEY);
+      let u = raw ? JSON.parse(raw) : null;
+      if (typeof u === 'string') u = JSON.parse(u);
+      if (!u || String(u.role || '').toLowerCase() !== 'dealer') return;
+      const t = localStorage.getItem(TOKEN_KEY);
+      if (t && !localStorage.getItem(DEALER_TOKEN_KEY)) {
+        localStorage.setItem(DEALER_TOKEN_KEY, t);
+        localStorage.setItem(DEALER_USER_KEY, JSON.stringify(u));
+      }
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(USER_KEY);
+    } catch (_) {}
+  })();
 
   function escapeHtml(str) {
     return String(str)
@@ -69,13 +91,42 @@
     return role === 'buyer' || role === '';
   }
 
+  // ---- Dealer session (read-only here; dealer pages manage it through carfox-dealer-nav.js) ----
+  function getDealerToken() {
+    try {
+      return localStorage.getItem(DEALER_TOKEN_KEY) || '';
+    } catch (_) {
+      return '';
+    }
+  }
+  function getDealerUser() {
+    try {
+      const u = JSON.parse(localStorage.getItem(DEALER_USER_KEY) || 'null');
+      return u && typeof u === 'object' ? u : null;
+    } catch (_) {
+      return null;
+    }
+  }
+  function clearDealerAuth() {
+    try {
+      localStorage.removeItem(DEALER_TOKEN_KEY);
+      localStorage.removeItem(DEALER_USER_KEY);
+    } catch (_) {}
+  }
+
+  // The session public headers / menus show: the buyer session when there is one, else the dealer session.
+  // { kind: 'buyer' | 'dealer', token, user, clear() } or null.
+  function getPublicSession() {
+    const bt = getToken();
+    if (bt) return { kind: 'buyer', token: bt, user: getStoredUser(), userKey: USER_KEY, clear: clearAuth };
+    const dt = getDealerToken();
+    if (dt) return { kind: 'dealer', token: dt, user: getDealerUser(), userKey: DEALER_USER_KEY, clear: clearDealerAuth };
+    return null;
+  }
+
   function getAccountNavHref() {
-    const token = getToken();
-    const user = getStoredUser();
-    if (!token || !user) return '/buyer/login.html';
-    const role = normalizeRole(user);
-    if (role === 'buyer') return '/buyer/account.html';
-    if (role === 'dealer') return '/dealer/dashboard.html';
+    if (isBuyerSession()) return '/buyer/account.html';
+    if (getDealerToken()) return '/dealer/dashboard.html';
     return '/buyer/login.html';
   }
 
@@ -210,6 +261,12 @@
   global.CarfoxAuth = {
     TOKEN_KEY: TOKEN_KEY,
     USER_KEY: USER_KEY,
+    DEALER_TOKEN_KEY: DEALER_TOKEN_KEY,
+    DEALER_USER_KEY: DEALER_USER_KEY,
+    getDealerToken: getDealerToken,
+    getDealerUser: getDealerUser,
+    clearDealerAuth: clearDealerAuth,
+    getPublicSession: getPublicSession,
     getToken: getToken,
     getStoredUser: getStoredUser,
     clearAuth: clearAuth,

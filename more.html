@@ -86,8 +86,10 @@
     <script src="/js/carfox-quick-search.js"></script>
     <script>
       (function () {
-        const token = CarfoxAuth.getToken();
-        const user = CarfoxAuth.getStoredUser();
+        // Buyer session first; with only a dealer session signed in, show that one (sign-out clears only it).
+        const session = CarfoxAuth.getPublicSession();
+        const token = session ? session.token : '';
+        const user = session ? session.user : null;
         function render(u) {
           if (!u) return;
           const name = u.full_name || u.fullName || u.email || 'Account';
@@ -108,14 +110,14 @@
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (d) {
               if (!d || !d.user) { if (!user) return; return; }
-              try { localStorage.setItem(CarfoxAuth.USER_KEY, JSON.stringify(d.user)); } catch (_) {}
+              try { localStorage.setItem(session.userKey, JSON.stringify(d.user)); } catch (_) {}
               render(d.user);
-              if (window.CarfoxBuyerNav) CarfoxBuyerNav.initMessagesUnreadBadge();
+              if (session.kind === 'buyer' && window.CarfoxBuyerNav) CarfoxBuyerNav.initMessagesUnreadBadge();
             })
             .catch(function () {});
         }
         document.getElementById('signOutBtn').addEventListener('click', function () {
-          CarfoxAuth.clearAuth();
+          if (session) session.clear();
           window.location.href = '/';
         });
       })();

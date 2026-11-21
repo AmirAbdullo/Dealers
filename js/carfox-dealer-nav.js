@@ -11,8 +11,37 @@
     return m ? '?v=' + m[1] : '';
   })();
 
-  const TOKEN_KEY = 'carfox_token';
-  const USER_KEY = 'carfox_user';
+  // Dealer sessions have their own keys, separate from the buyer session (carfox_token / carfox_user), so a
+  // dealer and a buyer can be signed in side by side and each sign-out clears only its own session.
+  const TOKEN_KEY = 'carfox_dealer_token';
+  const USER_KEY = 'carfox_dealer_user';
+  const LEGACY_TOKEN_KEY = 'carfox_token';
+  const LEGACY_USER_KEY = 'carfox_user';
+
+  // Dealer sessions used to live under the buyer keys: move one over once (same code in carfox-auth.js).
+  (function moveLegacyDealerSession() {
+    try {
+      const raw = localStorage.getItem(LEGACY_USER_KEY);
+      let u = raw ? JSON.parse(raw) : null;
+      if (typeof u === 'string') u = JSON.parse(u);
+      if (!u || String(u.role || '').toLowerCase() !== 'dealer') return;
+      const t = localStorage.getItem(LEGACY_TOKEN_KEY);
+      if (t && !localStorage.getItem(TOKEN_KEY)) {
+        localStorage.setItem(TOKEN_KEY, t);
+        localStorage.setItem(USER_KEY, JSON.stringify(u));
+      }
+      localStorage.removeItem(LEGACY_TOKEN_KEY);
+      localStorage.removeItem(LEGACY_USER_KEY);
+    } catch (_) {}
+  })();
+
+  function getToken() {
+    try {
+      return localStorage.getItem(TOKEN_KEY) || '';
+    } catch (_) {
+      return '';
+    }
+  }
 
   function escapeHtml(str) {
     return String(str)
@@ -399,6 +428,7 @@
     dealerDesktopHeaderHtml: dealerDesktopHeaderHtml,
     mountDealerDesktopHeader: mountDealerDesktopHeader,
     clearAuth: clearAuth,
+    getToken: getToken,
     TOKEN_KEY: TOKEN_KEY,
     USER_KEY: USER_KEY
   };
