@@ -5,7 +5,7 @@ CarFox is a mobile-first app concept where sellers list and sell cars online.
 ## Current project status
 
 - `index.html` contains the new CarFox home page.
-- `login.html` contains a clean CarFox sign-in starter page.
+- Buyers sign in at `buyer/login.html`; dealers at `dealer/login.html`. Dealer accounts are invite-only: an admin creates them (Admin → Dealers → Create dealer) and the dealer sets a password from the emailed link (`dealer/set-password.html`).
 - Old property/backend code has been removed.
 
 ## Run locally

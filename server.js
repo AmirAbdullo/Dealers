@@ -1230,6 +1230,27 @@ addColumnIfMissing('users', 'notify_saved_cars', 'INTEGER NOT NULL DEFAULT 1');
 // requestIsAdmin), so changing the admin password signs out every other admin session.
 addColumnIfMissing('users', 'password_changed_at', 'INTEGER');
 
+// Dealer accounts are invite-only: an admin creates the dealer (random unusable password, invite_pending = 1)
+// and an emailed single-use link (/dealer/set-password.html#token=…, 48h) lets them choose a password.
+// Only the SHA-256 of the token is stored. A resend revokes earlier links.
+addColumnIfMissing('users', 'invite_pending', 'INTEGER NOT NULL DEFAULT 0');
+db.exec(`
+  CREATE TABLE IF NOT EXISTS dealer_invites (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    token_hash TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    used_at TEXT,
+    revoked_at TEXT,
+    created_by INTEGER,
+    email_status TEXT,
+    email_error TEXT
+  )
+`);
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_dealer_invites_token ON dealer_invites(token_hash)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_dealer_invites_user ON dealer_invites(user_id)');
+
 // Buyer saved cars. Created here (not only in db/migrate-add-saved-cars.js) so a fresh
 // or production database gets the table without a manual migration step.
 db.exec(`
@@ -2065,93 +2086,140 @@ app.delete('/api/me', authMiddleware, async function (req, res) {
 });
 
 // Dealer signup: creates a user (dealer role) and associated dealership in a single transaction
+// Dealer accounts are created by the CarFox team (POST /api/admin/dealers); public dealer signup is closed.
 app.post('/api/auth/dealer-signup', function (req, res) {
-  // Extract and normalize inputs
-  var email = normalizeEmail(req.body.email);
-  var password = String(req.body.password || '');
-  var firstName = String(req.body.first_name || '').trim();
-  var lastName = String(req.body.last_name || '').trim();
-  var fullName = String(req.body.full_name || '').trim();
-  if (!fullName && (firstName || lastName)) {
-    fullName = (firstName + ' ' + lastName).trim();
+  return res.status(410).json({ error: 'Dealer accounts are created by the CarFox team. Visit /dealer/signup.html to get in touch.' });
+});
+
+// ---- Dealer invites (single-use set-password links) ----
+const DEALER_INVITE_TTL_MS = 48 * 60 * 60 * 1000;
+const DEALER_INVITE_MESSAGES = {
+  invalid: 'This invite link is not valid. Check that you opened the whole link from the email.',
+  used: 'This invite has already been used. Sign in with your email and password.',
+  replaced: 'A newer invite was sent for this account. Use the link in the most recent email.',
+  expired: 'This invite link has expired. Ask the CarFox team to send you a new one.'
+};
+function hashInviteToken(token) {
+  return crypto.createHash('sha256').update(String(token)).digest('hex');
+}
+// Revokes any open invite for the user and creates a new one. Returns the raw token (only ever emailed).
+function createDealerInvite(userId, adminId) {
+  const now = new Date();
+  db.prepare('UPDATE dealer_invites SET revoked_at = ? WHERE user_id = ? AND used_at IS NULL AND revoked_at IS NULL').run(now.toISOString(), userId);
+  const token = crypto.randomBytes(32).toString('base64url');
+  const expiresAt = new Date(now.getTime() + DEALER_INVITE_TTL_MS).toISOString();
+  const info = db
+    .prepare('INSERT INTO dealer_invites (user_id, token_hash, created_at, expires_at, created_by) VALUES (?, ?, ?, ?, ?)')
+    .run(userId, hashInviteToken(token), now.toISOString(), expiresAt, adminId || null);
+  return { id: Number(info.lastInsertRowid), token: token, expiresAt: expiresAt };
+}
+async function sendDealerInviteEmail(opts) {
+  const result = await resend.emails.send({
+    from: 'CarFox <noreply@mawtiq.online>',
+    to: opts.email,
+    subject: "You've been invited to CarFox as a dealer",
+    html: emailShell(
+      "You've been invited to CarFox as a dealer",
+      '<p>Hi ' + escapeHtmlForEmail(opts.name || 'there') + ',</p>' +
+      '<p>The CarFox team has set up a dealer account for <strong>' + escapeHtmlForEmail(opts.businessName || 'your dealership') + '</strong>. ' +
+      'CarFox is the marketplace for verified dealers in Egypt: list your cars, get buyer messages and WhatsApp leads, and track your inventory from your dashboard.</p>' +
+      '<p>Choose your password to activate the account:</p>' +
+      '<p><a href="' + escapeHtmlForEmail(opts.link) + '" style="display:inline-block;background:#1d4ed8;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:bold">Set my password</a></p>' +
+      '<p style="color:#999;font-size:13px">Or copy this link into your browser: ' + escapeHtmlForEmail(opts.link) + '</p>' +
+      '<p style="color:#999;font-size:13px">The link works once and expires in 48 hours. If it expires, ask the CarFox team to send a new one. If you were not expecting this email, you can ignore it.</p>'
+    )
+  });
+  // The Resend SDK resolves with { data: null, error } on API failures instead of throwing.
+  if (!result || result.error || !result.data) {
+    throw new Error((result && result.error && (result.error.message || result.error.name)) || 'Email send failed');
   }
-  var businessName = String(req.body.business_name || '').trim();
-  var licenseNumber = String(req.body.license_number || '').trim();
-  var phone = String(req.body.phone || '').trim();
-  var address = String(req.body.address || '').trim();
-  var governorate = String(req.body.governorate || '').trim();
-
-  // Basic validation
-  var emailOk = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
-  if (!emailOk) return res.status(400).json({ error: 'A valid email is required.' });
-  if (!password || password.length < 8) {
-    return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+  return result.data;
+}
+// Creates a fresh invite for the dealer user and emails it. Never throws: { sent, error, expires_at }.
+async function issueDealerInvite(req, userRow, businessName, adminId) {
+  const base = invitationBaseUrl(req);
+  const invite = createDealerInvite(userRow.id, adminId);
+  if (!base) {
+    db.prepare("UPDATE dealer_invites SET email_status = 'failed', email_error = ? WHERE id = ?").run('APP_URL is not configured', invite.id);
+    return { sent: false, error: 'APP_URL is not configured, so no invite link could be built.', expires_at: invite.expiresAt };
   }
-  if (!fullName || !businessName || !licenseNumber || !phone || !address || !governorate) {
-    return res.status(400).json({ error: 'Please fill all required fields.' });
-  }
-
-  // Prepare statements
-  var insertUser = db.prepare(
-    "INSERT INTO users (email, password_hash, full_name, role, email_verified, created_at) VALUES (?, ?, ?, 'dealer', 0, ?)"
-  );
-  var selectUser = db.prepare('SELECT id, email, full_name, role, email_verified FROM users WHERE email = ?');
-  var insertDealership = db.prepare(
-    "INSERT INTO dealerships (user_id, business_name, license_number, address, city, state, zip, phone, status, governorate, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)"
-  );
-  var selectDealership = db.prepare(
-    'SELECT id, user_id, business_name, license_number, address, city, state, zip, phone, status, created_at FROM dealerships WHERE user_id = ?'
-  );
-
-  var createdAt = new Date().toISOString();
-  var passwordHash = bcrypt.hashSync(password, 10);
-
-  // Sequential creation (Turso-compatible; no explicit transaction).
-  // If the dealership insert fails we clean up the user row manually.
-  function createDealer() {
-    insertUser.run(email, passwordHash, fullName, createdAt);
-    var userRow = selectUser.get(email);
-    try {
-      insertDealership.run(
-        userRow.id,
-        businessName,
-        licenseNumber,
-        address,
-        governorate,  // stored in city column for filter compatibility
-        '',           // state not used for Egypt
-        '',           // zip not used
-        phone,
-        governorate,
-        createdAt
-      );
-    } catch (err) {
-      // Roll back the user row so a retry with the same email works
-      try { db.prepare('DELETE FROM users WHERE id = ?').run(userRow.id); } catch (_) {}
-      throw err;
-    }
-    var dealerRow = selectDealership.get(userRow.id);
-    return { userRow: userRow, dealerRow: dealerRow };
-  }
-
+  const link = base + '/dealer/set-password.html#token=' + invite.token;
+  if (!IS_PRODUCTION) console.log('[dev only] Dealer invite link for ' + userRow.email + ': ' + link);
   try {
-    var result = createDealer();
-
-    // Send verification email (non-blocking — don't fail signup if email fails)
-    sendVerificationEmail(result.userRow).catch(err => console.error('Failed to send verification email:', err));
-
-    return res.status(201).json({
-      message: 'Application submitted. Pending approval.',
-      user: { id: result.userRow.id, email: result.userRow.email, role: 'dealer' },
-      dealership: { id: result.dealerRow.id, status: 'pending' }
-    });
+    await sendDealerInviteEmail({ email: userRow.email, name: userRow.full_name, businessName: businessName, link: link });
+    db.prepare("UPDATE dealer_invites SET email_status = 'sent', email_error = NULL WHERE id = ?").run(invite.id);
+    return { sent: true, error: null, expires_at: invite.expiresAt };
   } catch (err) {
-    var msg = String(err && err.message || '').toUpperCase();
-    if (msg.indexOf('UNIQUE') !== -1 && msg.indexOf('USERS') !== -1) {
-      return res.status(409).json({ error: 'An account with this email already exists.' });
-    }
-    console.error(err);
-    return res.status(500).json({ error: 'Could not create dealer account.' });
+    const msg = String((err && err.message) || 'Email send failed').slice(0, 300);
+    console.error('Dealer invite email failed for user ' + userRow.id + ':', msg);
+    db.prepare("UPDATE dealer_invites SET email_status = 'failed', email_error = ? WHERE id = ?").run(msg, invite.id);
+    return { sent: false, error: msg, expires_at: invite.expiresAt };
   }
+}
+function lookupDealerInvite(token) {
+  token = String(token || '');
+  if (!token || token.length > 200) return { code: 'invalid' };
+  const row = db
+    .prepare(
+      'SELECT i.id, i.user_id, i.expires_at, i.used_at, i.revoked_at, u.email, u.full_name, u.role, u.invite_pending, d.business_name' +
+      ' FROM dealer_invites i JOIN users u ON u.id = i.user_id LEFT JOIN dealerships d ON d.user_id = u.id WHERE i.token_hash = ?'
+    )
+    .get(hashInviteToken(token));
+  if (!row || row.role !== 'dealer') return { code: 'invalid' };
+  if (row.used_at || !Number(row.invite_pending)) return { code: 'used' };
+  if (row.revoked_at) return { code: 'replaced' };
+  if (new Date(row.expires_at).getTime() < Date.now()) return { code: 'expired' };
+  return { code: 'ok', row: row };
+}
+// Light limit on invite-link checks / accepts per client IP (tokens are 256-bit, this only stops hammering).
+const dealerInviteHits = new Map();
+function dealerInviteRateLimited(req) {
+  const ip = req.ip || 'unknown';
+  const now = Date.now();
+  const recent = (dealerInviteHits.get(ip) || []).filter(function (t) { return now - t < 15 * 60 * 1000; });
+  recent.push(now);
+  dealerInviteHits.set(ip, recent);
+  return recent.length > 40;
+}
+function inviteFailure(res, code) {
+  return res.status(code === 'invalid' ? 400 : 410).json({ error: DEALER_INVITE_MESSAGES[code] || DEALER_INVITE_MESSAGES.invalid, code: code });
+}
+
+// Set-password page: is this link still good? (token in the body, never in a URL the server logs)
+app.post('/api/auth/dealer-invite/check', function (req, res) {
+  if (dealerInviteRateLimited(req)) return res.status(429).json({ error: 'Too many attempts. Please wait a few minutes.' });
+  const found = lookupDealerInvite(req.body && req.body.token);
+  if (found.code !== 'ok') return inviteFailure(res, found.code);
+  res.set('Cache-Control', 'no-store');
+  return res.json({ email: found.row.email, full_name: found.row.full_name, business_name: found.row.business_name, expires_at: found.row.expires_at });
+});
+
+// Set-password page: choose the password, activate the account and sign in.
+app.post('/api/auth/dealer-invite/accept', function (req, res) {
+  if (dealerInviteRateLimited(req)) return res.status(429).json({ error: 'Too many attempts. Please wait a few minutes.' });
+  const body = req.body || {};
+  const found = lookupDealerInvite(body.token);
+  if (found.code !== 'ok') return inviteFailure(res, found.code);
+  const password = String(body.password || '');
+  const ruleError = passwordRuleError(password);
+  if (ruleError) return res.status(400).json({ error: ruleError });
+  if (body.confirm_password != null && String(body.confirm_password) !== password) {
+    return res.status(400).json({ error: 'Passwords do not match.' });
+  }
+  const now = new Date();
+  // Claim the invite first so a double submit can only succeed once.
+  const claimed = db
+    .prepare('UPDATE dealer_invites SET used_at = ? WHERE id = ? AND used_at IS NULL AND revoked_at IS NULL')
+    .run(now.toISOString(), found.row.id);
+  if (!claimed.changes) return inviteFailure(res, 'used');
+  db.prepare('UPDATE users SET password_hash = ?, password_changed_at = ?, email_verified = 1, invite_pending = 0 WHERE id = ?')
+    .run(bcrypt.hashSync(password, 10), Math.floor(now.getTime() / 1000), found.row.user_id);
+  db.prepare('UPDATE dealer_invites SET revoked_at = ? WHERE user_id = ? AND used_at IS NULL AND revoked_at IS NULL').run(now.toISOString(), found.row.user_id);
+  const user = db.prepare('SELECT id, email, full_name, role FROM users WHERE id = ?').get(found.row.user_id);
+  return res.json({
+    token: signToken(user),
+    user: { id: user.id, email: user.email, full_name: user.full_name, fullName: user.full_name, role: user.role }
+  });
 });
 
 app.get('/api/auth/verify-email', function (req, res) {
@@ -2258,6 +2326,11 @@ app.post('/api/auth/reset-password', function (req, res) {
 
   db.prepare('UPDATE users SET password_hash = ?, password_changed_at = ? WHERE id = ?').run(bcrypt.hashSync(password, 10), Math.floor(Date.now() / 1000), user.id);
   db.prepare('UPDATE password_reset_tokens SET used = 1 WHERE user_id = ?').run(user.id);
+  // A dealer who resets instead of using the invite link is activated the same way (the code proves the email).
+  if (db.prepare('SELECT invite_pending FROM users WHERE id = ?').get(user.id).invite_pending) {
+    db.prepare('UPDATE users SET invite_pending = 0, email_verified = 1 WHERE id = ?').run(user.id);
+    db.prepare('UPDATE dealer_invites SET revoked_at = ? WHERE user_id = ? AND used_at IS NULL AND revoked_at IS NULL').run(new Date().toISOString(), user.id);
+  }
   return res.json({ success: true });
 });
 
@@ -2524,8 +2597,8 @@ function parseInviteEmails(raw) {
   return { valid: valid, invalid: invalid };
 }
 async function sendInvitationEmail(opts) {
-  var role = opts.role === 'dealer' ? 'dealer' : 'buyer';
-  var link = opts.base + (role === 'dealer' ? '/dealer/signup.html' : '/buyer/signup.html') + '?email=' + encodeURIComponent(opts.email) + '&invite=1';
+  var role = 'buyer'; // dealer accounts are created by an admin (invite link to set a password), not via signup
+  var link = opts.base + '/buyer/signup.html?email=' + encodeURIComponent(opts.email) + '&invite=1';
   var pitch = role === 'dealer'
     ? '<p>CarFox is a marketplace where verified dealers list their cars to buyers across Egypt. As a dealer you get a storefront, buyer messages and WhatsApp leads, and inventory insights.</p>' +
       '<p>Create your dealer account below. Applications are reviewed by our team before listings go live.</p>'
@@ -2602,7 +2675,8 @@ app.get('/api/admin/invitations', requireAdmin, function (req, res) {
 app.post('/api/admin/invitations', requireAdmin, async function (req, res) {
   var body = req.body || {};
   var role = String(body.role || '').toLowerCase();
-  if (role !== 'buyer' && role !== 'dealer') return res.status(400).json({ error: 'Role must be buyer or dealer' });
+  if (role === 'dealer') return res.status(400).json({ error: 'Dealer accounts are created on the Dealers page (Create dealer).' });
+  if (role !== 'buyer') return res.status(400).json({ error: 'Role must be buyer' });
   var parsed = parseInviteEmails(body.emails);
   if (!parsed.valid.length && !parsed.invalid.length) return res.status(400).json({ error: 'Enter at least one email address' });
   if (parsed.valid.length > INVITE_MAX_PER_REQUEST) {
@@ -2691,13 +2765,76 @@ app.patch('/api/admin/users/:id/unsuspend', requireAdmin, function (req, res) {
 });
 
 // Admin: management list of approved dealerships (plan usage, views, suspension)
+// Admin: create a dealer (approved dealership + invite-pending user) and email the set-password invite.
+app.post('/api/admin/dealers', requireAdmin, async function (req, res) {
+  const b = req.body || {};
+  const clean = function (v, max) { return String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, max); };
+  const ownerName = clean(b.owner_name, 120);
+  const email = normalizeEmail(b.email);
+  const businessName = clean(b.business_name, 150);
+  const licenseNumber = clean(b.license_number, 80);
+  const phone = clean(b.phone, 40);
+  const whatsapp = clean(b.whatsapp, 40);
+  const address = clean(b.address, 300);
+  const governorateInput = clean(b.governorate, 80);
+  if (!ownerName || !businessName || !licenseNumber || !phone || !address || !governorateInput) {
+    return res.status(400).json({ error: 'Please fill in every required field.' });
+  }
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || email.length > 254) return res.status(400).json({ error: 'Enter a valid email address.' });
+  if (!/^[+0-9][0-9 ()-]{6,}$/.test(phone)) return res.status(400).json({ error: 'Enter a valid phone number.' });
+  if (whatsapp && !/^[+0-9][0-9 ()-]{6,}$/.test(whatsapp)) return res.status(400).json({ error: 'Enter a valid WhatsApp number, or leave it empty.' });
+  const gov = db.prepare('SELECT name FROM governorates WHERE name = ? COLLATE NOCASE').get(governorateInput);
+  if (!gov) return res.status(400).json({ error: 'Choose a governorate from the list.' });
+  if (db.prepare('SELECT id FROM users WHERE email = ?').get(email)) {
+    return res.status(409).json({ error: 'An account with this email already exists.' });
+  }
+  const now = new Date().toISOString();
+  // Unusable password until the dealer sets one from the invite link.
+  const unusableHash = bcrypt.hashSync(crypto.randomBytes(32).toString('hex'), 10);
+  let userRow;
+  try {
+    db.prepare("INSERT INTO users (email, password_hash, full_name, role, email_verified, invite_pending, created_at) VALUES (?, ?, ?, 'dealer', 0, 1, ?)")
+      .run(email, unusableHash, ownerName, now);
+    userRow = db.prepare('SELECT id, email, full_name FROM users WHERE email = ?').get(email);
+    db.prepare(
+      "INSERT INTO dealerships (user_id, business_name, license_number, address, city, state, zip, phone, whatsapp, status, governorate, approved_at, approved_by, created_at)" +
+      " VALUES (?, ?, ?, ?, ?, '', '', ?, ?, 'approved', ?, ?, ?, ?)"
+    ).run(userRow.id, businessName, licenseNumber, address, gov.name, phone, whatsapp || null, gov.name, now, req.user.id, now);
+  } catch (err) {
+    // No transactions on Turso: undo the user row so the admin can retry with the same email.
+    if (userRow) { try { db.prepare('DELETE FROM users WHERE id = ?').run(userRow.id); } catch (_) {} }
+    if (String(err && err.message || '').toUpperCase().indexOf('UNIQUE') !== -1) return res.status(409).json({ error: 'An account with this email already exists.' });
+    console.error('Create dealer failed:', err);
+    return res.status(500).json({ error: 'Could not create the dealer.' });
+  }
+  const dealership = db.prepare('SELECT id, business_name FROM dealerships WHERE user_id = ?').get(userRow.id);
+  const invite = await issueDealerInvite(req, userRow, businessName, req.user.id);
+  return res.status(201).json({ dealer: { id: dealership.id, user_id: userRow.id, business_name: dealership.business_name, owner_email: email }, invite: invite });
+});
+
+// Admin: send a new invite (revokes the previous link) to a dealer who hasn't set a password yet.
+app.post('/api/admin/dealers/:id/invite', requireAdmin, async function (req, res) {
+  const row = db
+    .prepare('SELECT d.id, d.business_name, u.id AS user_id, u.email, u.full_name, u.invite_pending FROM dealerships d JOIN users u ON u.id = d.user_id WHERE d.id = ?')
+    .get(Number(req.params.id));
+  if (!row) return res.status(404).json({ error: 'Dealer not found' });
+  if (!Number(row.invite_pending)) return res.status(400).json({ error: 'This dealer has already set a password.' });
+  const last = db.prepare('SELECT created_at FROM dealer_invites WHERE user_id = ? ORDER BY id DESC LIMIT 1').get(row.user_id);
+  if (last && Date.now() - new Date(last.created_at).getTime() < 30 * 1000) {
+    return res.status(429).json({ error: 'An invite was just sent. Wait a moment before sending another.' });
+  }
+  const invite = await issueDealerInvite(req, { id: row.user_id, email: row.email, full_name: row.full_name }, row.business_name, req.user.id);
+  return res.status(invite.sent ? 200 : 502).json({ invite: invite, error: invite.sent ? undefined : 'The invite email could not be sent: ' + invite.error });
+});
+
 app.get('/api/admin/dealers', requireAdmin, function (req, res) {
   var rows = db
     .prepare(
       `SELECT
          d.id, d.business_name, d.phone, d.city, d.governorate, d.created_at,
          d.plan AS plan, d.listing_limit, d.suspended, d.suspension_reason, d.suspended_at,
-         u.id AS user_id, u.email AS owner_email, u.full_name AS owner_name,
+         u.id AS user_id, u.email AS owner_email, u.full_name AS owner_name, COALESCE(u.invite_pending, 0) AS invite_pending,
+         (SELECT i.created_at || '|' || i.expires_at || '|' || COALESCE(i.email_status, '') FROM dealer_invites i WHERE i.user_id = u.id ORDER BY i.id DESC LIMIT 1) AS last_invite,
          (SELECT COUNT(*) FROM vehicles v WHERE v.dealership_id = d.id AND v.status IN ('active', 'paused', 'sold')) AS listings_used,
          (SELECT COUNT(*) FROM vehicles v WHERE v.dealership_id = d.id AND v.status = 'active') AS active_listings,
          (SELECT COALESCE(SUM(v.views), 0) FROM vehicles v WHERE v.dealership_id = d.id) AS total_views,
@@ -2727,7 +2864,13 @@ app.get('/api/admin/dealers', requireAdmin, function (req, res) {
         engagements_30d: r.engagements_30d,
         suspended: !!r.suspended,
         suspension_reason: r.suspension_reason || null,
-        suspended_at: r.suspended_at || null
+        suspended_at: r.suspended_at || null,
+        invite_pending: !!Number(r.invite_pending),
+        invite: (function () {
+          if (!r.last_invite) return null;
+          const p = String(r.last_invite).split('|');
+          return { sent_at: p[0] || null, expires_at: p[1] || null, email_status: p[2] || null };
+        })()
       };
     })
   });
@@ -6177,6 +6320,16 @@ app.post('/api/history-waitlist', function (req, res) {
   ).run(email, brand, model, user ? user.id : null, ip, new Date().toISOString());
   return res.status(info.changes ? 201 : 200).json({ ok: true, already: !info.changes });
 });
+
+// ---- Public contact details (Become a CarFox dealer page) ----
+app.get('/api/site/contact', function (req, res) {
+  const email = String(process.env.CARFOX_CONTACT_EMAIL || '').trim();
+  res.set('Cache-Control', 'public, max-age=300');
+  return res.json({ email: /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? email : null });
+});
+
+// The Applications page was retired with invite-only dealers; old bookmarks land on Dealers.
+app.get('/admin/applications.html', function (req, res) { return res.redirect(302, '/admin/dealers.html'); });
 
 // ---- Deploy version + versioned asset URLs ----
 // The deploy version is Render's git commit (else the server start time). It is baked into /sw.js (fresh

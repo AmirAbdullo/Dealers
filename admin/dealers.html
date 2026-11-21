@@ -30,7 +30,6 @@
           <span class="text-sm text-gray-500 hidden sm:inline">Admin</span>
           <nav class="flex items-center gap-1 text-sm font-semibold min-w-0 overflow-x-auto whitespace-nowrap">
             <a href="/admin/index.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Dashboard</a>
-            <a href="/admin/applications.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Applications</a>
             <a href="/admin/dealers.html" class="rounded-lg px-3 py-1.5 bg-blue-50 text-blue-700" aria-current="page">Dealers</a>
             <a href="/admin/listings.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Listings</a>
             <a href="/admin/reports.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Reports</a>
@@ -60,13 +59,25 @@
         </div>
         <div class="flex flex-wrap items-center gap-2">
           <input id="searchInput" type="search" placeholder="Search name or email" class="input-xs w-56 py-2" />
-          <div class="flex gap-1" id="filterTabs">
+          <div class="flex flex-wrap gap-1" id="filterTabs">
             <button data-filter="all" class="tab-btn rounded-full px-3 py-1.5 text-sm font-semibold bg-blue-700 text-white">All</button>
+            <button data-filter="invite" class="tab-btn rounded-full px-3 py-1.5 text-sm font-semibold bg-gray-100 text-gray-700">Invite pending</button>
             <button data-filter="near" class="tab-btn rounded-full px-3 py-1.5 text-sm font-semibold bg-gray-100 text-gray-700">Near limit</button>
             <button data-filter="suspended" class="tab-btn rounded-full px-3 py-1.5 text-sm font-semibold bg-gray-100 text-gray-700">Suspended</button>
           </div>
+          <button id="createDealerBtn" type="button" class="inline-flex items-center gap-1.5 rounded-lg bg-blue-700 hover:bg-blue-800 px-4 py-2 text-sm font-semibold text-white">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            Create dealer
+          </button>
         </div>
       </div>
+
+      <!-- Legacy applications: only shown while pending applications from the old signup flow exist -->
+      <section id="legacySection" class="hidden mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4">
+        <h2 class="font-semibold text-amber-900">Legacy applications <span id="legacyCount" class="font-normal"></span></h2>
+        <p class="mt-1 text-sm text-amber-900/80">Sent through the old public dealer signup, before dealer accounts became invite-only. Approve or reject each one (the applicant gets an email); this section disappears when none are left.</p>
+        <div id="legacyList" class="mt-3 space-y-2"></div>
+      </section>
 
       <!-- Desktop table -->
       <div class="mt-5 hidden md:block overflow-x-auto rounded-xl border border-gray-200">
@@ -96,6 +107,30 @@
 
       <p class="mt-8 text-xs text-gray-500">Looking for buyer accounts? Suspension and email verification for buyers now live on the <a href="/admin/users.html?role=buyer" class="font-semibold text-blue-700 hover:underline">Users page</a>.</p>
     </main>
+
+    <!-- Create dealer modal -->
+    <div id="createModal" class="hidden fixed inset-0 z-50 flex items-start sm:items-center justify-center overflow-y-auto py-6">
+      <div class="absolute inset-0 bg-black/40" data-close-create></div>
+      <form id="createForm" novalidate class="relative bg-white rounded-xl border border-gray-200 w-[94%] max-w-lg p-5">
+        <h2 class="text-lg font-semibold text-gray-900">Create dealer</h2>
+        <p class="mt-1 text-sm text-gray-600">Creates an approved dealership and emails the owner an invite to set their password (single-use link, valid 48 hours).</p>
+        <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+          <label class="block">Owner name<input name="owner_name" required maxlength="120" autocomplete="off" class="mt-1 w-full input-xs py-2" /></label>
+          <label class="block">Owner email<input name="email" type="email" required maxlength="254" autocomplete="off" class="mt-1 w-full input-xs py-2" /></label>
+          <label class="block sm:col-span-2">Business name<input name="business_name" required maxlength="150" autocomplete="off" class="mt-1 w-full input-xs py-2" /></label>
+          <label class="block">Commercial license number<input name="license_number" required maxlength="80" autocomplete="off" class="mt-1 w-full input-xs py-2" /></label>
+          <label class="block">Phone<input name="phone" type="tel" required maxlength="40" placeholder="01xxxxxxxxx" autocomplete="off" class="mt-1 w-full input-xs py-2" /></label>
+          <label class="block">WhatsApp <span class="text-gray-500">(optional)</span><input name="whatsapp" type="tel" maxlength="40" autocomplete="off" class="mt-1 w-full input-xs py-2" /></label>
+          <label class="block">Governorate<select name="governorate" required class="mt-1 w-full input-xs py-2"><option value="">Choose…</option></select></label>
+          <label class="block sm:col-span-2">Address<input name="address" required maxlength="300" autocomplete="off" class="mt-1 w-full input-xs py-2" /></label>
+        </div>
+        <p id="createError" class="hidden mt-3 text-sm text-red-700" role="alert"></p>
+        <div class="mt-4 flex gap-2 justify-end">
+          <button type="button" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700" data-close-create>Cancel</button>
+          <button id="createSubmit" type="submit" class="px-4 py-2 rounded-lg bg-blue-700 text-white font-semibold hover:bg-blue-800 disabled:opacity-60">Create and send invite</button>
+        </div>
+      </form>
+    </div>
 
     <!-- Suspend modal -->
     <div id="suspendModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
@@ -158,6 +193,7 @@
         const q = query.toLowerCase();
         return dealers.filter((d) => {
           if (filter === 'near' && usageState(d) === 'ok') return false;
+          if (filter === 'invite' && !d.invite_pending) return false;
           if (filter === 'suspended' && !d.suspended) return false;
           if (!q) return true;
           return String(d.business_name || '').toLowerCase().includes(q) || String(d.owner_email || '').toLowerCase().includes(q);
@@ -176,10 +212,45 @@
         );
       }
 
+      function inviteState(d) {
+        if (!d.invite_pending) return null;
+        const inv = d.invite || {};
+        if (inv.email_status === 'failed') return 'failed';
+        if (inv.expires_at && new Date(inv.expires_at).getTime() < Date.now()) return 'expired';
+        return 'pending';
+      }
       function statusBadge(d) {
-        return d.suspended
-          ? '<span class="badge bg-red-50 border-red-200 text-red-800" title="' + esc(d.suspension_reason || '') + '">suspended</span>'
-          : '<span class="badge bg-green-50 border-green-200 text-green-800">active</span>';
+        if (d.suspended) return '<span class="badge bg-red-50 border-red-200 text-red-800" title="' + esc(d.suspension_reason || '') + '">suspended</span>';
+        if (d.invite_pending) return '<span class="badge bg-amber-50 border-amber-200 text-amber-800">invite pending</span>';
+        return '<span class="badge bg-green-50 border-green-200 text-green-800">active</span>';
+      }
+      // "Invite sent 3 Nov · expires 5 Nov" / "Invite expired" / "Invite email failed" under the badge.
+      function inviteNote(d) {
+        const st = inviteState(d);
+        if (!st) return '';
+        const inv = d.invite || {};
+        const text = st === 'failed' ? 'Invite email failed' + (inv.sent_at ? ' (' + fmtDate(inv.sent_at) + ')' : '')
+          : st === 'expired' ? 'Invite expired ' + fmtDate(inv.expires_at)
+          : 'Invite sent ' + fmtDate(inv.sent_at) + ' · expires ' + fmtDate(inv.expires_at);
+        return '<div class="mt-1 text-xs max-w-[12rem] ' + (st === 'pending' ? 'text-amber-800' : 'text-red-700') + '">' + esc(text) + '</div>';
+      }
+      function resendButton(d) {
+        if (!d.invite_pending) return null;
+        const btn = document.createElement('button');
+        btn.className = 'btn-xs border border-blue-700 text-blue-700 hover:bg-blue-50 disabled:opacity-60';
+        btn.textContent = inviteState(d) === 'pending' ? 'Resend invite' : 'Send new invite';
+        btn.addEventListener('click', async () => {
+          btn.disabled = true;
+          btn.textContent = 'Sending…';
+          try {
+            const res = await fetch('/api/admin/dealers/' + d.id + '/invite', { method: 'POST', headers: authHeaders() });
+            const body = await res.json().catch(() => ({}));
+            if (res.ok) setToast('ok', 'New invite sent to ' + d.owner_email + '. Earlier links no longer work.');
+            else setToast('error', body.error || 'Could not send the invite.');
+          } catch (_) { setToast('error', 'Could not send the invite.'); }
+          await loadDealers();
+        });
+        return btn;
       }
 
       function planEditor(d) {
@@ -244,7 +315,8 @@
         $('empty').classList.toggle('hidden', list.length > 0);
         const near = dealers.filter((d) => usageState(d) !== 'ok').length;
         const susp = dealers.filter((d) => d.suspended).length;
-        $('subtext').textContent = dealers.length + ' approved dealer' + (dealers.length === 1 ? '' : 's') + ' · ' + near + ' near limit · ' + susp + ' suspended';
+        const inv = dealers.filter((d) => d.invite_pending).length;
+        $('subtext').textContent = dealers.length + ' dealer' + (dealers.length === 1 ? '' : 's') + ' · ' + inv + ' invite pending · ' + near + ' near limit · ' + susp + ' suspended';
 
         list.forEach((d) => {
           const state = usageState(d);
@@ -260,9 +332,10 @@
             '<td class="px-4 py-3 align-top">' + usageBar(d) + '</td>' +
             '<td class="px-4 py-3 align-top text-right tabular-nums">' + Number(d.total_views || 0).toLocaleString() + '</td>' +
             '<td class="px-4 py-3 align-top text-right tabular-nums">' + Number(d.engagements_30d || 0).toLocaleString() + '</td>' +
-            '<td class="px-4 py-3 align-top">' + statusBadge(d) + (d.suspended ? '<div class="mt-1 text-xs text-red-700 max-w-[10rem]">' + esc(d.suspension_reason || '') + '</div>' : '') + '</td>' +
+            '<td class="px-4 py-3 align-top">' + statusBadge(d) + (d.suspended ? '<div class="mt-1 text-xs text-red-700 max-w-[10rem]">' + esc(d.suspension_reason || '') + '</div>' : '') + inviteNote(d) + '</td>' +
             '<td class="px-4 py-3 align-top"><div class="flex flex-col gap-2" data-actions></div></td>';
           const actions = tr.querySelector('[data-actions]');
+          if (d.invite_pending) actions.appendChild(resendButton(d));
           actions.appendChild(planEditor(d));
           actions.appendChild(suspendButton(d));
           tbody.appendChild(tr);
@@ -283,8 +356,10 @@
             '</div>' +
             '<div class="mt-2">' + usageBar(d) + '</div>' +
             (d.suspended && d.suspension_reason ? '<div class="mt-2 text-xs text-red-700">Reason: ' + esc(d.suspension_reason) + '</div>' : '') +
+            inviteNote(d) +
             '<div class="mt-3 flex flex-col gap-2" data-actions></div>';
           const cActions = card.querySelector('[data-actions]');
+          if (d.invite_pending) cActions.appendChild(resendButton(d));
           cActions.appendChild(planEditor(d));
           cActions.appendChild(suspendButton(d));
           cards.appendChild(card);
@@ -325,6 +400,98 @@
       }
 
 
+      // ---------- create dealer ----------
+      let governoratesLoaded = false;
+      async function loadGovernorates() {
+        if (governoratesLoaded) return;
+        try {
+          const data = await (await fetch('/api/catalog')).json();
+          const sel = $('createForm').elements.governorate;
+          (data.governorates || []).forEach((g) => {
+            const o = document.createElement('option');
+            o.value = g.name; o.textContent = g.name;
+            sel.appendChild(o);
+          });
+          governoratesLoaded = true;
+        } catch (_) {}
+      }
+      function openCreate() {
+        $('createForm').reset();
+        $('createError').classList.add('hidden');
+        $('createModal').classList.remove('hidden');
+        loadGovernorates();
+        $('createForm').elements.owner_name.focus();
+      }
+      function closeCreate() { $('createModal').classList.add('hidden'); }
+      $('createDealerBtn').addEventListener('click', openCreate);
+      document.addEventListener('click', (e) => { if (e.target && e.target.hasAttribute('data-close-create')) closeCreate(); });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('createModal').classList.contains('hidden')) closeCreate(); });
+      $('createForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const f = $('createForm');
+        const payload = {};
+        ['owner_name', 'email', 'business_name', 'license_number', 'phone', 'whatsapp', 'address', 'governorate'].forEach((k) => { payload[k] = f.elements[k].value.trim(); });
+        const missing = ['owner_name', 'email', 'business_name', 'license_number', 'phone', 'address', 'governorate'].filter((k) => !payload[k]);
+        const err = $('createError');
+        if (missing.length) { err.textContent = 'Please fill in every required field.'; err.classList.remove('hidden'); f.elements[missing[0]].focus(); return; }
+        err.classList.add('hidden');
+        const btn = $('createSubmit');
+        btn.disabled = true; btn.textContent = 'Creating…';
+        try {
+          const res = await fetch('/api/admin/dealers', { method: 'POST', headers: authHeaders(), body: JSON.stringify(payload) });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok) { err.textContent = body.error || 'Could not create the dealer.'; err.classList.remove('hidden'); return; }
+          closeCreate();
+          if (body.invite && body.invite.sent) setToast('ok', payload.business_name + ' created. Invite sent to ' + payload.email + '.');
+          else setToast('error', payload.business_name + ' was created, but the invite email failed' + (body.invite && body.invite.error ? ': ' + body.invite.error : '') + '. Use "Send new invite".');
+          await loadDealers();
+        } catch (_) {
+          err.textContent = 'Network error. Please try again.'; err.classList.remove('hidden');
+        } finally {
+          btn.disabled = false; btn.textContent = 'Create and send invite';
+        }
+      });
+
+      // ---------- legacy applications (old public signup) ----------
+      async function loadLegacy() {
+        try {
+          const res = await fetch('/api/admin/applications?status=pending', { headers: authHeaders() });
+          if (!res.ok) return;
+          const apps = (await res.json()).applications || [];
+          $('legacySection').classList.toggle('hidden', !apps.length);
+          $('legacyCount').textContent = '(' + apps.length + ')';
+          $('legacyList').innerHTML = '';
+          apps.forEach((a) => {
+            const row = document.createElement('div');
+            row.className = 'rounded-lg border border-amber-200 bg-white p-3 flex flex-wrap items-start justify-between gap-3';
+            row.innerHTML =
+              '<div class="min-w-0 text-sm"><div class="font-semibold text-gray-900">' + esc(a.business_name) + '</div>' +
+              '<div class="text-xs text-gray-600">' + esc((a.user && a.user.full_name) || '') + ' · ' + esc((a.user && a.user.email) || '') + ' · ' + esc(a.phone || '—') + '</div>' +
+              '<div class="text-xs text-gray-500">License ' + esc(a.license_number || '—') + ' · ' + esc(a.city || '—') + ' · applied ' + fmtDate(a.created_at) + '</div></div>' +
+              '<div class="flex flex-wrap items-center gap-2">' +
+              '<input data-reason class="input-xs w-44" placeholder="Reason (for reject)" maxlength="300" />' +
+              '<button data-approve class="btn-xs bg-green-600 hover:bg-green-700 text-white">Approve</button>' +
+              '<button data-reject class="btn-xs border border-red-600 text-red-600 hover:bg-red-50">Reject</button></div>';
+            const act = async (kind) => {
+              row.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+              const opts = { method: 'PATCH', headers: authHeaders() };
+              if (kind === 'reject') opts.body = JSON.stringify({ reason: row.querySelector('[data-reason]').value.trim() });
+              try {
+                const r = await fetch('/api/admin/applications/' + a.dealership_id + '/' + kind, opts);
+                const b = await r.json().catch(() => ({}));
+                if (r.ok) setToast('ok', a.business_name + (kind === 'approve' ? ' approved.' : ' rejected.'));
+                else setToast('error', b.error || 'Could not update the application.');
+              } catch (_) { setToast('error', 'Could not update the application.'); }
+              await loadLegacy();
+              if (kind === 'approve') await loadDealers();
+            };
+            row.querySelector('[data-approve]').addEventListener('click', () => act('approve'));
+            row.querySelector('[data-reject]').addEventListener('click', () => act('reject'));
+            $('legacyList').appendChild(row);
+          });
+        } catch (_) {}
+      }
+
       // ---------- toolbar ----------
       $('searchInput').addEventListener('input', () => { query = $('searchInput').value.trim(); render(); });
       (function () {
@@ -350,6 +517,7 @@
           if (!meData || !meData.user || meData.user.role !== 'admin') { window.location.replace('/'); return; }
           $('adminEmail').textContent = meData.user.email || 'admin';
           await loadDealers();
+          loadLegacy();
         } catch (e) {
           $('subtext').textContent = 'Could not load dealers. Please refresh.';
         }

@@ -43,7 +43,6 @@
           <span class="text-sm text-gray-500 hidden sm:inline">Admin</span>
           <nav class="flex items-center gap-1 text-sm font-semibold min-w-0 overflow-x-auto whitespace-nowrap">
             <a href="/admin/index.html" class="rounded-lg px-3 py-1.5 bg-blue-50 text-blue-700" aria-current="page">Dashboard</a>
-            <a href="/admin/applications.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Applications</a>
             <a href="/admin/dealers.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Dealers</a>
             <a href="/admin/listings.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Listings</a>
             <a href="/admin/reports.html" class="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900">Reports</a>
@@ -77,7 +76,7 @@
       <div id="errorBox" class="hidden mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"></div>
 
       <!-- Stat cards -->
-      <section class="mt-5 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3" aria-label="Totals">
+      <section class="mt-5 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3" aria-label="Totals">
         <a href="/admin/dealers.html" class="card p-4 block hover:border-blue-300">
           <div class="stat-label">Dealers</div>
           <div id="statDealers" class="stat-value skeleton mt-1">0</div>
@@ -103,11 +102,6 @@
           <div id="statSold" class="stat-value skeleton mt-1">0</div>
           <div id="statSoldSub" class="stat-sub">—</div>
         </div>
-        <a id="statPendingCard" href="/admin/applications.html" class="card p-4 block hover:border-blue-300">
-          <div class="stat-label">Pending applications</div>
-          <div id="statPending" class="stat-value skeleton mt-1">0</div>
-          <div id="statPendingSub" class="stat-sub">—</div>
-        </a>
       </section>
       <p id="miscStats" class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600">
         <a href="/admin/reports.html" class="hover:text-gray-900"><span class="font-semibold text-gray-900" id="statOpenReports">—</span> open listing reports</a>
@@ -145,7 +139,7 @@
       </section>
 
       <!-- Lists -->
-      <section class="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-4" aria-label="Recent activity lists">
+      <section class="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-4" aria-label="Recent activity lists">
         <div class="card p-5">
           <div class="flex items-baseline justify-between">
             <h2 class="font-bold text-gray-900">Recent listings</h2>
@@ -160,35 +154,12 @@
           </div>
           <ul id="newestDealers" class="mt-3 divide-y divide-gray-100"></ul>
         </div>
-        <div class="card p-5">
-          <div class="flex items-baseline justify-between">
-            <h2 class="font-bold text-gray-900">Pending applications</h2>
-            <a href="/admin/applications.html" class="text-xs font-semibold text-blue-700 hover:underline">Review all</a>
-          </div>
-          <ul id="pendingApps" class="mt-3 divide-y divide-gray-100"></ul>
-        </div>
       </section>
     </main>
-
-    <!-- Reject modal -->
-    <div id="rejectModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
-      <div class="absolute inset-0 bg-black/40" data-close-reject></div>
-      <div class="relative bg-white rounded-xl shadow-xl w-[92%] max-w-md p-5">
-        <h3 class="text-lg font-semibold text-gray-900">Reject application</h3>
-        <p id="rejectModalTitle" class="mt-1 text-sm text-gray-600"></p>
-        <textarea id="rejectReason" rows="4" class="mt-3 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Optional reason (sent to the applicant)"></textarea>
-        <div class="mt-4 flex justify-end gap-2">
-          <button class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700" data-close-reject>Cancel</button>
-          <button id="confirmReject" class="px-4 py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700">Reject</button>
-        </div>
-      </div>
-    </div>
 
     <script>
       const TOKEN_KEY = 'carfox_admin_token'; // admin session (js/carfox-admin-auth.js), never the site's carfox_token
       const USER_KEY = 'carfox_admin_user';
-      let rejectTarget = null;
-      let busy = false;
 
       const $ = (id) => document.getElementById(id);
       const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -234,7 +205,6 @@
         setStat('statDealers', t.dealers.total);
         $('statDealersSub').innerHTML =
           '<span class="text-green-700 font-semibold">' + num(t.dealers.approved) + ' approved</span> · ' +
-          '<span class="text-amber-700 font-semibold">' + num(t.dealers.pending) + ' pending</span> · ' +
           '<span class="text-red-700 font-semibold">' + num(t.dealers.suspended) + ' suspended</span>';
         setStat('statBuyers', t.buyers.total);
         $('statBuyersSub').textContent = t.buyers.suspended ? num(t.buyers.suspended) + ' suspended' : 'Registered buyer accounts';
@@ -244,10 +214,6 @@
         $('statTotalSub').textContent = 'Published ever' + (t.listings.drafts ? ' · ' + num(t.listings.drafts) + ' drafts' : '');
         setStat('statSold', t.sold.all_time);
         $('statSoldSub').innerHTML = '<span class="font-semibold text-gray-800">' + num(t.sold.this_month) + '</span> this month';
-        setStat('statPending', t.pending_applications);
-        const card = $('statPendingCard');
-        card.classList.toggle('alert', t.pending_applications > 0);
-        $('statPendingSub').textContent = t.pending_applications > 0 ? 'Waiting for review' : 'All caught up';
       }
 
       function trendHtml(w) {
@@ -350,34 +316,6 @@
         });
       }
 
-      function renderPendingApps(list, total) {
-        const ul = $('pendingApps'); ul.innerHTML = '';
-        if (!list.length) { ul.innerHTML = '<li class="py-6 text-sm text-gray-500 text-center">No pending applications. 🎉</li>'; return; }
-        list.forEach((a) => {
-          const li = document.createElement('li');
-          li.className = 'py-3';
-          li.innerHTML =
-            '<div class="flex items-start gap-3">' +
-              '<div class="min-w-0 flex-1">' +
-                '<div class="text-sm font-semibold text-gray-900 truncate">' + esc(a.business_name) + '</div>' +
-                '<div class="text-xs text-gray-500 truncate">' + esc(a.full_name || '') + ' · ' + esc(a.email) + (a.email_verified ? '' : ' · <span class="text-amber-700 font-semibold">email unverified</span>') + '</div>' +
-                '<div class="text-xs text-gray-500 truncate">' + esc(a.governorate || '—') + ' · Lic. ' + esc(a.license_number) + ' · applied ' + ago(a.created_at) + '</div>' +
-              '</div>' +
-            '</div>' +
-            '<div class="mt-2 flex gap-2">' +
-              '<button class="btn-xs bg-green-600 text-white hover:bg-green-700 flex-1" data-approve="' + a.id + '">Approve</button>' +
-              '<button class="btn-xs border border-red-300 text-red-700 hover:bg-red-50 flex-1" data-reject="' + a.id + '" data-name="' + esc(a.business_name) + '">Reject</button>' +
-            '</div>';
-          ul.appendChild(li);
-        });
-        if (total > list.length) {
-          const more = document.createElement('li');
-          more.className = 'pt-3 text-xs text-gray-500 text-center';
-          more.innerHTML = '<a href="/admin/applications.html" class="font-semibold text-blue-700 hover:underline">+ ' + (total - list.length) + ' more waiting</a>';
-          ul.appendChild(more);
-        }
-      }
-
       function render(data) {
         renderTotals(data.totals);
         if (data.history_waitlist) {
@@ -391,7 +329,6 @@
         renderChart('usersChart', 'usersLabels', 'usersWeekTotal', data.charts.users_per_week, (w) => plural(w.count, 'user', 'users') + ' (' + (w.extra.buyer || 0) + ' buyers, ' + (w.extra.dealer || 0) + ' dealers)');
         renderRecentListings(data.recent_listings);
         renderNewestDealers(data.newest_dealers);
-        renderPendingApps(data.pending_applications, data.totals.pending_applications);
         $('subtext').textContent = 'Updated ' + new Date(data.generated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       }
 
@@ -410,40 +347,6 @@
         }
       }
 
-      async function decide(id, action, reason) {
-        if (busy) return;
-        busy = true;
-        try {
-          const res = await fetch('/api/admin/applications/' + id + '/' + action, {
-            method: 'PATCH', headers: authHeaders(), body: JSON.stringify(action === 'reject' ? { reason: reason || null } : {})
-          });
-          const body = await res.json().catch(() => null);
-          if (!res.ok) { setToast('error', body && body.error ? body.error : 'Failed to ' + action); return; }
-          setToast('ok', action === 'approve' ? 'Application approved' : 'Application rejected');
-          await load();
-        } catch (_) {
-          setToast('error', 'Failed to ' + action);
-        } finally { busy = false; }
-      }
-
-      $('pendingApps').addEventListener('click', (e) => {
-        const ap = e.target.closest('[data-approve]');
-        if (ap) { decide(Number(ap.dataset.approve), 'approve'); return; }
-        const rj = e.target.closest('[data-reject]');
-        if (rj) {
-          rejectTarget = Number(rj.dataset.reject);
-          $('rejectModalTitle').textContent = 'Why are you rejecting ' + (rj.dataset.name || 'this dealership') + '?';
-          $('rejectReason').value = '';
-          $('rejectModal').classList.remove('hidden');
-        }
-      });
-      document.querySelectorAll('[data-close-reject]').forEach((el) => el.addEventListener('click', () => { $('rejectModal').classList.add('hidden'); rejectTarget = null; }));
-      $('confirmReject').addEventListener('click', async () => {
-        if (!rejectTarget) return;
-        const id = rejectTarget; rejectTarget = null;
-        $('rejectModal').classList.add('hidden');
-        await decide(id, 'reject', $('rejectReason').value.trim());
-      });
       $('refreshBtn').addEventListener('click', load);
       $('signOutBtn').addEventListener('click', () => { CarfoxAdminAuth.signOut(); /* clears the admin session only */ });
 

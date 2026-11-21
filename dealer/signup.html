@@ -3,11 +3,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Dealer Signup</title>
+    <title>Become a CarFox dealer</title>
+    <meta name="description" content="CarFox lists cars from verified dealers only. Dealer accounts are set up by the CarFox team: get in touch to have your dealership verified." />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-      <!-- PWA -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- PWA -->
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#0f1f3d" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -21,400 +22,95 @@
     <script src="/js/carfox-ui.js"></script>
     <link rel="stylesheet" href="/css/app.css" />
   </head>
-  <body class="bg-white text-gray-900 font-sans">
-    <main class="min-h-screen flex items-start justify-center px-4 sm:px-6 lg:px-8 py-10">
-      <div class="w-full max-w-md">
-        <header class="mb-8">
-          <h1 class="text-2xl font-semibold tracking-tight">Dealer Application</h1>
-          <p class="mt-2 text-sm text-gray-600">Apply to sell vehicles on our marketplace. Approvals typically take 1–2 business days.</p>
-        </header>
-
-        <section id="formSection" class="bg-white border border-gray-200 rounded-xl shadow-sm p-5 sm:p-6">
-          <form id="dealerForm" class="space-y-4">
-            <div class="space-y-1.5">
-              <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
-              <input id="email" name="email" type="email" required autocomplete="email"
-                     class="block w-full px-3 py-2 border border-gray-300 rounded-lg text-base mt-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none" />
-            </div>
-
-            <div class="space-y-1.5">
-              <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
-              <div class="relative mt-1">
-                <input id="password" name="password" type="password" minlength="8" required autocomplete="new-password"
-                       class="block w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none" />
-                <button type="button" class="password-toggle absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none" aria-label="Show password">
-                  <span class="password-toggle-eye" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></span>
-                  <span class="password-toggle-eye-off hidden" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21"/></svg></span>
-                </button>
-              </div>
-              <div id="passwordStrength" class="hidden mt-2 space-y-1 p-3 bg-gray-50 rounded-lg border border-gray-200" aria-live="polite">
-                <div class="flex items-center gap-2 text-xs" data-pw-rule="length">
-                  <span class="pw-rule-icon text-red-500">✗</span>
-                  <span class="pw-rule-text text-xs text-red-500">At least 8 characters</span>
-                </div>
-                <div class="flex items-center gap-2 text-xs" data-pw-rule="number">
-                  <span class="pw-rule-icon text-red-500">✗</span>
-                  <span class="pw-rule-text text-xs text-red-500">At least one number (0-9)</span>
-                </div>
-                <div class="flex items-center gap-2 text-xs" data-pw-rule="upper">
-                  <span class="pw-rule-icon text-red-500">✗</span>
-                  <span class="pw-rule-text text-xs text-red-500">At least one uppercase letter (A-Z)</span>
-                </div>
-                <div class="flex items-center gap-2 text-xs" data-pw-rule="lower">
-                  <span class="pw-rule-icon text-red-500">✗</span>
-                  <span class="pw-rule-text text-xs text-red-500">At least one lowercase letter (a-z)</span>
-                </div>
-                <div class="flex items-center gap-2 text-xs" data-pw-rule="special">
-                  <span class="pw-rule-icon text-red-500">✗</span>
-                  <span class="pw-rule-text text-xs text-red-500">At least one special character (!@#$%^&*.)</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="space-y-1.5">
-              <label for="confirm_password" class="block text-sm font-medium text-gray-700">Confirm password</label>
-              <div class="relative mt-1">
-                <input id="confirm_password" name="confirm_password" type="password" minlength="8" required autocomplete="new-password"
-                       class="block w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none" />
-                <button type="button" class="password-toggle absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none" aria-label="Show confirm password">
-                  <span class="password-toggle-eye" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></span>
-                  <span class="password-toggle-eye-off hidden" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21"/></svg></span>
-                </button>
-              </div>
-              <p id="passwordMatchError" class="hidden mt-1 text-sm text-red-600" role="alert">Passwords do not match</p>
-              <p id="passwordMatchOk" class="hidden mt-1 text-sm text-green-600">✓ Passwords match</p>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div class="space-y-1.5">
-                <label for="first_name" class="block text-sm font-medium text-gray-700">First name</label>
-                <input id="first_name" name="first_name" type="text" required autocomplete="given-name"
-                       class="block w-full px-3 py-2 border border-gray-300 rounded-lg text-base mt-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none" />
-              </div>
-              <div class="space-y-1.5">
-                <label for="last_name" class="block text-sm font-medium text-gray-700">Last name</label>
-                <input id="last_name" name="last_name" type="text" required autocomplete="family-name"
-                       class="block w-full px-3 py-2 border border-gray-300 rounded-lg text-base mt-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none" />
-              </div>
-            </div>
-
-            <div class="space-y-1.5">
-              <label for="business_name" class="block text-sm font-medium text-gray-700">Business name</label>
-              <input id="business_name" name="business_name" type="text" required
-                     class="block w-full px-3 py-2 border border-gray-300 rounded-lg text-base mt-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none" />
-            </div>
-
-            <div class="space-y-1.5">
-              <label for="license_number" class="block text-sm font-medium text-gray-700">Dealer license number</label>
-              <input id="license_number" name="license_number" type="text" required
-                     class="block w-full px-3 py-2 border border-gray-300 rounded-lg text-base mt-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none" />
-            </div>
-
-            <div class="space-y-1.5">
-              <label for="phone" class="block text-sm font-medium text-gray-700">Phone</label>
-              <input id="phone" name="phone" type="tel" required autocomplete="tel"
-                     class="block w-full px-3 py-2 border border-gray-300 rounded-lg text-base mt-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none" />
-            </div>
-
-            <div class="space-y-1.5">
-              <label for="address" class="block text-sm font-medium text-gray-700">Address</label>
-              <input id="address" name="address" type="text" required autocomplete="street-address"
-                     class="block w-full px-3 py-2 border border-gray-300 rounded-lg text-base mt-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none" />
-            </div>
-
-            <div class="space-y-1.5">
-              <label for="governorate" class="block text-sm font-medium text-gray-700">Governorate</label>
-              <select id="governorate" name="governorate" required
-                      class="block w-full px-3 py-2 border border-gray-300 rounded-lg text-base mt-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none bg-white">
-                <option value="">Select your governorate</option>
-                <option value="Cairo">Cairo</option>
-                <option value="Giza">Giza</option>
-                <option value="Alexandria">Alexandria</option>
-                <option value="Sharqia">Sharqia</option>
-                <option value="Dakahlia">Dakahlia</option>
-                <option value="Beheira">Beheira</option>
-                <option value="Monufia">Monufia</option>
-                <option value="Gharbia">Gharbia</option>
-                <option value="Faiyum">Faiyum</option>
-                <option value="Beni Suef">Beni Suef</option>
-                <option value="Minya">Minya</option>
-                <option value="Asyut">Asyut</option>
-                <option value="Sohag">Sohag</option>
-                <option value="Qena">Qena</option>
-                <option value="Luxor">Luxor</option>
-                <option value="Aswan">Aswan</option>
-                <option value="Red Sea">Red Sea</option>
-                <option value="New Valley">New Valley</option>
-                <option value="Matrouh">Matrouh</option>
-                <option value="North Sinai">North Sinai</option>
-                <option value="South Sinai">South Sinai</option>
-                <option value="Ismailia">Ismailia</option>
-                <option value="Port Said">Port Said</option>
-                <option value="Suez">Suez</option>
-                <option value="Qalyubia">Qalyubia</option>
-                <option value="Kafr El Sheikh">Kafr El Sheikh</option>
-                <option value="Damietta">Damietta</option>
-              </select>
-            </div>
-
-            <div id="formAlert" class="hidden rounded-lg border text-sm p-3"></div>
-
-            <button id="submitBtn" type="submit" disabled
-                    class="w-full inline-flex items-center justify-center rounded-lg bg-blue-600 hover:bg-blue-700 opacity-50 cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 text-white font-semibold px-4 py-2.5 transition">
-              Submit application
-            </button>
-          </form>
-        </section>
-
-        <!-- Verification card (hidden by default, shown after successful submission) -->
-        <section id="successCard" class="hidden bg-white border border-green-200 rounded-xl shadow-sm p-5 sm:p-6 text-center">
-          <div class="text-5xl mb-4">📧</div>
-          <h2 class="text-xl font-bold text-gray-900 mb-2">Enter your code</h2>
-          <p class="text-gray-600 mb-4">
-            We sent a 6-digit code to
-            <span id="verifyEmailTarget" class="font-semibold text-gray-900"></span>.
-          </p>
-          <input id="otpInput" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code"
-            placeholder="------"
-            class="block w-full text-center text-3xl tracking-[0.5em] font-bold rounded-lg border border-gray-300 px-3 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          <p id="otpError" class="hidden mt-2 text-sm text-red-600"></p>
-          <button id="verifyBtn" type="button"
-            class="mt-4 w-full rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-semibold px-4 py-3 transition">
-            Verify
-          </button>
-          <button id="resendBtn" type="button"
-            class="mt-3 text-sm font-semibold text-blue-700 hover:underline">
-            Resend code
-          </button>
-          <p id="resendStatus" class="hidden mt-3 text-sm text-green-600"></p>
-          <p class="mt-4 text-xs text-gray-500">
-            After you verify, your dealer application goes under review and we’ll email you once it’s approved.
-          </p>
-        </section>
-
-        <p class="mt-6 text-xs text-gray-500">
-          By submitting this application you agree to our terms. You’ll receive an email when your application is reviewed.
-        </p>
+  <body class="bg-gray-50 text-gray-900 font-sans">
+    <header class="sticky top-0 z-40 bg-white border-b border-gray-200">
+      <div class="mx-auto max-w-3xl px-4 h-14 flex items-center justify-between">
+        <a id="backLink" href="/" class="flex items-center gap-2 text-gray-700 hover:text-gray-900" aria-label="Back">
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+          <span class="text-sm font-semibold hidden sm:inline">Back</span>
+        </a>
+        <span class="text-base font-bold">For dealers</span>
+        <a href="/" class="text-lg font-extrabold tracking-tight"><span class="text-blue-700">Car</span><span class="text-orange-500">Fox</span></a>
       </div>
+    </header>
+
+    <main class="mx-auto max-w-3xl px-4 py-6 pb-28 md:pb-12 space-y-5">
+      <!-- Pitch -->
+      <section class="rounded-2xl bg-[#0f1f3d] text-white p-6 sm:p-8">
+        <p class="text-xs font-bold uppercase tracking-wide text-orange-400">For dealerships in Egypt</p>
+        <h1 class="mt-2 text-2xl sm:text-3xl font-extrabold leading-tight">Become a CarFox dealer</h1>
+        <p class="mt-3 text-sm sm:text-base text-slate-200 max-w-xl">CarFox lists cars from verified dealers only. We set up every dealer account ourselves after checking the dealership, so buyers know who they're dealing with.</p>
+        <a href="#contact" class="mt-5 inline-flex items-center rounded-lg bg-orange-500 hover:bg-orange-600 px-5 py-2.5 text-sm font-semibold text-white">Get in touch</a>
+      </section>
+
+      <section class="grid grid-cols-1 sm:grid-cols-3 gap-3" aria-label="What you get">
+        <div class="rounded-2xl border border-gray-200 bg-white p-4">
+          <span class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100/70 text-blue-600">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.4 7.5 9.5 4.3-1.1 7.5-4.9 7.5-9.5V6z"/><path d="m9 12 2 2 4-4"/></svg>
+          </span>
+          <h2 class="mt-3 font-semibold text-gray-900">Verified dealers only</h2>
+          <p class="mt-1 text-sm text-gray-600">Your listings sit next to other checked dealerships, never anonymous sellers, with a Trust Score buyers can see.</p>
+        </div>
+        <div class="rounded-2xl border border-gray-200 bg-white p-4">
+          <span class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100/70 text-emerald-600">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12c0 4.4-4 8-9 8a9.9 9.9 0 0 1-4.3-.9L3 20l1.4-3.7C3.5 15 3 13.6 3 12c0-4.4 4-8 9-8s9 3.6 9 8z"/></svg>
+          </span>
+          <h2 class="mt-3 font-semibold text-gray-900">Buyer leads</h2>
+          <p class="mt-1 text-sm text-gray-600">Buyers message you on CarFox, call you or open WhatsApp straight from your listings.</p>
+        </div>
+        <div class="rounded-2xl border border-gray-200 bg-white p-4">
+          <span class="flex h-10 w-10 items-center justify-center rounded-full bg-violet-100/70 text-violet-600">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>
+          </span>
+          <h2 class="mt-3 font-semibold text-gray-900">Your dashboard</h2>
+          <p class="mt-1 text-sm text-gray-600">Manage your inventory, answer inquiries and see views and engagement for every car.</p>
+        </div>
+      </section>
+
+      <section class="rounded-2xl border border-gray-200 bg-white p-5">
+        <h2 class="font-semibold text-gray-900">How joining works</h2>
+        <ol class="mt-3 space-y-3 text-sm text-gray-700">
+          <li class="flex gap-3"><span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-700">1</span><span>Get in touch with your dealership's name, governorate and phone number.</span></li>
+          <li class="flex gap-3"><span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-700">2</span><span>Our team checks your dealership, including your commercial license.</span></li>
+          <li class="flex gap-3"><span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-700">3</span><span>We create your account and email you a link to set your password, then you can start listing.</span></li>
+        </ol>
+        <p class="mt-3 text-xs text-gray-500">There's no public sign-up form: dealer accounts are only created by the CarFox team. <a href="/pricing.html" class="font-semibold text-blue-700 hover:underline">See dealer plans</a></p>
+      </section>
+
+      <!-- Contact: the email button appears once CARFOX_CONTACT_EMAIL is configured on the server -->
+      <section id="contact" class="rounded-2xl border border-gray-200 bg-white p-5 scroll-mt-20">
+        <h2 class="font-semibold text-gray-900">Contact us</h2>
+        <p class="mt-1 text-sm text-gray-600">Tell us about your dealership and we'll get back to you.</p>
+        <a id="emailBtn" href="#" class="hidden mt-4 w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg bg-blue-700 hover:bg-blue-800 px-5 py-3 text-sm font-semibold text-white">
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+          <span>Email <span id="emailAddr"></span></span>
+        </a>
+        <p id="contactSoon" class="mt-4 rounded-lg bg-gray-50 px-3 py-2.5 text-sm text-gray-600">Contact details for dealer enquiries are coming soon.</p>
+      </section>
+
+      <p class="text-center text-sm text-gray-600">Already a CarFox dealer? <a href="/dealer/login.html" class="font-semibold text-blue-700 hover:underline">Sign in</a></p>
     </main>
 
-    <script src="/js/signup-password-validation.js"></script>
+    <script src="/js/carfox-auth.js"></script>
+    <script src="/js/carfox-pill-nav.js"></script>
+    <script src="/js/carfox-buyer-nav.js"></script>
     <script>
-      // Invitation links arrive as /dealer/signup.html?email=...&invite=1
-      (function prefillInvitedEmail() {
-        try {
-          var invited = new URLSearchParams(location.search).get('email');
-          var el = document.getElementById('email');
-          if (invited && el && !el.value) el.value = invited;
-        } catch (_) {}
-      })();
-
-      const form = document.getElementById('dealerForm');
-      const formSection = document.getElementById('formSection');
-      const submitBtn = document.getElementById('submitBtn');
-      const alertBox = document.getElementById('formAlert');
-      const successCard = document.getElementById('successCard');
-
-      function setAlert(kind, message) {
-        const base = 'rounded-lg border text-sm p-3';
-        const styles = kind === 'error'
-          ? 'border-red-200 bg-red-50 text-red-800'
-          : 'border-green-200 bg-green-50 text-green-800';
-        alertBox.className = base + ' ' + styles;
-        alertBox.textContent = message;
-        alertBox.classList.remove('hidden');
-      }
-
-      function clearAlert() {
-        alertBox.classList.add('hidden');
-        alertBox.textContent = '';
-      }
-
-      const passwordInput = document.getElementById('password');
-      const confirmPasswordInput = document.getElementById('confirm_password');
-
-      const pwValidation = CarfoxSignupPassword.init({
-        passwordInput: passwordInput,
-        confirmInput: confirmPasswordInput,
-        strengthPanel: document.getElementById('passwordStrength'),
-        submitBtn: submitBtn,
-        matchErrorEl: document.getElementById('passwordMatchError'),
-        matchOkEl: document.getElementById('passwordMatchOk'),
-        useTailwind: true
-      });
-
-      form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        clearAlert();
-        pwValidation.updateSubmitState();
-
-        const password = passwordInput.value;
-        const confirmPassword = confirmPasswordInput.value;
-        const firstName = form.first_name.value.trim();
-        const lastName = form.last_name.value.trim();
-
-        if (!pwValidation.isPasswordStrong()) {
-          setAlert('error', 'Please meet all password requirements.');
-          return;
-        }
-        if (!pwValidation.passwordsMatch()) {
-          setAlert('error', 'Passwords do not match.');
-          return;
-        }
-        if (!firstName || !lastName) {
-          setAlert('error', 'Please enter your first and last name.');
-          return;
-        }
-
-        submitBtn.disabled = true;
-        submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
-
-        const data = {
-          email: form.email.value.trim(),
-          password: password,
-          first_name: firstName,
-          last_name: lastName,
-          full_name: (firstName + ' ' + lastName).trim(),
-          business_name: form.business_name.value.trim(),
-          license_number: form.license_number.value.trim(),
-          phone: form.phone.value.trim(),
-          address: form.address.value.trim(),
-          governorate: form.governorate.value
-        };
-
-        try {
-          const res = await fetch('/api/auth/dealer-signup', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-          });
-          const body = await res.json().catch(() => ({}));
-
-          if (res.ok && res.status === 201) {
-            // Hide the form section and show the verification notice
-            document.getElementById('verifyEmailTarget').textContent = data.email;
-            formSection.classList.add('hidden');
-            successCard.classList.remove('hidden');
-            form.reset();
-          } else {
-            setAlert('error', body && body.error ? body.error : 'Submission failed. Please try again.');
-          }
-        } catch (err) {
-          setAlert('error', 'Network error. Please try again.');
-        } finally {
-          submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-          pwValidation.updateSubmitState();
-        }
-      });
-
-      const verifyBtn = document.getElementById('verifyBtn');
-      if (verifyBtn) {
-        verifyBtn.addEventListener('click', async function () {
-          const otpError = document.getElementById('otpError');
-          otpError.classList.add('hidden');
-          const code = document.getElementById('otpInput').value.trim();
-          const target = document.getElementById('verifyEmailTarget').textContent;
-          if (code.length !== 6) {
-            otpError.textContent = 'Please enter the 6-digit code.';
-            otpError.classList.remove('hidden');
-            return;
-          }
-          verifyBtn.disabled = true;
-          const orig = verifyBtn.textContent;
-          verifyBtn.textContent = 'Verifying...';
-          try {
-            const res = await fetch('/api/auth/verify-otp', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email: target, code: code })
-            });
-            const data = await res.json().catch(() => ({}));
-            if (res.ok && data.token) {
-              // Dealer accounts get the dealer session keys (a buyer session in this browser is left alone).
-              const dealer = data.role === 'dealer';
-              localStorage.setItem(dealer ? 'carfox_dealer_token' : 'carfox_token', data.token);
-              if (data.user) localStorage.setItem(dealer ? 'carfox_dealer_user' : 'carfox_user', JSON.stringify(data.user));
-              window.location.href = data.role === 'dealer' ? '/dealer/dashboard.html' : '/';
-              return;
-            }
-            otpError.textContent = data.error || 'Invalid code. Please try again.';
-            otpError.classList.remove('hidden');
-          } catch (err) {
-            otpError.textContent = 'Network error. Please try again.';
-            otpError.classList.remove('hidden');
-          } finally {
-            verifyBtn.disabled = false;
-            verifyBtn.textContent = orig;
-          }
+      (function () {
+        document.getElementById('backLink').addEventListener('click', function (e) {
+          if (history.length > 1) { e.preventDefault(); history.back(); }
         });
-      }
-
-      const resendBtn = document.getElementById('resendBtn');
-      if (resendBtn) {
-        resendBtn.addEventListener('click', async function () {
-          const status = document.getElementById('resendStatus');
-          const target = document.getElementById('verifyEmailTarget').textContent;
-          resendBtn.disabled = true;
-          const orig = resendBtn.textContent;
-          resendBtn.textContent = 'Sending...';
-          try {
-            await fetch('/api/auth/resend-verification', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email: target })
-            });
-            status.textContent = 'New code sent. Check your inbox.';
-            status.className = 'mt-3 text-sm text-green-600';
-          } catch (err) {
-            status.textContent = 'Could not resend right now. Please try again later.';
-            status.className = 'mt-3 text-sm text-red-600';
-          } finally {
-            resendBtn.disabled = false;
-            resendBtn.textContent = orig;
-          }
-        });
-      }
-
-      document.querySelectorAll('.password-toggle').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          var wrap = btn.parentElement;
-          var input = wrap.querySelector('input');
-          var eye = btn.querySelector('.password-toggle-eye');
-          var eyeOff = btn.querySelector('.password-toggle-eye-off');
-          var show = input.type === 'password';
-          var isConfirm = input.id === 'confirm_password';
-          input.type = show ? 'text' : 'password';
-          eye.classList.toggle('hidden', show);
-          eyeOff.classList.toggle('hidden', !show);
-          btn.setAttribute(
-            'aria-label',
-            show
-              ? (isConfirm ? 'Hide confirm password' : 'Hide password')
-              : (isConfirm ? 'Show confirm password' : 'Show password')
-          );
-          pwValidation.updateSubmitState();
-        });
-      });
-    </script>
-    <script>
-      // Governorate options come from the admin-managed catalog; the hardcoded list is only a fallback.
-      (function loadGovernorateOptions() {
-        var sel = document.getElementById('governorate');
-        if (!sel) return;
-        fetch('/api/catalog').then(function (r) { return r.ok ? r.json() : null; }).then(function (c) {
-          if (!c || !c.governorates || !c.governorates.length) return;
-          var current = sel.value;
-          var first = sel.options.length && sel.options[0].value === '' ? sel.options[0] : null;
-          sel.innerHTML = '';
-          if (first) sel.appendChild(first);
-          c.governorates.forEach(function (g) { var o = document.createElement('option'); o.value = g.name; o.textContent = g.name; sel.appendChild(o); });
-          if (current && !Array.prototype.some.call(sel.options, function (o) { return o.value === current; })) {
-            var keep = document.createElement('option'); keep.value = current; keep.textContent = current; sel.appendChild(keep);
-          }
-          if (current) sel.value = current;
-        }).catch(function () {});
+        fetch('/api/site/contact')
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (d) {
+            if (!d || !d.email) return;
+            const btn = document.getElementById('emailBtn');
+            btn.href = 'mailto:' + d.email + '?subject=' + encodeURIComponent('Becoming a CarFox dealer');
+            document.getElementById('emailAddr').textContent = d.email;
+            btn.classList.remove('hidden');
+            document.getElementById('contactSoon').classList.add('hidden');
+          })
+          .catch(function () {});
       })();
     </script>
   </body>
-  </html>
-
+</html>
