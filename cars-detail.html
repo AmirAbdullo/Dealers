@@ -850,7 +850,12 @@
         }
 
         function recordView() {
-          fetch('/api/cars/' + vehicleId + '/view', { method: 'POST' }).catch(function () {});
+          const promoted = !!(window.CarfoxTrack && CarfoxTrack.isPromoted && CarfoxTrack.isPromoted(vehicleId));
+          fetch('/api/cars/' + vehicleId + '/view', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ promoted: promoted })
+          }).catch(function () {});
         }
 
         async function startConversationAndGoToChat(sourceBtn) {

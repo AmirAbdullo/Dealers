@@ -45,5 +45,11 @@
     } catch (_) {}
   }
 
-  global.CarfoxTrack = { engagement: engagement, markPromoted: markPromoted };
+  // True when this car was reached from a promoted card earlier in the session (the detail page sends it with the
+  // view; the server keeps the flag only while the car really is promoted).
+  function isPromoted(vehicleId) {
+    return promotedIds().indexOf(Number(vehicleId)) !== -1;
+  }
+
+  global.CarfoxTrack = { engagement: engagement, markPromoted: markPromoted, isPromoted: isPromoted };
 })(typeof window !== 'undefined' ? window : this);

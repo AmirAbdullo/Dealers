@@ -403,6 +403,157 @@ addColumnIfMissing('vehicles', 'promoted_by', 'INTEGER');
 addColumnIfMissing('vehicles', 'promoted_at', 'TEXT');
 addColumnIfMissing('engagement_events', 'promoted', 'INTEGER NOT NULL DEFAULT 0');
 
+// ---- Event logs for future reports (anonymous; no IP or user is stored) ----
+// view_events: one row per listing view (POST /api/cars/:id/view). vehicles.views stays the all-time counter the
+//   existing UI reads; these rows add timestamps. promoted = the view came from a promoted placement while the
+//   listing was really promoted (same rule as engagement_events).
+// search_events: one row per executed search on the results page (GET /api/cars), de-duplicated per client so
+//   paging / sorting / reloads of the same filters count once and a quick burst of filter clicks counts as its
+//   final state. Both keep 12 months (pruneEventLogs).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS view_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    vehicle_id INTEGER NOT NULL,
+    dealership_id INTEGER NOT NULL,
+    promoted INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+  )
+`);
+db.exec('CREATE INDEX IF NOT EXISTS idx_view_events_created ON view_events(created_at)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_view_events_vehicle ON view_events(vehicle_id, created_at)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_view_events_dealership ON view_events(dealership_id, created_at)');
+db.exec(`
+  CREATE TABLE IF NOT EXISTS search_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    query_text TEXT,
+    city TEXT,
+    make TEXT,
+    model TEXT,
+    year_min INTEGER,
+    year_max INTEGER,
+    price_min INTEGER,
+    price_max INTEGER,
+    mileage_min INTEGER,
+    mileage_max INTEGER,
+    body_type TEXT,
+    transmission TEXT,
+    fuel_type TEXT,
+    car_condition TEXT,
+    color TEXT,
+    features_count INTEGER NOT NULL DEFAULT 0,
+    verified_only INTEGER NOT NULL DEFAULT 0,
+    results_count INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+  )
+`);
+db.exec('CREATE INDEX IF NOT EXISTS idx_search_events_created ON search_events(created_at)');
+
+// Per-IP sliding-window cap (same pattern as engagementAllowed); the IP lives only in memory.
+function makeIpLimiter(maxPerWindow, windowMs) {
+  const hits = new Map();
+  setInterval(function () {
+    const now = Date.now();
+    hits.forEach(function (arr, ip) { if (!arr.length || now - arr[arr.length - 1] > windowMs) hits.delete(ip); });
+  }, 5 * 60 * 1000).unref();
+  return function allowed(ip) {
+    const now = Date.now();
+    const recent = (hits.get(ip) || []).filter(function (t) { return now - t < windowMs; });
+    if (recent.length >= maxPerWindow) { hits.set(ip, recent); return false; }
+    recent.push(now);
+    hits.set(ip, recent);
+    return true;
+  };
+}
+const viewLogAllowed = makeIpLimiter(30, 60 * 1000);   // logged view rows per IP per minute (the counter is unaffected)
+const searchLogAllowed = makeIpLimiter(60, 60 * 1000); // new search rows per IP per minute (all browsers behind that IP)
+
+const SEARCH_REPEAT_MS = 30 * 60 * 1000; // same filters again from the same client: not a new search
+const SEARCH_BURST_MS = 3 * 1000;        // filter changes this close together: one search, keep the final state
+// Keyed by IP + user agent (memory only) so people sharing a carrier-NAT IP are not merged into one client.
+const lastSearchByIp = new Map();        // ip|ua -> { key, at, rowId }
+setInterval(function () {
+  const now = Date.now();
+  lastSearchByIp.forEach(function (v, ip) { if (now - v.at > SEARCH_REPEAT_MS) lastSearchByIp.delete(ip); });
+}, 10 * 60 * 1000).unref();
+
+function searchEventRecord(query, total) {
+  const text = function (v, max) { const t = String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, max || 120); return t || null; };
+  const list = function (v) {
+    const items = parseCsvQueryParam(v).map(function (x) { return String(x).trim(); }).filter(Boolean);
+    return items.length ? items.sort(function (a, b) { return a.localeCompare(b); }).join(',').slice(0, 300) : null;
+  };
+  const int = function (v) { const n = parseOptionalNumber(v); return n == null || !isFinite(n) ? null : Math.round(n); };
+  const makes = list(query.make);
+  return {
+    query_text: text(query.q, 120) ? text(query.q, 120).toLowerCase() : null,
+    city: list(query.city),
+    make: makes,
+    model: makes && makes.indexOf(',') === -1 ? text(query.model, 80) : null,
+    year_min: int(query.min_year),
+    year_max: int(query.max_year),
+    price_min: int(query.min_price),
+    price_max: int(query.max_price),
+    mileage_min: int(query.min_mileage),
+    mileage_max: int(query.max_mileage),
+    body_type: list(query.body_type),
+    transmission: text(query.transmission, 40),
+    fuel_type: list(query.fuel_type),
+    car_condition: list(query.condition),
+    color: list(query.color),
+    features_count: parseFeatureIdList(query.features).length,
+    verified_only: (parseOptionalNumber(query.min_trust) || 0) > 0 ? 1 : 0,
+    results_count: Number(total) || 0
+  };
+}
+const SEARCH_EVENT_COLUMNS = ['query_text', 'city', 'make', 'model', 'year_min', 'year_max', 'price_min', 'price_max',
+  'mileage_min', 'mileage_max', 'body_type', 'transmission', 'fuel_type', 'car_condition', 'color',
+  'features_count', 'verified_only', 'results_count'];
+
+// Never throws: logging must not break the results page.
+function logSearchEvent(req, total) {
+  try {
+    const rec = searchEventRecord(req.query, total);
+    const keyObj = Object.assign({}, rec);
+    delete keyObj.results_count;
+    const key = JSON.stringify(keyObj);
+    const ip = req.ip || 'unknown';
+    const client = ip + '|' + String(req.get('user-agent') || '').slice(0, 200);
+    const now = Date.now();
+    const last = lastSearchByIp.get(client);
+    if (last && last.key === key && now - last.at < SEARCH_REPEAT_MS) { last.at = now; return; }
+    const values = SEARCH_EVENT_COLUMNS.map(function (c) { return rec[c]; });
+    if (last && last.rowId && now - last.at < SEARCH_BURST_MS) {
+      const upd = db.prepare('UPDATE search_events SET ' + SEARCH_EVENT_COLUMNS.map(function (c) { return c + ' = ?'; }).join(', ') + ' WHERE id = ?');
+      upd.run(...values, last.rowId);
+      last.key = key;
+      last.at = now;
+      return;
+    }
+    if (!searchLogAllowed(ip)) return;
+    const ins = db.prepare('INSERT INTO search_events (' + SEARCH_EVENT_COLUMNS.join(', ') + ', created_at) VALUES (' +
+      SEARCH_EVENT_COLUMNS.map(function () { return '?'; }).join(', ') + ', ?)');
+    const info = ins.run(...values, new Date(now).toISOString());
+    lastSearchByIp.set(client, { key: key, at: now, rowId: Number(info.lastInsertRowid) });
+  } catch (err) {
+    console.error('search event log failed:', err && err.message);
+  }
+}
+
+// Keep 12 months of event rows. Runs a minute after boot, then daily.
+const EVENT_LOG_RETENTION_MS = 365 * 24 * 60 * 60 * 1000;
+function pruneEventLogs() {
+  try {
+    const cutoff = new Date(Date.now() - EVENT_LOG_RETENTION_MS).toISOString();
+    const v = db.prepare('DELETE FROM view_events WHERE created_at < ?').run(cutoff).changes;
+    const se = db.prepare('DELETE FROM search_events WHERE created_at < ?').run(cutoff).changes;
+    if (v || se) console.log('Event log retention: removed ' + v + ' view and ' + se + ' search rows older than 12 months');
+  } catch (err) {
+    console.error('Event log retention failed:', err && err.message);
+  }
+}
+setTimeout(pruneEventLogs, 60 * 1000).unref();
+setInterval(pruneEventLogs, 24 * 60 * 60 * 1000).unref();
+
 const PROMO_NOW_SQL = "strftime('%Y-%m-%dT%H:%M:%fZ', 'now')";
 // Live right now (for "v" = vehicles).
 const PROMO_ACTIVE_SQL = '(COALESCE(v.promoted, 0) = 1 AND v.promoted_from <= ' + PROMO_NOW_SQL + ' AND v.promoted_until > ' + PROMO_NOW_SQL + ')';
@@ -2827,6 +2978,18 @@ app.post('/api/admin/dealers/:id/invite', requireAdmin, async function (req, res
   return res.status(invite.sent ? 200 : 502).json({ invite: invite, error: invite.sent ? undefined : 'The invite email could not be sent: ' + invite.error });
 });
 
+// Admin sanity check for the event logs: rows in the last 24h, all-time and the newest timestamp per table.
+app.get('/api/admin/event-log-stats', requireAdmin, function (req, res) {
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const stats = {};
+  ['view_events', 'search_events', 'engagement_events'].forEach(function (t) {
+    const r = db.prepare('SELECT COUNT(*) AS total, SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) AS last_24h, MAX(created_at) AS latest FROM ' + t).get(since);
+    stats[t] = { last_24h: Number(r.last_24h) || 0, total: Number(r.total) || 0, latest: r.latest || null };
+  });
+  res.set('Cache-Control', 'no-store');
+  return res.json({ since: since, tables: stats });
+});
+
 app.get('/api/admin/dealers', requireAdmin, function (req, res) {
   var rows = db
     .prepare(
@@ -4646,6 +4809,7 @@ app.get('/api/cars', function (req, res) {
       .map(mapPublicCarRow);
   }
 
+  logSearchEvent(req, total);
   return res.json({ total: total, cars: listRows.map(mapPublicCarRow), featured: featured });
 });
 
@@ -4992,8 +5156,17 @@ app.post('/api/cars/:id/view', function (req, res) {
     return res.status(404).json({ error: 'Listing not found' });
   }
 
-  const views = db.prepare('SELECT COALESCE(views, 0) AS views FROM vehicles WHERE id = ?').get(vehicleId)
-    .views;
+  const viewed = db.prepare('SELECT COALESCE(v.views, 0) AS views, v.dealership_id, ' + PROMO_ACTIVE_SQL + ' AS promo_live FROM vehicles v WHERE v.id = ?').get(vehicleId);
+  const views = viewed.views;
+  if (viewLogAllowed(req.ip || 'unknown')) {
+    try {
+      const promoted = req.body && req.body.promoted === true && Number(viewed.promo_live) ? 1 : 0;
+      db.prepare('INSERT INTO view_events (vehicle_id, dealership_id, promoted, created_at) VALUES (?, ?, ?, ?)')
+        .run(vehicleId, viewed.dealership_id, promoted, new Date().toISOString());
+    } catch (err) {
+      console.error('view event log failed:', err && err.message);
+    }
+  }
   return res.json({ views: views });
 });
 
